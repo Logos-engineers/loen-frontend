@@ -1,33 +1,54 @@
+import { HapticTab } from '@/components/haptic-tab';
+import { colors } from '@/constants/tokens';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: colors.tab.active,
+        tabBarInactiveTintColor: colors.tab.inactive,
+        tabBarStyle: {
+          backgroundColor: colors.background.elevated,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+          marginBottom: 2,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: '신앙생활',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="church"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: '교회생활',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: '더보기',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="ellipsis-horizontal-circle-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
