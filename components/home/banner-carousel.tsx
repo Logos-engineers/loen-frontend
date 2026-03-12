@@ -1,15 +1,18 @@
+import SkiIcon from '@/assets/icons/ski 1.svg';
+import Snow1Icon from '@/assets/icons/snow.svg';
+import Snow2Icon from '@/assets/icons/snow2.svg';
+import Snow3Icon from '@/assets/icons/snow3.svg';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useRef, useState } from 'react';
 import {
-    Dimensions,
-    FlatList,
-    ImageBackground,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    StyleSheet,
-    Text,
-    View
+  Dimensions,
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -19,28 +22,29 @@ interface BannerItem {
   id: string;
   title: string;
   subtitle: string;
-  imageUrl: string; // 실제 이미지 URL로 교체 필요
+  gradientColors: readonly [string, string, ...string[]];
+  hasSkiAssets?: boolean; // 1번 배너만 snow/ski SVG 표시
 }
 
-// 더미 배너 데이터 — API 연동 시 props로 교체
 const BANNERS: BannerItem[] = [
   {
     id: '1',
     title: '2025년 로고스 스키 캠프 오픈!',
     subtitle: '만국의 스키러들이여 단결하라!',
-    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800',
+    gradientColors: ['rgba(146,161,242,1)', 'rgba(222,107,100,1)'],
+    hasSkiAssets: true,
   },
   {
     id: '2',
     title: '새벽 기도회 안내',
     subtitle: '매주 월~금 오전 5:30',
-    imageUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800',
+    gradientColors: ['rgba(100,140,220,1)', 'rgba(80,120,200,1)'],
   },
   {
     id: '3',
     title: '2025 청년부 수련회',
     subtitle: '7월 25일 ~ 27일',
-    imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+    gradientColors: ['rgba(120,180,140,1)', 'rgba(80,150,100,1)'],
   },
 ];
 
@@ -55,21 +59,47 @@ export function BannerCarousel() {
 
   const renderItem = ({ item }: { item: BannerItem }) => (
     <View style={styles.bannerContainer}>
-      <ImageBackground
-        source={{ uri: item.imageUrl }}
-        style={styles.image}
-        imageStyle={styles.imageStyle}
+      <LinearGradient
+        colors={item.gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
       >
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.65)']}
-          style={styles.gradient}
-        >
-          <View style={styles.textContainer}>
-            <Text style={styles.bannerTitle}>{item.title}</Text>
-            <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
+        {/* 1번 배너: snow + ski SVG 배치 */}
+        {item.hasSkiAssets && (
+          <View style={styles.skiAssetsWrapper} pointerEvents="none">
+            {/* ski 이미지 — 우측 배치 */}
+            <SkiIcon
+              width={140}
+              height={112}
+              style={styles.skiImg}
+            />
+            {/* snow 아이콘 3개 — 배너 배경에 흩뿌린 효과 */}
+            <Snow3Icon
+              width={50}
+              height={31}
+              style={styles.snow3}
+            />
+            <Snow2Icon
+              width={36}
+              height={22}
+              style={styles.snow2}
+            />
+            <Snow1Icon
+              width={23}
+              height={14}
+              style={styles.snow1}
+            />
           </View>
-        </LinearGradient>
-      </ImageBackground>
+        )}
+
+        {/* 텍스트 — 좌측 하단 */}
+        <View style={styles.textBlock}>
+          <Text style={styles.bannerTitle}>{item.title}</Text>
+          <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
+        </View>
+        {/* ❌ 라벨(날짜/카테고리) 없음 */}
+      </LinearGradient>
     </View>
   );
 
@@ -83,11 +113,11 @@ export function BannerCarousel() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        snapToInterval={BANNER_WIDTH + spacing.sm}
         decelerationRate="fast"
         onMomentumScrollEnd={handleScroll}
       />
-      {/* 1/N 페이지 인디케이터 뱃지 */}
+
+      {/* 1/N 배지 */}
       <View style={styles.badge}>
         <Text style={styles.badgeText}>
           {currentIndex + 1} / {BANNERS.length}
@@ -99,53 +129,79 @@ export function BannerCarousel() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginHorizontal: spacing.md,
-    marginVertical: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     position: 'relative',
   },
   bannerContainer: {
     width: BANNER_WIDTH,
-    height: 160,
-    marginRight: spacing.sm,
+    height: 124,
     borderRadius: radius.lg,
     overflow: 'hidden',
   },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imageStyle: {
-    borderRadius: radius.lg,
-  },
   gradient: {
     flex: 1,
-    justifyContent: 'flex-end',
-    padding: spacing.md,
+    position: 'relative',
   },
-  textContainer: {
-    gap: 2,
+  // ski + snow 레이어 (절대 위치)
+  skiAssetsWrapper: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  skiImg: {
+    position: 'absolute',
+    right: -10,
+    bottom: -10,
+  },
+  snow3: {
+    position: 'absolute',
+    left: 20,
+    top: 8,
+  },
+  snow2: {
+    position: 'absolute',
+    left: 60,
+    top: 28,
+  },
+  snow1: {
+    position: 'absolute',
+    left: 110,
+    top: 14,
+  },
+  // 텍스트
+  textBlock: {
+    position: 'absolute',
+    left: 16,
+    bottom: 16,
   },
   bannerTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.bold,
+    color: '#FFFFFF',
+    lineHeight: 24,
+  },
+  bannerSubtitle: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
     color: '#FFFFFF',
+    lineHeight: 20,
   },
-  bannerSubtitle: {
-    fontSize: fontSize.sm,
-    color: 'rgba(255,255,255,0.85)',
-  },
+  // 1/N 배지
   badge: {
     position: 'absolute',
-    bottom: spacing.sm,
-    right: spacing.sm,
+    right: spacing.md + spacing.sm,
+    bottom: spacing.sm + 12,
     backgroundColor: colors.badge.background,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: 2,
   },
   badgeText: {
     color: colors.badge.text,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
   },
 });

@@ -1,11 +1,10 @@
+import BookmarkIcon from '@/assets/icons/bookmark.svg';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// 더미 데이터 — API 연동 시 props로 교체
 const BIBLE_DATA = {
   book: '창세기',
   chapter: 13,
@@ -15,133 +14,141 @@ const BIBLE_DATA = {
 
 export function BibleReadingSection() {
   const progressRatio = BIBLE_DATA.chapter / BIBLE_DATA.totalChapters;
+  const markerPercent = progressRatio * 100;
 
   return (
     <View>
       <SectionHeader title="성경 읽기" />
-      <Card style={styles.card}>
-        {/* 상단 행: 북마크 + 제목/날짜 + 이어읽기 버튼 */}
-        <View style={styles.topRow}>
-          <View style={styles.bookmarkBox}>
-            <Ionicons name="bookmark" size={20} color={colors.primary} />
-          </View>
-          <View style={styles.textCol}>
-            <Text style={styles.chapterTitle}>
-              {BIBLE_DATA.book} {BIBLE_DATA.chapter}장
-            </Text>
-            <Text style={styles.date}>{BIBLE_DATA.date}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.continueBtn}
-            onPress={() => Alert.alert('이어읽기')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.continueBtnText}>이어읽기</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* 프로그레스 바 */}
-        <View style={styles.progressSection}>
-          {/* 뱃지 위치 계산 */}
-          <View style={[styles.badgeWrapper, { left: `${progressRatio * 100}%` as any }]}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{BIBLE_DATA.chapter}장</Text>
+      <View style={styles.wrapper}>
+        <Card style={styles.card}>
+          {/* 상단 행 */}
+          <View style={styles.topRow}>
+            {/* Figma: bookmark.svg 32×32 (SVG transformer) */}
+            <BookmarkIcon width={32} height={32} />
+
+            <View style={styles.textCol}>
+              <Text style={styles.chapterTitle}>
+                {BIBLE_DATA.book} {BIBLE_DATA.chapter}장
+              </Text>
+              <Text style={styles.date}>{BIBLE_DATA.date}</Text>
             </View>
-            <View style={styles.badgeTail} />
+
+            {/* Figma: 이어읽기 py:10 px:16 */}
+            <TouchableOpacity
+              style={styles.continueBtn}
+              onPress={() => Alert.alert('이어읽기')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.continueBtnText}>이어읽기</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* 바 본체 */}
-          <View style={styles.trackBg}>
-            <View style={[styles.trackFill, { flex: progressRatio }]} />
-            <View style={{ flex: 1 - progressRatio }} />
+          {/* ── 프로그레스 바 섹션 ── */}
+          <View style={styles.progressSection}>
+            {/* Marker 배지 */}
+            <View style={[styles.markerContainer, { left: `${markerPercent}%` as any }]}>
+              <View style={styles.markerBadge}>
+                <Text style={styles.markerText}>{BIBLE_DATA.chapter}장</Text>
+              </View>
+              <View style={styles.markerTail} />
+            </View>
+
+            {/* 바 행: [1장] [████░░░░░░] [50장] — 피그마 인라인 레이아웃 */}
+            <View style={styles.barRow}>
+              <Text style={styles.barLabel}>1장</Text>
+              <View style={styles.trackBg}>
+                <View style={[styles.trackFill, { flex: progressRatio }]} />
+                <View style={{ flex: 1 - progressRatio }} />
+              </View>
+              <Text style={styles.barLabel}>{BIBLE_DATA.totalChapters}장</Text>
+            </View>
           </View>
 
-          {/* 1장 / 50장 레이블 */}
-          <View style={styles.labelRow}>
-            <Text style={styles.labelText}>1장</Text>
-            <Text style={styles.labelText}>{BIBLE_DATA.totalChapters}장</Text>
-          </View>
-        </View>
+          <View style={styles.divider} />
 
-        {/* 전체 통독표 보기 링크 */}
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => Alert.alert('전체 통독표 보기')}
-        >
-          <Text style={styles.linkText}>전체 통독표 보기</Text>
-        </TouchableOpacity>
-      </Card>
+          {/* 전체 통독표 보기 — 밑줄 없음 */}
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => Alert.alert('전체 통독표 보기')}
+          >
+            <Text style={styles.linkText}>전체 통독표 보기</Text>
+          </TouchableOpacity>
+        </Card>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   card: {
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    gap: spacing.md,
+    gap: 0,
+    padding: 0,
+    overflow: 'hidden',
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
-  },
-  bookmarkBox: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   textCol: {
     flex: 1,
     gap: 2,
   },
   chapterTitle: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,
   },
   date: {
     fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
     color: colors.text.secondary,
   },
   continueBtn: {
     backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   continueBtnText: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
 
-  // 프로그레스 바
+  // 프로그레스 영역
   progressSection: {
-    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  badgeWrapper: {
-    position: 'relative',
+  markerContainer: {
+    position: 'absolute',
+    top: spacing.sm,
     alignItems: 'center',
-    marginBottom: 2,
-  },
-  badge: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    alignSelf: 'flex-start',
     transform: [{ translateX: -16 }],
+    zIndex: 1,
   },
-  badgeText: {
-    color: '#FFF',
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.bold,
+  markerBadge: {
+    backgroundColor: 'rgba(101,97,255,0.8)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
   },
-  badgeTail: {
+  markerText: {
+    color: '#FFFFFF',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+  },
+  markerTail: {
     width: 0,
     height: 0,
     borderLeftWidth: 4,
@@ -149,39 +156,49 @@ const styles = StyleSheet.create({
     borderTopWidth: 4,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: colors.primary,
-    alignSelf: 'center',
-    transform: [{ translateX: -16 }],
+    borderTopColor: 'rgba(101,97,255,0.8)',
+  },
+
+  // Figma: 바 양 옆에 1장/50장 인라인 배치
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 30,  // marker 공간
+  },
+  barLabel: {
+    fontSize: fontSize.sm,           // 12px
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+    flexShrink: 0,
   },
   trackBg: {
-    height: 8,
-    borderRadius: 4,
+    flex: 1,
+    height: 20,
+    borderRadius: 6,
     backgroundColor: colors.border,
     flexDirection: 'row',
     overflow: 'hidden',
   },
   trackFill: {
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  labelText: {
-    fontSize: fontSize.xs,
-    color: colors.text.secondary,
+    backgroundColor: 'rgba(101,97,255,0.8)',
+    borderRadius: 6,
   },
 
-  // 링크
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.md,
+  },
   linkRow: {
     alignItems: 'center',
-    paddingTop: spacing.xs,
+    paddingVertical: 18,
   },
+  // 밑줄 없음
   linkText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
     color: colors.text.accent,
-    fontWeight: fontWeight.medium,
+    textDecorationLine: 'none',
   },
 });

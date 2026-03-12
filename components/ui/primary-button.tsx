@@ -1,4 +1,4 @@
-import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
 import React from 'react';
 import {
     ActivityIndicator,
@@ -44,7 +44,8 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    paddingVertical: 10,              // Figma: py-[10px]
+    paddingHorizontal: 22,            // Figma: px-[22px]
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -52,8 +53,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: fontSize.md,
+    color: '#fafafa',                 // Figma: text-[#fafafa]
+    fontSize: fontSize.base,          // Figma: 16px SemiBold
     fontWeight: fontWeight.semibold,
   },
 });

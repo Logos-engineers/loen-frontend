@@ -1,34 +1,41 @@
 /**
- * 디자인 토큰
- * Figma 디자인 시스템의 색상, 간격, 반경 값을 정의합니다.
+ * 디자인 토큰 — Figma 디자인 시스템 정확값
+ * trans/gray/a1~a5, trans/primary/a1~a5, background/fill/*
  */
 
 export const colors = {
-  primary: '#6B66D9',         // 보라색 버튼 (OBS 시작하기, 챌린지 참여하기)
-  primaryLight: '#EAE9F9',    // 보라색 연하게 (이어읽기 버튼 배경)
+  primary: '#6561FF',                    // trans/primary/a1
+  primaryLight: 'rgba(101,97,255,0.20)', // trans/primary/a5 — secondary 버튼 배경
 
   background: {
-    base: '#F2F2F7',          // 앱 전체 배경 (연한 회색)
-    elevated: '#FFFFFF',      // 카드 배경 (흰색)
+    base: '#F2F4F7',                     // background/fill/elevated — 앱 전체 배경
+    elevated: '#FFFFFF',                 // background/fill/common — 카드 배경
   },
 
   text: {
-    primary: '#111111',       // 주요 본문 텍스트
-    secondary: '#888888',     // 보조 텍스트 (날짜, 소제목)
-    accent: '#6B66D9',        // 강조 텍스트 (링크, 전체 통독표 보기)
-    dim: '#AAAAAA',           // 흐린 텍스트
+    primary: 'rgba(13,28,45,0.8)',       // trans/gray/a2
+    secondary: 'rgba(13,28,45,0.5)',     // trans/gray/a3
+    dim: 'rgba(13,28,45,0.16)',          // trans/gray/a4 (내비게이션 아이콘 등)
+    accent: '#6561FF',                   // trans/primary/a1 — 링크, 강조 텍스트
   },
 
-  border: '#E5E5EA',          // 카드 테두리
+  border: 'rgba(13,28,45,0.08)',         // trans/gray/a5 (구분선, 비활성 칩)
 
   tab: {
-    active: '#111111',        // 탭 활성 아이콘
-    inactive: '#C7C7CC',      // 탭 비활성 아이콘
+    active: 'rgba(13,28,45,0.8)',
+    inactive: 'rgba(13,28,45,0.3)',
   },
 
   badge: {
-    background: 'rgba(0,0,0,0.45)', // 배너 1/10 뱃지 배경
-    text: '#FFFFFF',
+    background: '#FFFFFF',               // 배너 1/N 뱃지 흰색
+    text: 'rgba(13,28,45,0.5)',
+  },
+
+  // 반응 태그 색
+  reaction: {
+    red: '#FF5358',     // trans/red/a1   — 하트
+    orange: '#FF8E28',  // trans/orange/a1 — 불꽃
+    yellow: '#F1C100',  // trans/yellow/a1 — 이모지
   },
 } as const;
 
@@ -42,16 +49,19 @@ export const spacing = {
 } as const;
 
 export const radius = {
+  xs: 8,
   sm: 8,
   md: 12,
   lg: 16,
+  full: 999,
 } as const;
 
 export const fontSize = {
-  xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 18,
+  xs: 11,   // 11px — 배너 날짜 등
+  sm: 12,   // 12px — Caption_12
+  md: 14,   // 14px — Body2_14
+  base: 16, // 16px — Title3_16 (섹션 헤더, 버튼)
+  lg: 20,   // 20px — Title1_20_B (OBS 카드 제목)
   xl: 22,
   xxl: 28,
 } as const;

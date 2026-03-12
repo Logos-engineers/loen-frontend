@@ -1,7 +1,7 @@
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface SectionHeaderProps {
   title: string;
@@ -17,9 +17,11 @@ export function SectionHeader({ title, showArrow = false, onPress }: SectionHead
       disabled={!onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{title}</Text>
+      </View>
       {showArrow && (
-        <Ionicons name="chevron-forward" size={18} color={colors.text.dim} />
+        <Ionicons name="chevron-forward" size={20} color={colors.text.dim} />
       )}
     </TouchableOpacity>
   );
@@ -31,10 +33,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.md,   // Figma: pt-[16px]
+    paddingBottom: 0,
+  },
+  titleRow: {
+    flex: 1,
   },
   title: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.base,  // Figma: 16px Bold
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
   },
