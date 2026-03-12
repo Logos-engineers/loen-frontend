@@ -4,6 +4,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -15,6 +16,8 @@ const CHALLENGE_DATA = {
 };
 
 export function ChallengeSection() {
+  const router = useRouter();
+
   return (
     <View>
       <SectionHeader title="챌린지" />
@@ -52,7 +55,7 @@ export function ChallengeSection() {
           <View style={styles.buttonWrapper}>
             <PrimaryButton
               label="챌린지 참여하기"
-              onPress={() => Alert.alert('챌린지 참여하기')}
+              onPress={() => router.push('/challenge')}
             />
           </View>
         </Card>
