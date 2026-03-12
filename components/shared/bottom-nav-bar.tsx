@@ -1,10 +1,17 @@
-import { HapticTab } from '@/components/haptic-tab';
-import { colors } from '@/constants/tokens';
-import { Tabs } from 'expo-router';
+/**
+ * BottomNavBar — 스택 화면에서도 탭 바를 고정으로 표시하는 공용 컴포넌트
+ *
+ * 사용 방법: 모든 스택 화면(홈 밖의 화면)에 이 컴포넌트를 하단에 배치.
+ * (tabs)/_layout.tsx와 동일한 아이콘(bookbible / churchlife / seemore)을 사용.
+ */
+import { colors, fontWeight } from '@/constants/tokens';
+import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
-// ─── Bottom Navigator SVG 상수 ────────────────────────────────────────────────
+// ─── 아이콘 상수 (app/(tabs)/_layout.tsx와 동일) ────────────────────────────
 const BOOKBIBLE_SVG = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M24.5713 4.57129C25.3615 4.57129 26 5.20982 26 6V26C25.9999 26.7901 25.3614 27.4287 24.5713 27.4287H10.2861C7.92006 27.4287 6 25.5086 6 23.1426V8.85742C6 6.49135 7.92006 4.57129 10.2861 4.57129H24.5713ZM16.083 10.9521C15.7362 10.9524 15.4522 11.2362 15.4521 11.583V13.4756H13.5596C13.2127 13.4756 12.9289 13.7596 12.9287 14.1064V15.3691C12.9289 15.7159 13.2127 16 13.5596 16H15.4521V20.416C15.4521 20.7629 15.7362 21.0467 16.083 21.0469H17.3457C17.6925 21.0467 17.9766 20.7629 17.9766 20.416V16H19.8691C20.216 16 20.4998 15.7159 20.5 15.3691V14.1064C20.4998 13.7596 20.216 13.4756 19.8691 13.4756H17.9766V11.583C17.9765 11.2362 17.6925 10.9524 17.3457 10.9521H16.083Z" fill="FILL_COLOR" fill-opacity="FILL_OPACITY"/>
 </svg>`;
@@ -19,62 +26,69 @@ const SEEMORE_SVG = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none"
 <path fill-rule="evenodd" clip-rule="evenodd" d="M5.5 16C5.5 10.2009 10.2009 5.5 16 5.5C21.7991 5.5 26.5 10.2009 26.5 16C26.5 21.7991 21.7991 26.5 16 26.5C10.2009 26.5 5.5 21.7991 5.5 16ZM12.8605 16C12.8605 15.5823 12.6946 15.1817 12.3992 14.8863C12.1038 14.5909 11.7032 14.425 11.2855 14.425H11.275C10.8573 14.425 10.4567 14.5909 10.1613 14.8863C9.86594 15.1817 9.7 15.5823 9.7 16V16.0105C9.7 16.4282 9.86594 16.8288 10.1613 17.1242C10.4567 17.4196 10.8573 17.5855 11.275 17.5855H11.2855C11.7032 17.5855 12.1038 17.4196 12.3992 17.1242C12.6946 16.8288 12.8605 16.4282 12.8605 16.0105V16ZM17.5855 16C17.5855 15.5823 17.4196 15.1817 17.1242 14.8863C16.8288 14.5909 16.4282 14.425 16.0105 14.425H16C15.5823 14.425 15.1817 14.5909 14.8863 14.8863C14.5909 15.1817 14.425 15.5823 14.425 16V16.0105C14.425 16.4282 14.5909 16.8288 14.8863 17.1242C15.1817 17.4196 15.5823 17.5855 16 17.5855H16.0105C16.4282 17.5855 16.8288 17.4196 17.1242 17.1242C17.4196 16.8288 17.5855 16.4282 17.5855 16.0105V16ZM20.7355 14.425C21.1532 14.425 21.5538 14.5909 21.8492 14.8863C22.1446 15.1817 22.3105 15.5823 22.3105 16V16.0105C22.3105 16.4282 22.1446 16.8288 21.8492 17.1242C21.5538 17.4196 21.1532 17.5855 20.7355 17.5855H20.725C20.3073 17.5855 19.9067 17.4196 19.6113 17.1242C19.3159 16.8288 19.15 16.4282 19.15 16.0105V16C19.15 15.5823 19.3159 15.1817 19.6113 14.8863C19.9067 14.5909 20.3073 14.425 20.725 14.425H20.7355Z" fill="FILL_COLOR" fill-opacity="FILL_OPACITY"/>
 </svg>`;
 
-// SVG fill 색상을 active/inactive에 맞게 교체하는 헬퍼
-function getTabIcon(svgTemplate: string, color: string) {
-  // color가 rgba(13,28,45,0.8)이면 active, 0.3이면 inactive
-  const isActive = !color.includes('0.3');
+function getIcon(svgTemplate: string, isActive: boolean) {
   return svgTemplate
     .replace(/FILL_COLOR/g, '#0D1C2D')
     .replace(/FILL_OPACITY/g, isActive ? '0.8' : '0.3');
 }
 
-export default function TabLayout() {
+interface TabItem {
+  label: string;
+  icon: string;
+  route: string;
+  matchPaths: string[]; // 이 경로들이 포함되면 active
+}
+
+const TABS: TabItem[] = [
+  { label: '신앙생활', icon: BOOKBIBLE_SVG,  route: '/',        matchPaths: ['/', '/index', '/(tabs)'] },
+  { label: '교회생활', icon: CHURCHLIFE_SVG, route: '/church',  matchPaths: ['/church'] },
+  { label: '더보기',   icon: SEEMORE_SVG,    route: '/more',    matchPaths: ['/more'] },
+];
+
+export function BottomNavBar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarActiveTintColor: colors.tab.active,
-        tabBarInactiveTintColor: colors.tab.inactive,
-        tabBarStyle: {
-          backgroundColor: colors.background.elevated,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-          marginBottom: 2,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: '신앙생활',
-          tabBarIcon: ({ color }) => (
-            <SvgXml xml={getTabIcon(BOOKBIBLE_SVG, color)} width={24} height={24} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="church"
-        options={{
-          title: '교회생활',
-          tabBarIcon: ({ color }) => (
-            <SvgXml xml={getTabIcon(CHURCHLIFE_SVG, color)} width={24} height={24} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: '더보기',
-          tabBarIcon: ({ color }) => (
-            <SvgXml xml={getTabIcon(SEEMORE_SVG, color)} width={24} height={24} />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={[styles.container, { paddingBottom: insets.bottom || 8 }]}>
+      {TABS.map((tab) => {
+        const isActive = tab.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
+        return (
+          <TouchableOpacity
+            key={tab.label}
+            style={styles.tab}
+            onPress={() => router.replace(tab.route as any)}
+            activeOpacity={0.7}
+          >
+            <SvgXml xml={getIcon(tab.icon, isActive)} width={24} height={24} />
+            <Text style={[styles.label, { color: isActive ? colors.tab.active : colors.tab.inactive }]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: colors.background.elevated,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 2,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+  },
+});
