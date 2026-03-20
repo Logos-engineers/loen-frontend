@@ -7,7 +7,7 @@
  * - 배경: #F2F4F7 (background/fill/elevated)
  */
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { useRouter } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
@@ -102,11 +102,19 @@ function ObsCard({ item }: { item: ObsItem }) {
         </View>
         <View style={styles.buttonContainer}>
           {item.isLatest ? (
-            <TouchableOpacity style={styles.btnSolid} activeOpacity={0.8}>
+            <TouchableOpacity 
+              style={styles.btnSolid} 
+              activeOpacity={0.8}
+              onPress={() => router.push({ pathname: '/review/intro', params: { title: item.title, verse: item.verse, date: item.date } })}
+            >
               <Text style={styles.btnSolidText}>복습하기</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.btnOutline} activeOpacity={0.8}>
+            <TouchableOpacity 
+              style={styles.btnOutline} 
+              activeOpacity={0.8}
+              onPress={() => router.push({ pathname: '/review/intro', params: { title: item.title, verse: item.verse, date: item.date } })}
+            >
               <Text style={styles.btnOutlineText}>복습하기</Text>
             </TouchableOpacity>
           )}
