@@ -3,7 +3,8 @@ import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 
 const BIBLE_DATA = {
   book: '창세기',
@@ -37,7 +38,7 @@ export function BibleReadingSection() {
             {/* Figma: 이어읽기 py:10 px:16 */}
             <TouchableOpacity
               style={styles.continueBtn}
-              onPress={() => Alert.alert('이어읽기')}
+              onPress={() => {/* TODO: 이어읽기 연결 */}}
               activeOpacity={0.8}
             >
               <Text style={styles.continueBtnText}>이어읽기</Text>
@@ -70,7 +71,7 @@ export function BibleReadingSection() {
           {/* 전체 통독표 보기 — 밑줄 없음 */}
           <TouchableOpacity
             style={styles.linkRow}
-            onPress={() => Alert.alert('전체 통독표 보기')}
+            onPress={() => router.push('/(tabs)/plan')}
           >
             <Text style={styles.linkText}>전체 통독표 보기</Text>
           </TouchableOpacity>
