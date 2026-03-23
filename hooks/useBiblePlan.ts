@@ -5,20 +5,36 @@
  *
  * 상태 구조:
  * {
- *   readChapters: {
- *     "GEN": { "1": "2026-03-20", "2": "2026-03-20" },
- *     "EXO": { "1": "2026-03-18" }
- *   },
+ *   readChapters: { "GEN": { "1": "2026-03-20" } },
  *   lastModified: "2026-03-20",
- *   weeklyGoal: 7
+ *   weeklyGoal: 7,
+ *   weeklyGoalDays: 7,
+ *   weeklyGoalChapters: 1,
+ *   selectedBookCode: "GEN",
+ *   alarms: [{ id, hour, minute, days, enabled, notifIds }]
  * }
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
-import { TOTAL_CHAPTERS, WEEKLY_GOAL_CHAPTERS } from '@/constants/BibleMeta';
+import {
+  TOTAL_CHAPTERS,
+  WEEKLY_GOAL_DAYS,
+  WEEKLY_GOAL_CHAPTERS,
+  WEEKLY_GOAL_CHAPTERS_PER_DAY,
+} from '@/constants/BibleMeta';
 
 // ─── 타입 ───────────────────────────────────────────────────────────
+/** 요일별 반복 알림 1개 */
+export type AlarmItem = {
+  id: string;           // 고유 ID (Date.now().toString())
+  hour: number;         // 0–23
+  minute: number;       // 0–59
+  days: number[];       // [0=일, 1=월, 2=화, 3=수, 4=목, 5=금, 6=토]
+  enabled: boolean;
+  notifIds: string[];   // expo-notifications identifier 목록
+};
+
 export type ReadChapters = {
   [bookCode: string]: {
     [chapterNum: string]: string; // "YYYY-MM-DD"
@@ -28,13 +44,26 @@ export type ReadChapters = {
 export type BiblePlanData = {
   readChapters: ReadChapters;
   lastModified: string;
-  weeklyGoal: number;
+  weeklyGoal: number;               // 총합 (= weeklyGoalDays × weeklyGoalChapters)
+  weeklyGoalDays: number;           // 주당 읽을 일 수
+  weeklyGoalChapters: number;       // 하루 읽을 장 수
+  selectedBookCode: string | null;  // 목표 설정에서 선택한 성경책
+  alarms: AlarmItem[];              // 설정된 알림 목록
 };
 
 const STORAGE_KEY = 'LOEN_BIBLE_PLAN_v1';
 
+const DEFAULT_DATA: BiblePlanData = {
+  readChapters: {},
+  lastModified: '',
+  weeklyGoal: WEEKLY_GOAL_CHAPTERS,
+  weeklyGoalDays: WEEKLY_GOAL_DAYS,
+  weeklyGoalChapters: WEEKLY_GOAL_CHAPTERS_PER_DAY,
+  selectedBookCode: null,
+  alarms: [],
+};
+
 // ─── 날짜 유틸 ──────────────────────────────────────────────────────
-/** 기기 로컬 기준 'YYYY-MM-DD' */
 function getLocalDateString(date: Date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -42,22 +71,32 @@ function getLocalDateString(date: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
-/** 기기 로컬 기준 월요일 날짜 (이번 주 시작) */
 function getWeekStartDate(): string {
   const now = new Date();
-  const day = now.getDay(); // 0=일, 1=월 ... 6=토
-  const diff = day === 0 ? -6 : 1 - day; // 일요일이면 -6, 나머지는 1 - day
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(now);
   monday.setDate(now.getDate() + diff);
   return getLocalDateString(monday);
 }
 
+// ─── 마이그레이션 ────────────────────────────────────────────────────
+function migrate(parsed: Partial<BiblePlanData>): BiblePlanData {
+  return {
+    ...DEFAULT_DATA,
+    ...parsed,
+    weeklyGoalDays: parsed.weeklyGoalDays ?? WEEKLY_GOAL_DAYS,
+    weeklyGoalChapters: parsed.weeklyGoalChapters ?? WEEKLY_GOAL_CHAPTERS_PER_DAY,
+    selectedBookCode: parsed.selectedBookCode ?? null,
+    alarms: parsed.alarms ?? [],
+  };
+}
+
 // ─── 훅 ─────────────────────────────────────────────────────────────
 export function useBiblePlan() {
   const [planData, setPlanData] = useState<BiblePlanData>({
-    readChapters: {},
+    ...DEFAULT_DATA,
     lastModified: getLocalDateString(),
-    weeklyGoal: WEEKLY_GOAL_CHAPTERS,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,8 +106,8 @@ export function useBiblePlan() {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as BiblePlanData;
-          setPlanData(parsed);
+          const parsed = JSON.parse(raw) as Partial<BiblePlanData>;
+          setPlanData(migrate(parsed));
         }
       } catch (e) {
         console.warn('[useBiblePlan] 불러오기 실패', e);
@@ -93,28 +132,18 @@ export function useBiblePlan() {
     async (bookCode: string, chapterNum: number) => {
       const key = String(chapterNum);
       const today = getLocalDateString();
-
       const bookChapters = planData.readChapters[bookCode] ?? {};
       const newBookChapters = { ...bookChapters };
-
       if (newBookChapters[key]) {
-        // 이미 읽음 → 해제
         delete newBookChapters[key];
       } else {
-        // 읽음 처리
         newBookChapters[key] = today;
       }
-
-      const nextData: BiblePlanData = {
+      await save({
         ...planData,
-        readChapters: {
-          ...planData.readChapters,
-          [bookCode]: newBookChapters,
-        },
+        readChapters: { ...planData.readChapters, [bookCode]: newBookChapters },
         lastModified: today,
-      };
-
-      await save(nextData);
+      });
     },
     [planData, save]
   );
@@ -125,21 +154,92 @@ export function useBiblePlan() {
       const today = getLocalDateString();
       const newBookChapters: { [ch: string]: string } = {};
       for (const ch of selectedChapters) {
-        // 기존 날짜 유지, 새로 선택된 장은 오늘 날짜
         newBookChapters[String(ch)] =
           planData.readChapters[bookCode]?.[String(ch)] ?? today;
       }
-
-      const nextData: BiblePlanData = {
+      await save({
         ...planData,
-        readChapters: {
-          ...planData.readChapters,
-          [bookCode]: newBookChapters,
-        },
+        readChapters: { ...planData.readChapters, [bookCode]: newBookChapters },
         lastModified: today,
-      };
+      });
+    },
+    [planData, save]
+  );
 
-      await save(nextData);
+  // ── 주간 목표 저장 ────────────────────────────────────────────────
+  const saveWeeklyGoal = useCallback(
+    async (days: number, chaptersPerDay: number) => {
+      await save({
+        ...planData,
+        weeklyGoal: days * chaptersPerDay,
+        weeklyGoalDays: days,
+        weeklyGoalChapters: chaptersPerDay,
+      });
+    },
+    [planData, save]
+  );
+
+  // ── 성경책 선택 저장 ──────────────────────────────────────────────
+  const saveSelectedBook = useCallback(
+    async (bookCode: string | null) => {
+      await save({ ...planData, selectedBookCode: bookCode });
+    },
+    [planData, save]
+  );
+
+  // ── 알림 목록 자체 저장 (전체 덮어쓰기) ──────────────────────────────────
+  const saveAlarms = useCallback(
+    async (alarms: AlarmItem[]) => {
+      await save({ ...planData, alarms });
+    },
+    [planData, save]
+  );
+
+  // ── 알림 즉시 동기화 Helper Functions ──────────────────────────────
+  // 알림을 조작하는 즉시 AsyncStorage에 저장하여 유령 알람을 방지합니다.
+  
+  const addAlarm = useCallback(
+    async (newAlarm: AlarmItem) => {
+      const nextAlarms = [...planData.alarms, newAlarm];
+      await save({ ...planData, alarms: nextAlarms });
+    },
+    [planData, save]
+  );
+
+  const removeAlarm = useCallback(
+    async (id: string) => {
+      const nextAlarms = planData.alarms.filter((a) => a.id !== id);
+      await save({ ...planData, alarms: nextAlarms });
+    },
+    [planData, save]
+  );
+
+  const toggleAlarm = useCallback(
+    async (id: string, enabled: boolean) => {
+      const nextAlarms = planData.alarms.map((a) => 
+        a.id === id ? { ...a, enabled } : a
+      );
+      await save({ ...planData, alarms: nextAlarms });
+    },
+    [planData, save]
+  );
+
+  // ── 목표 + 알림 통합 저장 (완료 시 한 번에) ─────────────────────
+  const saveGoalAndAlarms = useCallback(
+    async (
+      days: number,
+      chaptersPerDay: number,
+      bookCode: string | null,
+      alarms: AlarmItem[]
+    ) => {
+      await save({
+        ...planData,
+        weeklyGoal: days * chaptersPerDay,
+        weeklyGoalDays: days,
+        weeklyGoalChapters: chaptersPerDay,
+        selectedBookCode: bookCode,
+        alarms,
+      });
     },
     [planData, save]
   );
@@ -148,11 +248,7 @@ export function useBiblePlan() {
   const stats = (() => {
     const today = getLocalDateString();
     const weekStart = getWeekStartDate();
-
-    let totalRead = 0;
-    let todayRead = 0;
-    let weekRead = 0;
-
+    let totalRead = 0, todayRead = 0, weekRead = 0;
     for (const bookCode in planData.readChapters) {
       for (const ch in planData.readChapters[bookCode]) {
         const date = planData.readChapters[bookCode][ch];
@@ -161,13 +257,14 @@ export function useBiblePlan() {
         if (date >= weekStart && date <= today) weekRead++;
       }
     }
-
     return {
       totalRead,
       totalChapters: TOTAL_CHAPTERS,
       todayRead,
       weekRead,
       weeklyGoal: planData.weeklyGoal,
+      weeklyGoalDays: planData.weeklyGoalDays,
+      weeklyGoalChapters: planData.weeklyGoalChapters,
     };
   })();
 
@@ -187,6 +284,13 @@ export function useBiblePlan() {
     stats,
     toggleChapter,
     saveSelectedChapters,
+    saveWeeklyGoal,
+    saveSelectedBook,
+    saveAlarms,
+    addAlarm,
+    removeAlarm,
+    toggleAlarm,
+    saveGoalAndAlarms,
     getReadChaptersForBook,
   };
 }

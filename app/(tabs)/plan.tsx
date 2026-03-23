@@ -74,7 +74,17 @@ export default function PlanScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statsRow}>
             <View style={styles.statsItem}>
-              <Text style={styles.statsLabel}>이번주 목표</Text>
+              {/* 라벨 + 편집 pill 한 행 */}
+              <View style={styles.statsLabelRow}>
+                <Text style={styles.statsLabel}>이번주 목표</Text>
+                <TouchableOpacity
+                  style={styles.editChip}
+                  activeOpacity={0.65}
+                  onPress={() => router.push('/plan/goal')}
+                >
+                  <Text style={styles.editChipText}>편집</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.statsValue}>
                 <Text style={styles.statsNum}>{stats.weekRead}</Text>
                 <Text style={styles.statsSuffix}> / {stats.weeklyGoal}장</Text>
@@ -228,6 +238,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 3,                     // 일회성: 라벨↔숫자 미세 간격
+  },
+  statsLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,            // 4px — 라벨과 편집칩 사이
+  },
+  editChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
+    paddingVertical: 2,         // 일회성: 미니 pill 상하 패딩
+    paddingHorizontal: spacing.sm, // 8px
+  },
+  editChipText: {
+    fontSize: fontSize.xs,      // 11px
+    fontWeight: fontWeight.medium,
+    color: colors.primary,
   },
   statsLabel: {
     fontSize: fontSize.xs,      // 11px — fontSize.xs

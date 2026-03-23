@@ -88,5 +88,12 @@ export const BIBLE_BOOKS: BibleBook[] = [
 /** 총 1189장 */
 export const TOTAL_CHAPTERS = BIBLE_BOOKS.reduce((sum, b) => sum + b.chapterCount, 0);
 
-/** 주간 목표 (MVP 고정값) */
-export const WEEKLY_GOAL_CHAPTERS = 7;
+/** 주간 목표 기본값 — 일 수 */
+export const WEEKLY_GOAL_DAYS = 7;
+
+/** 주간 목표 기본값 — 하루 장 수 */
+export const WEEKLY_GOAL_CHAPTERS_PER_DAY = 1;
+
+/** 주간 목표 총합 기본값 (= DAYS × CHAPTERS_PER_DAY) */
+export const WEEKLY_GOAL_CHAPTERS = WEEKLY_GOAL_DAYS * WEEKLY_GOAL_CHAPTERS_PER_DAY;
+
