@@ -47,6 +47,7 @@ export default function GoalSuccessScreen() {
           <Text style={s.btnText}>성경 읽으러 가기</Text>
         </TouchableOpacity>
         
+        {/* FIX 6: "다음에 읽을게요" button MISSING */}
         <TouchableOpacity onPress={handleLater} activeOpacity={0.7} style={s.laterBtn}>
           <Text style={s.laterText}>다음에 읽을게요</Text>
         </TouchableOpacity>
@@ -55,78 +56,80 @@ export default function GoalSuccessScreen() {
   );
 }
 
+// FIX 6: Goal Success Screen Formatting
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.base },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   content: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl * 2,
+    paddingHorizontal: 20,
+    paddingTop: 80,
   },
   
   textGroup: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
-    marginTop: spacing.xxl,
+    marginBottom: 48,
   },
   weekTag: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
-    color: colors.primary,
-    backgroundColor: '#F3F2FF',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6554FF',
+    backgroundColor: '#F0EFFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: radius.full,
-    marginBottom: spacing.md,
+    borderRadius: 100,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   title: {
     fontSize: 24,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
+    fontWeight: '700',
+    color: '#1B1E26',
+    marginBottom: 12,
     textAlign: 'center',
   },
   desc: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#8B95A1',
     textAlign: 'center',
   },
 
   imgBox: {
-    marginTop: spacing.xl * 2,
+    marginTop: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   spacer: { flex: 1 },
 
   footer: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xxl,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
     alignItems: 'center',
-    gap: spacing.md,
-  },
-  laterBtn: {
-    paddingVertical: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  laterText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
+    width: '100%',
   },
   btn: {
-    height: 54,
+    height: 56,
     width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
+    backgroundColor: '#6554FF',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  btnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  laterBtn: {
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
-    color: colors.white,
+  laterText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#8B95A1',
   },
 });

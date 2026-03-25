@@ -73,6 +73,7 @@ export function useAlarms() {
               title: '📖 성경 통독 알림',
               body: '오늘의 통독 목표를 확인해 보세요.',
               sound: true,
+              data: { type: 'bible-plan' },
               ...(Platform.OS === 'android' && { channelId: 'bible-plan' }),
             },
             trigger: {

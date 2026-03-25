@@ -63,6 +63,14 @@ const DEFAULT_DATA: BiblePlanData = {
   alarms: [],
 };
 
+let globalPlanData: BiblePlanData = {
+  ...DEFAULT_DATA,
+  lastModified: getLocalDateString(),
+};
+let globalIsLoading = true;
+let didInit = false;
+const listeners = new Set<() => void>();
+
 // ─── 날짜 유틸 ──────────────────────────────────────────────────────
 function getLocalDateString(date: Date = new Date()): string {
   const y = date.getFullYear();
@@ -80,6 +88,55 @@ function getWeekStartDate(): string {
   return getLocalDateString(monday);
 }
 
+function buildStats(planData: BiblePlanData) {
+  const today = getLocalDateString();
+  const weekStart = getWeekStartDate();
+  let totalRead = 0;
+  let todayRead = 0;
+  let weekRead = 0;
+
+  for (const bookCode in planData.readChapters) {
+    for (const chapterKey in planData.readChapters[bookCode]) {
+      const date = planData.readChapters[bookCode][chapterKey];
+      totalRead++;
+      if (date === today) todayRead++;
+      if (date >= weekStart && date <= today) weekRead++;
+    }
+  }
+
+  return {
+    totalRead,
+    totalChapters: TOTAL_CHAPTERS,
+    todayRead,
+    weekRead,
+    weeklyGoal: planData.weeklyGoal,
+    weeklyGoalDays: planData.weeklyGoalDays,
+    weeklyGoalChapters: planData.weeklyGoalChapters,
+  };
+}
+
+function emitChange() {
+  listeners.forEach((listener) => listener());
+}
+
+async function loadPlanData() {
+  if (didInit) return;
+  didInit = true;
+
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<BiblePlanData>;
+      globalPlanData = migrate(parsed);
+    }
+  } catch (e) {
+    console.warn('[useBiblePlan] 불러오기 실패', e);
+  } finally {
+    globalIsLoading = false;
+    emitChange();
+  }
+}
+
 // ─── 마이그레이션 ────────────────────────────────────────────────────
 function migrate(parsed: Partial<BiblePlanData>): BiblePlanData {
   return {
@@ -94,35 +151,36 @@ function migrate(parsed: Partial<BiblePlanData>): BiblePlanData {
 
 // ─── 훅 ─────────────────────────────────────────────────────────────
 export function useBiblePlan() {
-  const [planData, setPlanData] = useState<BiblePlanData>({
-    ...DEFAULT_DATA,
-    lastModified: getLocalDateString(),
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [planData, setPlanData] = useState<BiblePlanData>(globalPlanData);
+  const [isLoading, setIsLoading] = useState(globalIsLoading);
 
-  // ── 불러오기 ─────────────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as Partial<BiblePlanData>;
-          setPlanData(migrate(parsed));
-        }
-      } catch (e) {
-        console.warn('[useBiblePlan] 불러오기 실패', e);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+    const sync = () => {
+      setPlanData(globalPlanData);
+      setIsLoading(globalIsLoading);
+    };
+
+    listeners.add(sync);
+    sync();
+    loadPlanData();
+
+    return () => {
+      listeners.delete(sync);
+    };
   }, []);
 
   // ── 저장 ─────────────────────────────────────────────────────────
   const save = useCallback(async (next: BiblePlanData) => {
+    const previous = globalPlanData;
+    globalPlanData = next;
+    globalIsLoading = false;
+    emitChange();
+
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      setPlanData(next);
     } catch (e) {
+      globalPlanData = previous;
+      emitChange();
       console.warn('[useBiblePlan] 저장 실패', e);
     }
   }, []);
@@ -245,28 +303,7 @@ export function useBiblePlan() {
   );
 
   // ── 통계 계산 ─────────────────────────────────────────────────────
-  const stats = (() => {
-    const today = getLocalDateString();
-    const weekStart = getWeekStartDate();
-    let totalRead = 0, todayRead = 0, weekRead = 0;
-    for (const bookCode in planData.readChapters) {
-      for (const ch in planData.readChapters[bookCode]) {
-        const date = planData.readChapters[bookCode][ch];
-        totalRead++;
-        if (date === today) todayRead++;
-        if (date >= weekStart && date <= today) weekRead++;
-      }
-    }
-    return {
-      totalRead,
-      totalChapters: TOTAL_CHAPTERS,
-      todayRead,
-      weekRead,
-      weeklyGoal: planData.weeklyGoal,
-      weeklyGoalDays: planData.weeklyGoalDays,
-      weeklyGoalChapters: planData.weeklyGoalChapters,
-    };
-  })();
+  const stats = buildStats(planData);
 
   // ── 책별 읽은 장 번호 배열 ────────────────────────────────────────
   const getReadChaptersForBook = useCallback(

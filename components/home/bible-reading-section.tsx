@@ -2,20 +2,62 @@ import BookmarkIcon from '@/assets/icons/bookmark.svg';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useBiblePlan } from '@/hooks/useBiblePlan';
+import { useFocusEffect } from '@react-navigation/native';
 
-const BIBLE_DATA = {
-  book: '창세기',
-  chapter: 13,
-  totalChapters: 50,
-  date: '2025년 6월 16일',
-};
+const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
+type LastPosition = { bookCode: string; chapterNum: number };
+
+const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export function BibleReadingSection() {
-  const progressRatio = BIBLE_DATA.chapter / BIBLE_DATA.totalChapters;
+  const [position, setPosition] = useState<LastPosition>(FALLBACK);
+  const { planData } = useBiblePlan();
+
+  const loadPosition = async () => {
+    AsyncStorage.getItem(POSITION_KEY).then((raw) => {
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as LastPosition;
+          setPosition(parsed);
+        } catch {
+          setPosition(FALLBACK);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    loadPosition();
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadPosition();
+    }, [])
+  );
+
+  useEffect(() => {
+    loadPosition();
+  }, [planData.lastModified]);
+
+  const bookMeta = BIBLE_BOOKS.find((b) => b.code === position.bookCode);
+  const bookName = bookMeta?.korName ?? position.bookCode;
+  const totalChapters = bookMeta?.chapterCount ?? 1;
+  const progressRatio = position.chapterNum / totalChapters;
   const markerPercent = progressRatio * 100;
+
+  const handleContinueReading = () => {
+    router.push({
+      pathname: '/bible/read',
+      params: { book: position.bookCode, chapter: String(position.chapterNum) },
+    });
+  };
 
   return (
     <View>
@@ -30,15 +72,14 @@ export function BibleReadingSection() {
 
             <View style={styles.textCol}>
               <Text style={styles.chapterTitle}>
-                {BIBLE_DATA.book} {BIBLE_DATA.chapter}장
+                {bookName} {position.chapterNum}장
               </Text>
-              <Text style={styles.date}>{BIBLE_DATA.date}</Text>
             </View>
 
             {/* Figma: 이어읽기 py:10 px:16 */}
             <TouchableOpacity
               style={styles.continueBtn}
-              onPress={() => {/* TODO: 이어읽기 연결 */}}
+              onPress={handleContinueReading}
               activeOpacity={0.8}
             >
               <Text style={styles.continueBtnText}>이어읽기</Text>
@@ -50,19 +91,19 @@ export function BibleReadingSection() {
             {/* Marker 배지 */}
             <View style={[styles.markerContainer, { left: `${markerPercent}%` as any }]}>
               <View style={styles.markerBadge}>
-                <Text style={styles.markerText}>{BIBLE_DATA.chapter}장</Text>
+                <Text style={styles.markerText}>{position.chapterNum}장</Text>
               </View>
               <View style={styles.markerTail} />
             </View>
 
-            {/* 바 행: [1장] [████░░░░░░] [50장] — 피그마 인라인 레이아웃 */}
+            {/* 바 행: [1장] [████░░░░░░] [N장] — 피그마 인라인 레이아웃 */}
             <View style={styles.barRow}>
               <Text style={styles.barLabel}>1장</Text>
               <View style={styles.trackBg}>
                 <View style={[styles.trackFill, { flex: progressRatio }]} />
                 <View style={{ flex: 1 - progressRatio }} />
               </View>
-              <Text style={styles.barLabel}>{BIBLE_DATA.totalChapters}장</Text>
+              <Text style={styles.barLabel}>{totalChapters}장</Text>
             </View>
           </View>
 

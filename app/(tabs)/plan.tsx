@@ -8,6 +8,7 @@ import BookCard from '@/components/BiblePlan/BookCard';
 import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -23,6 +24,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 type Testament = 'old' | 'new';
 
 const BOTTOM_TABS = ['말씀강해', '성경통독', '챌린지', '성경읽기'];
+const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
+type LastPosition = { bookCode: string; chapterNum: number };
+const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export default function PlanScreen() {
   const { isLoading, stats, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
@@ -39,6 +43,23 @@ export default function PlanScreen() {
     setSelectedBook(null);
   };
   const handleModalClose = () => setSelectedBook(null);
+
+  const handleBottomTabPress = async (tab: string) => {
+    if (tab === '성경읽기') {
+      try {
+        const raw = await AsyncStorage.getItem(POSITION_KEY);
+        const pos = raw ? JSON.parse(raw) as LastPosition : FALLBACK;
+        router.push({
+          pathname: '/bible/read',
+          params: { book: pos.bookCode, chapter: String(pos.chapterNum) },
+        });
+      } catch {
+        router.push({ pathname: '/bible/read', params: { book: 'GEN', chapter: '1' } });
+      }
+      return;
+    }
+    setActiveBottomTab(tab);
+  };
 
   if (isLoading) {
     return (
@@ -154,7 +175,7 @@ export default function PlanScreen() {
               key={tab}
               style={[styles.floatingTabBtn, isActive && styles.floatingTabBtnActive]}
               activeOpacity={0.8}
-              onPress={() => setActiveBottomTab(tab)}
+              onPress={() => handleBottomTabPress(tab)}
             >
               <Text style={[styles.floatingTabText, isActive && styles.floatingTabTextActive]}>
                 {tab}

@@ -9,6 +9,7 @@
  */
 
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import CheckIcon from '@/assets/icons/check.svg'; // FIX 4: Exact SVG
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import React, { useCallback, useRef } from 'react';
 import {
@@ -72,10 +73,8 @@ export default function BibleSelectSheet({ visible, selectedCode, onSelect, onCl
   }));
 
   const handleClose = useCallback(() => {
-    translateY.value = withSpring(SHEET_HEIGHT, SPRING_CONFIG, () => {
-      runOnJS(onClose)();
-    });
-  }, [onClose, translateY]);
+    onClose(); // 위로 튕기는 버그/딜레이 제거: 즉시 닫힘
+  }, [onClose]);
 
   // 모달 표시 시 translateY 초기화
   const handleShow = useCallback(() => {
@@ -94,7 +93,7 @@ export default function BibleSelectSheet({ visible, selectedCode, onSelect, onCl
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none" // 슬라이드 애니메이션 중복/충돌 제거: 누르면 바로 열림
       statusBarTranslucent
       onShow={handleShow}
     >
@@ -139,13 +138,14 @@ export default function BibleSelectSheet({ visible, selectedCode, onSelect, onCl
                       {item.korName}
                     </Text>
                   </View>
-                  {isSelected && <View style={styles.checkDot} />}
+                  {/* FIX 4: Dropdown Check Icon (MUST use assets/icons) */}
+                  {isSelected && <CheckIcon width={24} height={24} />}
                 </TouchableOpacity>
               );
             }}
           />
 
-          {/* 하단 CTA */}
+          {/* FIX 5: Dropdown "완료" Button (MISSING - CRITICAL) */}
           <View style={styles.sheetCta}>
             <TouchableOpacity
               style={styles.ctaBtn}
@@ -186,33 +186,36 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   sheetHeader: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 32,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    alignItems: 'flex-start',
   },
   sheetTitle: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1B1E26',
+    lineHeight: 30,
   },
   list: {
     flex: 1,
   },
+  // FIX 4: Layout + Icon
   bookRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 20, // FIX 4: Spacing between rows
   },
   bookRowSelected: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#F0EFFF', // Primary light matching
   },
   bookRowInner: {
     flex: 1,
   },
   bookKor: {
-    fontSize: fontSize.base,
+    fontSize: 16,
     fontWeight: fontWeight.medium,
     color: colors.text.primary,
   },
@@ -220,27 +223,23 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: fontWeight.bold,
   },
-  checkDot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-  },
+  // FIX 5: Dropdown "완료" Button styling
   sheetCta: {
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    backgroundColor: '#FFFFFF',
   },
   ctaBtn: {
-    height: 52,
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
+    height: 56,
+    backgroundColor: '#6554FF',
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaBtnText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
-    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

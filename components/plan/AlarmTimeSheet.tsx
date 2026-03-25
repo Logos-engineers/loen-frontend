@@ -20,7 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AlarmItem } from '@/hooks/useBiblePlan';
 
 // ─── 요일 레이블 (월~일 순) ───────────────────────────────────────────
 // 표시 순서: 월(1) 화(2) 수(3) 목(4) 금(5) 토(6) 일(0)
@@ -36,7 +35,7 @@ const DAY_DISPLAY = [
 
 type Props = {
   visible: boolean;
-  initialAlarm?: Pick<AlarmItem, 'hour' | 'minute' | 'days'>;
+  initialAlarm?: { hour: number; minute: number; days: number[] };
   onConfirm: (hour: number, minute: number, days: number[]) => void;
   onCancel: () => void;
 };
