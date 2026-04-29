@@ -38,6 +38,14 @@ export default function RootLayout() {
           <Stack.Screen name="obs/index" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/index" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/write-thanks" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/write-prayer" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/write-word" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/select-bible" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/publish" options={{ headerShown: false }} />
+          <Stack.Screen name="faith-note/complete" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />
