@@ -2,16 +2,19 @@ import PencilIcon from '@/assets/icons/pencil.svg';
 import { Card } from '@/components/ui/card';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function FaithNoteCard() {
+  const router = useRouter();
+
   return (
     <View style={styles.wrapper}>
       <Card style={styles.card}>
         <TouchableOpacity
           style={styles.row}
-          onPress={() => Alert.alert('신앙노트 작성하기')}
+          onPress={() => router.push('/faith-note')}
           activeOpacity={0.7}
         >
           {/* Figma: pencil.svg 32×32 앱 아이콘 (PNG-embedded SVG, transformer로 렌더링) */}
