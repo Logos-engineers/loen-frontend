@@ -35,6 +35,11 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="bible" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/index" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/create" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/visibility" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/complete" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/edit" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/select-bible" options={{ headerShown: false }} />
           <Stack.Screen name="obs/index" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
