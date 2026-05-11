@@ -58,8 +58,7 @@ export default function MultipleChoiceQuizScreen() {
 
   const handleNextQuiz = () => {
     setModalType('none');
-    router.dismissAll();
-    router.replace('/(tabs)');
+    router.push('/obs/q3');
   };
 
   // 3 Boxes rendering
