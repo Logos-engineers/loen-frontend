@@ -2,7 +2,7 @@ import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/token
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '@/utils/notifications';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
@@ -127,10 +127,10 @@ export default function ChallengeVisibilityScreen() {
             body: '오늘 성경 읽을 시간이에요!',
           },
           trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday: expoWeekday,
             hour,
             minute,
-            weekday: expoWeekday,
-            repeats: true,
           },
         });
         notificationIds.push(id);
@@ -314,8 +314,8 @@ export default function ChallengeVisibilityScreen() {
           onPress={isManageMode ? undefined : openAlarmSheet}
           disabled={isManageMode}
         >
-          <Text style={[styles.settingTitle, isManageMode && { color: colors.text.tertiary }]}>알람 추가하기</Text>
-          <Ionicons name="add" size={24} color={isManageMode ? colors.text.tertiary : colors.text.secondary} />
+          <Text style={[styles.settingTitle, isManageMode && { color: colors.text.secondary }]}>알람 추가하기</Text>
+          <Ionicons name="add" size={24} color={isManageMode ? colors.text.secondary : colors.text.secondary} />
         </TouchableOpacity>
 
         {/* 알람 리스트 */}
@@ -347,8 +347,8 @@ export default function ChallengeVisibilityScreen() {
 
         <View style={[styles.settingCard, { marginTop: spacing.md }]}>
           <View style={styles.settingTitleWrapper}>
-            <Text style={[styles.settingTitle, isManageMode && { color: colors.text.tertiary }]}>맞춤형 독려 알림</Text>
-            <Ionicons name="help-circle" size={18} color={isManageMode ? colors.text.tertiary : colors.text.secondary} style={styles.helpIcon} />
+            <Text style={[styles.settingTitle, isManageMode && { color: colors.text.secondary }]}>맞춤형 독려 알림</Text>
+            <Ionicons name="help-circle" size={18} color={isManageMode ? colors.text.secondary : colors.text.secondary} style={styles.helpIcon} />
           </View>
           <Switch
             value={encouragementNotificationEnabled}

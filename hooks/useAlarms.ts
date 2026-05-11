@@ -8,9 +8,9 @@
  *   변환식: weekday = day + 1
  */
 
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '@/utils/notifications';
 import { useCallback } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import { AlarmItem } from './useBiblePlan';
 
 // ─── 알림 표시 설정 (포그라운드 포함) ───────────────────────────────────
