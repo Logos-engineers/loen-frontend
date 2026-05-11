@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '@/utils/notifications';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
