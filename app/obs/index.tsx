@@ -83,6 +83,8 @@ type FilterType = 'latest' | 'oldest' | 'scrap';
 
 // ─── OBS 카드 ──────────────────────────────────────────────────────────────────
 function ObsCard({ item }: { item: ObsItem }) {
+  const screenParams = { title: item.title, verse: item.verse, date: item.date };
+
   return (
     <View style={styles.cardWrapper}>
       <View style={styles.card}>
@@ -101,11 +103,18 @@ function ObsCard({ item }: { item: ObsItem }) {
           ) : null}
         </View>
         <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={item.isLatest ? styles.btnOutline : styles.btnMuted} 
+            activeOpacity={0.8}
+            onPress={() => router.push({ pathname: '/obs/scripture', params: screenParams } as never)}
+          >
+            <Text style={item.isLatest ? styles.btnOutlineText : styles.btnMutedText}>OBS보기</Text>
+          </TouchableOpacity>
           {item.isLatest ? (
             <TouchableOpacity 
               style={styles.btnSolid} 
               activeOpacity={0.8}
-              onPress={() => router.push({ pathname: '/review/intro', params: { title: item.title, verse: item.verse, date: item.date } })}
+              onPress={() => router.push({ pathname: '/review/intro', params: screenParams })}
             >
               <Text style={styles.btnSolidText}>복습하기</Text>
             </TouchableOpacity>
@@ -113,7 +122,7 @@ function ObsCard({ item }: { item: ObsItem }) {
             <TouchableOpacity 
               style={styles.btnOutline} 
               activeOpacity={0.8}
-              onPress={() => router.push({ pathname: '/review/intro', params: { title: item.title, verse: item.verse, date: item.date } })}
+              onPress={() => router.push({ pathname: '/review/intro', params: screenParams })}
             >
               <Text style={styles.btnOutlineText}>복습하기</Text>
             </TouchableOpacity>
@@ -229,7 +238,7 @@ export default function ObsScreen() {
     if (showPicker) {
       panY.setValue(0);
     }
-  }, [showPicker]);
+  }, [panY, showPicker]);
 
   const panResponder = useMemo(
     () =>
@@ -569,11 +578,14 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   buttonContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
   },
   btnSolid: {
+    flex: 1,
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: 10,
@@ -585,6 +597,7 @@ const styles = StyleSheet.create({
     color: '#FAFAFA',
   },
   btnOutline: {
+    flex: 1,
     backgroundColor: 'rgba(101,97,255,0.2)',
     borderRadius: radius.md,
     paddingVertical: 10,
@@ -594,6 +607,18 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     color: colors.primary,
+  },
+  btnMuted: {
+    flex: 1,
+    backgroundColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  btnMutedText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.secondary,
   },
 
   // 빈 화면
