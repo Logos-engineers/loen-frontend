@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from '@/utils/notifications';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -41,6 +41,9 @@ export default function RootLayout() {
           <Stack.Screen name="challenge/edit" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/select-bible" options={{ headerShown: false }} />
           <Stack.Screen name="obs/index" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/start" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/scripture" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/summary" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/index" options={{ headerShown: false }} />

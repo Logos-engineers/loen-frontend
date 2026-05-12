@@ -1,0 +1,251 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SvgXml } from 'react-native-svg';
+
+import { colors, fontWeight } from '@/constants/tokens';
+
+const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
+
+const SCRIPTURE_REFERENCE = '히브리서 9:15-21';
+
+const SCRIPTURE_VERSES = [
+  {
+    number: 15,
+    text: '성막을 세운 날에 구름이 성막 곧 증거의 성막을 덮었고 저녁이 되면 성막 위에 불 모양 같은 것이 나타나서 아침까지 이르렀으되',
+  },
+  {
+    number: 16,
+    text: '항상 그러하여 낮에는 구름이 그것을 덮었고 밤이면 불 모양이 있었는데',
+  },
+  {
+    number: 17,
+    text: '구름이 성막에서 떠오르는 때에는 이스라엘 자손이 곧 행진하였고 구름이 머무는 곳에 이스라엘 자손이 진을 쳤으니',
+  },
+  {
+    number: 18,
+    text: '이스라엘 자손이 여호와의 명령을 따라 행진하였고 여호와의 명령을 따라 진을 쳤으며 구름이 성막 위에 머무는 동안에는 그들이 진영에 머물렀고',
+  },
+  {
+    number: 19,
+    text: '구름이 성막 위에 머무는 날이 오랠 때에는 이스라엘 자손이 여호와의 명령을 지켜 행진하지 아니하였으며',
+  },
+  {
+    number: 20,
+    text: '혹시 구름이 성막 위에 머무는 날이 적을 때에도 그들이 다만 여호와의 명령을 따라 진영에 머물고 여호와의 명령을 따라 행진하였으며',
+  },
+  {
+    number: 21,
+    text: '항상 그러하여 낮에는 구름이 그것을 덮었고 밤이면 불 모양이 있었는데',
+  },
+];
+
+export default function ObsScriptureScreen() {
+  const params = useLocalSearchParams<{ verse?: string }>();
+  const reference = params.verse || SCRIPTURE_REFERENCE;
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.navBar}>
+          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
+            <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.referenceWrapper}>
+            <View style={styles.referenceCard}>
+              <View style={styles.bookIcon}>
+                <Ionicons name="book" size={18} color={colors.white} />
+              </View>
+              <View style={styles.referenceTextWrapper}>
+                <Text style={styles.referenceLabel}>성경말씀</Text>
+                <Text style={styles.referenceText}>{reference}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.bodyWrapper}>
+            <View style={styles.bodyCard}>
+              {SCRIPTURE_VERSES.map(verse => (
+                <View key={verse.number} style={styles.verseRow}>
+                  <View style={styles.verseNumberWrapper}>
+                    <View style={styles.verseNumberBox}>
+                      <Text style={styles.verseNumber}>{verse.number}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.verseTextWrapper}>
+                    <Text style={styles.verseText}>{verse.text}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.bottomCta}>
+          <View style={styles.bottomBlur} />
+          <TouchableOpacity
+            style={styles.nextButton}
+            activeOpacity={0.85}
+            onPress={() => router.push('/obs/summary')}
+          >
+            <Text style={styles.nextButtonText}>다음으로</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background.base,
+  },
+  navBar: {
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  backBtn: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 112,
+  },
+  referenceWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  referenceCard: {
+    minHeight: 80,
+    backgroundColor: colors.background.elevated,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  bookIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 9.6,
+    backgroundColor: '#1687F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  referenceTextWrapper: {
+    flex: 1,
+    gap: 4,
+  },
+  referenceLabel: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: fontWeight.medium,
+  },
+  referenceText: {
+    color: colors.text.primary,
+    fontSize: 16,
+    lineHeight: 26,
+    fontWeight: fontWeight.bold,
+    textAlign: 'left',
+  },
+  bodyWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  bodyCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingVertical: 8,
+  },
+  verseRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  verseNumberWrapper: {
+    paddingLeft: 16,
+    paddingVertical: 12,
+  },
+  verseNumberBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.background.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verseNumber: {
+    color: colors.text.primary,
+    fontSize: 16,
+    lineHeight: 26,
+    fontWeight: fontWeight.semibold,
+  },
+  verseTextWrapper: {
+    flex: 1,
+    paddingRight: 16,
+    paddingVertical: 12,
+  },
+  verseText: {
+    color: colors.text.primary,
+    fontSize: 16,
+    lineHeight: 26,
+    fontWeight: fontWeight.medium,
+  },
+  bottomCta: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 14,
+    backgroundColor: colors.background.base,
+  },
+  bottomBlur: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: -20,
+    height: 20,
+    backgroundColor: 'rgba(242,244,247,0.88)',
+  },
+  nextButton: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextButtonText: {
+    color: colors.white,
+    fontSize: 18,
+    lineHeight: 25,
+    fontWeight: fontWeight.semibold,
+  },
+});
