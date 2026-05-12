@@ -37,6 +37,7 @@ export default function RootLayout() {
           <Stack.Screen name="challenge/index" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/create" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/list" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/bible" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/visibility" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/complete" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/edit" options={{ headerShown: false }} />
