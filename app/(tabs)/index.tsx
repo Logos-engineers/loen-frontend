@@ -51,6 +51,13 @@ export default function HomeScreen() {
         >
           <Text style={[styles.tempButtonText, { color: colors.primary }]}>성경챌린지</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
+          onPress={() => router.push('/challenge/faith')}
+        >
+          <Text style={[styles.tempButtonText, { color: colors.primary }]}>신앙챌린지</Text>
+        </TouchableOpacity>
         {/* --- 임시 버튼 끝 --- */}
 
         <ObsSection />
