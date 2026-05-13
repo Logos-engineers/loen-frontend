@@ -19,7 +19,7 @@ const IS_DEV = __DEV__;
 // AuthSession.useAuthRequest + Google.discovery로 직접 구현 — Web Client ID 하나로 동작
 // Expo Go는 exp:// 스킴을 반환해 Google이 거부 → auth.expo.io 프록시 URI 직접 지정
 const redirectUri = __DEV__
-  ? 'https://auth.expo.io/@namhyunseo/Loen-project'
+  ? (process.env.EXPO_PUBLIC_REDIRECT_URI ?? 'https://auth.expo.io/@namhyunseo/Loen-project')
   : AuthSession.makeRedirectUri();
 
 export default function LoginScreen() {
