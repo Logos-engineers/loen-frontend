@@ -1,4 +1,4 @@
-import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,17 +8,30 @@ import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-});
-
 const IS_DEV = __DEV__;
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
+// Expo Go에서는 네이티브 모듈 미지원 — 런타임에 조건부 로드
+let GoogleSignin: any = null;
+let isErrorWithCode: any = null;
+let statusCodes: any = null;
+if (!IS_EXPO_GO) {
+  const pkg = require('@react-native-google-signin/google-signin');
+  GoogleSignin = pkg.GoogleSignin;
+  isErrorWithCode = pkg.isErrorWithCode;
+  statusCodes = pkg.statusCodes;
+  GoogleSignin.configure({ webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID });
+}
 
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const { setTokens } = useAuthStore();
 
   const handleGoogleLogin = async () => {
+    if (IS_EXPO_GO) {
+      Alert.alert('알림', 'Google 로그인은 Development Build에서만 지원됩니다.\n[DEV] 버튼을 사용하세요.');
+      return;
+    }
     setLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
@@ -110,7 +123,7 @@ export default function LoginScreen() {
             }
           </Pressable>
 
-          {IS_DEV && (
+          {(IS_DEV || IS_EXPO_GO) && (
             <Pressable
               style={({ pressed }) => [styles.devButton, pressed && styles.pressed]}
               onPress={handleDevLogin}
