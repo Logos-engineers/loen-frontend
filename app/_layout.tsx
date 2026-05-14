@@ -1,11 +1,11 @@
+import * as Notifications from '@/utils/notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as Notifications from '@/utils/notifications';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
@@ -56,6 +56,7 @@ export default function RootLayout() {
           <Stack.Screen name="challenge/create" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/list" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/bible" options={{ headerShown: false }} />
+          <Stack.Screen name="challenge/faith" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/visibility" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/complete" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/edit" options={{ headerShown: false }} />
