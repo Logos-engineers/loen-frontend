@@ -1,9 +1,6 @@
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
+import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { Image } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,65 +8,45 @@ import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 const IS_DEV = __DEV__;
-
-// Google.useAuthRequest는 플랫폼별 Client ID가 없으면 훅 단계에서 throw해서
-// AuthSession.useAuthRequest + Google.discovery로 직접 구현 — Web Client ID 하나로 동작
-// Expo Go는 exp:// 스킴을 반환해 Google이 거부 → auth.expo.io 프록시 URI 직접 지정
-const redirectUri = __DEV__
-  ? (process.env.EXPO_PUBLIC_REDIRECT_URI ?? 'https://auth.expo.io/@namhyunseo/Loen-project')
-  : AuthSession.makeRedirectUri();
 
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const { setTokens } = useAuthStore();
 
-  // Google이 implicit flow(id_token 직접 반환)를 보안 정책으로 차단
-  // → Authorization Code + PKCE 방식으로 전환 후 id_token 교환
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
-      redirectUri,
-      scopes: ['openid', 'profile', 'email'],
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: true,
-    },
-    Google.discovery,
-  );
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
 
-  useEffect(() => {
-    if (!request) return;
-    if (response?.type === 'error') {
-      Alert.alert('오류', response.error?.message ?? 'Google 로그인 중 오류가 발생했습니다.');
-      return;
-    }
-    if (response?.type !== 'success') return;
-
-    const { code } = response.params;
-    AuthSession.exchangeCodeAsync(
-      {
-        clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
-        code,
-        redirectUri,
-        extraParams: { code_verifier: request.codeVerifier! },
-      },
-      Google.discovery,
-    ).then(tokenResponse => {
-      const idToken = tokenResponse.idToken;
-      if (idToken) {
-        handleBackendLogin(idToken);
-      } else {
+      const idToken = response.data?.idToken;
+      if (!idToken) {
         Alert.alert('오류', 'id_token을 받지 못했습니다.');
+        return;
       }
-    }).catch((e: any) => {
-      Alert.alert('오류', '토큰 교환 실패: ' + (e.message ?? ''));
-    });
-  }, [response]);
+
+      await handleBackendLogin(idToken);
+    } catch (e: any) {
+      if (isErrorWithCode(e)) {
+        if (e.code === statusCodes.SIGN_IN_CANCELLED) return;
+        if (e.code === statusCodes.IN_PROGRESS) return;
+        if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          Alert.alert('오류', 'Google Play Services를 사용할 수 없습니다.');
+          return;
+        }
+      }
+      Alert.alert('오류', e.message ?? 'Google 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackendLogin = async (idToken: string) => {
-    setLoading(true);
     try {
       const data = await apiClient<{ accessToken: string; refreshToken: string; isNewUser: boolean }>(
         '/auth/login',
@@ -85,17 +62,7 @@ export default function LoginScreen() {
       });
     } catch (e: any) {
       Alert.alert('로그인 실패', e.message ?? '서버 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const handleGoogleLogin = () => {
-    if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
-      Alert.alert('설정 필요', '.env에 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID를 입력해주세요.');
-      return;
-    }
-    promptAsync();
   };
 
   const handleDevLogin = async () => {
@@ -135,7 +102,7 @@ export default function LoginScreen() {
           <Pressable
             style={({ pressed }) => [styles.googleButton, (pressed || loading) && styles.pressed]}
             onPress={handleGoogleLogin}
-            disabled={loading || !request}
+            disabled={loading}
           >
             {loading
               ? <ActivityIndicator color={colors.white} size="small" />

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tailscale 구조 설명</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f1f5;
+      color: #1a1a2e;
+      padding: 40px 24px 80px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 48px;
+    }
+
+    /* ── 섹션 공통 ── */
+    .section {
+      max-width: 860px;
+      margin: 0 auto 48px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #6561FF;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e0dfff;
+    }
+
+    /* ── 물리 세계 (Before) ── */
+    .physical-world {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .location-box {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      border: 2px solid #e8e9f0;
+      min-width: 200px;
+      flex: 1;
+      max-width: 240px;
+    }
+
+    .location-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #aaa;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .device-card {
+      background: #f8f8fc;
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1.5px solid #e8e9f0;
+    }
+
+    .device-icon { font-size: 28px; margin-bottom: 6px; }
+    .device-name { font-size: 13.5px; font-weight: 600; color: #333; }
+    .device-sub  { font-size: 11.5px; color: #888; margin-top: 2px; }
+
+    .local-ip {
+      display: inline-block;
+      margin-top: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      background: #f0f0f7;
+      color: #888;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .no-access {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #e53935;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── 인터넷 가로막힘 ── */
+    .internet-barrier {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 24px 0;
+      flex-wrap: wrap;
+    }
+
+    .barrier-line {
+      flex: 1;
+      max-width: 120px;
+      height: 2px;
+      background: repeating-linear-gradient(
+        90deg,
+        #ddd 0px, #ddd 8px,
+        transparent 8px, transparent 14px
+      );
+    }
+
+    .barrier-cloud {
+      background: #e8f4fd;
+      border: 2px solid #90caf9;
+      border-radius: 20px;
+      padding: 10px 20px;
+      font-size: 13px;
+      color: #1565c0;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .barrier-x {
+      width: 28px;
+      height: 28px;
+      background: #fdecea;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #c62828;
+      font-weight: 700;
+    }
+
+    /* ── Tailscale 설명 ── */
+    .ts-explain {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      border: 2px solid #e0dfff;
+      max-width: 860px;
+      margin: 0 auto 48px;
+    }
+
+    .ts-explain h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .ts-explain p {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.7;
+    }
+
+    .step-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .step-item {
+      flex: 1;
+      min-width: 160px;
+      background: #f8f8fc;
+      border-radius: 12px;
+      padding: 16px;
+      border-left: 4px solid #6561FF;
+      position: relative;
+    }
+
+    .step-num {
+      position: absolute;
+      top: -10px;
+      left: 14px;
+      background: #6561FF;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .step-item p {
+      font-size: 13px;
+      color: #555;
+      margin-top: 6px;
+      line-height: 1.6;
+    }
+
+    /* ── Tailscale 적용 후 네트워크 ── */
+    .tailnet-wrap {
+      max-width: 860px;
+      margin: 0 auto 48px;
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      border: 2px dashed #6561FF;
+      position: relative;
+    }
+
+    .tailnet-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #6561FF;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 18px;
+      border-radius: 20px;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+
+    .coord-server {
+      background: #f0f0ff;
+      border: 2px solid #c5c3ff;
+      border-radius: 12px;
+      padding: 12px 20px;
+      text-align: center;
+      margin: 0 auto 28px;
+      max-width: 260px;
+    }
+
+    .coord-server .cs-icon { font-size: 24px; margin-bottom: 4px; }
+    .coord-server .cs-title { font-size: 13px; font-weight: 600; color: #5b58cc; }
+    .coord-server .cs-sub { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .coord-lines {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 16px;
+      position: relative;
+      height: 36px;
+    }
+
+    .coord-lines::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 16%;
+      right: 16%;
+      height: 1.5px;
+      background: linear-gradient(90deg, #c5c3ff, #6561FF, #c5c3ff);
+    }
+
+    .coord-drop {
+      position: absolute;
+      top: 0;
+      width: 1.5px;
+      height: 36px;
+      background: #c5c3ff;
+    }
+
+    .coord-drop.left  { left: 16%; }
+    .coord-drop.mid   { left: 50%; }
+    .coord-drop.right { right: 16%; }
+
+    .devices-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .ts-device {
+      background: white;
+      border-radius: 14px;
+      padding: 18px 16px;
+      border: 2px solid #e0dfff;
+      text-align: center;
+      flex: 1;
+      min-width: 160px;
+      max-width: 200px;
+      position: relative;
+    }
+
+    .ts-device .td-icon { font-size: 30px; margin-bottom: 8px; }
+    .ts-device .td-name { font-size: 13px; font-weight: 600; color: #333; }
+    .ts-device .td-sub  { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .ts-ip {
+      display: inline-block;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      background: #6561FF;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* P2P 연결선 표시 */
+    .p2p-connections {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1.5px dashed #e0dfff;
+      flex-wrap: wrap;
+    }
+
+    .p2p-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f0f0ff;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #5b58cc;
+      font-weight: 500;
+    }
+
+    .p2p-dot {
+      width: 6px;
+      height: 6px;
+      background: #6561FF;
+      border-radius: 50%;
+    }
+
+    /* ── 핵심 요약 ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .summary-card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      border: 2px solid #e8e9f0;
+    }
+
+    .summary-card .sc-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    .summary-card.before .sc-label { color: #c62828; }
+    .summary-card.after  .sc-label { color: #2e7d32; }
+
+    .summary-card p {
+      font-size: 13.5px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 600px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .physical-world { flex-direction: column; align-items: center; }
+      .location-box { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Tailscale 구조</h1>
+<p class="subtitle">왜 팀원이 가입하면 라즈베리파이에 접근할 수 있는가</p>
+
+<!-- ── STEP 1: 물리적 현실 ── -->
+<div class="section">
+  <div class="section-label">현실 — 기기들은 서로 다른 네트워크에 있음</div>
+  <div class="physical-world">
+
+    <div class="location-box">
+      <div class="location-label">개발자 집</div>
+      <div class="device-card">
+        <div class="device-icon">💻</div>
+        <div class="device-name">본인 맥북</div>
+        <div class="device-sub">namhyunseo</div>
+        <div class="local-ip">192.168.0.10</div>
+      </div>
+    </div>
+
+    <div class="location-box">
+      <div class="location-label">개발자 집 (다른 방)</div>
+      <div class="device-card">
+        <div class="device-icon">🍓</div>
+        <div class="device-name">라즈베리파이</div>
+        <div class="device-sub">loen 백엔드 서버</div>
+        <div class="local-ip">192.168.0.20</div>
+      </div>
+    </div>
+
+    <div class="location-box">
+      <div class="location-label">팀원 집</div>
+      <div class="device-card">
+        <div class="device-icon">🖥️</div>
+        <div class="device-name">팀원 노트북</div>
+        <div class="device-sub">BES9507</div>
+        <div class="local-ip">172.30.1.5</div>
+      </div>
+      <div class="no-access">✗ Pi에 접근 불가</div>
+    </div>
+
+  </div>
+
+  <!-- 인터넷 장벽 -->
+  <div class="internet-barrier">
+    <div class="barrier-line"></div>
+    <div class="barrier-x">✕</div>
+    <div class="barrier-cloud">☁️ 인터넷 (NAT 장벽)</div>
+    <div class="barrier-x">✕</div>
+    <div class="barrier-line"></div>
+  </div>
+  <p style="text-align:center;font-size:13px;color:#888;">각 집의 공유기가 사설 IP를 부여하므로, 외부에서 <code style="font-size:12px;background:#f0f0f7;padding:1px 5px;border-radius:3px;">192.168.x.x</code>로 직접 접근 불가능</p>
+</div>
+
+<!-- ── STEP 2: Tailscale이 하는 일 ── -->
+<div class="ts-explain">
+  <h3>Tailscale이 하는 일</h3>
+  <p>Tailscale을 설치하면 각 기기에 <strong>100.x.x.x 형태의 가상 IP</strong>를 부여합니다. 이 IP는 물리적 위치와 무관하게 항상 동일하며, 같은 Tailscale 네트워크(tailnet) 안에서는 이 IP로 서로 직접 통신할 수 있습니다.</p>
+
+  <div class="step-row">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <p>각 기기에 Tailscale 설치 → 코디네이션 서버에 등록 → <strong>100.x.x.x IP 부여</strong></p>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <p>초대를 수락한 팀원이 같은 <strong>tailnet(가상 네트워크)</strong>에 합류</p>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <p>기기들이 암호화된 P2P 터널로 직접 연결 → <strong>마치 같은 LAN처럼</strong> 통신 가능</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── STEP 3: Tailscale 적용 후 ── -->
+<div class="section">
+  <div class="section-label">Tailscale 적용 후 — 가상 사설 네트워크</div>
+
+  <div class="tailnet-wrap">
+    <div class="tailnet-badge">namhyunseo0224@gmail.com tailnet</div>
+
+    <!-- 코디네이션 서버 -->
+    <div class="coord-server">
+      <div class="cs-icon">🛰️</div>
+      <div class="cs-title">Tailscale 코디네이션 서버</div>
+      <div class="cs-sub">기기 등록 & 연결 정보 관리</div>
+    </div>
+
+    <!-- 연결선 -->
+    <div class="coord-lines">
+      <div class="coord-drop left"></div>
+      <div class="coord-drop mid"></div>
+      <div class="coord-drop right"></div>
+    </div>
+
+    <!-- 기기들 -->
+    <div class="devices-row">
+
+      <div class="ts-device">
+        <div class="td-icon">💻</div>
+        <div class="td-name">본인 맥북</div>
+        <div class="td-sub">namhyunseo</div>
+        <div class="ts-ip">100.101.110.88</div>
+      </div>
+
+      <div class="ts-device">
+        <div class="td-icon">🍓</div>
+        <div class="td-name">라즈베리파이</div>
+        <div class="td-sub">loen 백엔드 :8080</div>
+        <div class="ts-ip">100.118.241.66</div>
+      </div>
+
+      <div class="ts-device">
+        <div class="td-icon">🖥️</div>
+        <div class="td-name">팀원 노트북</div>
+        <div class="td-sub">BES9507</div>
+        <div class="ts-ip">100.x.x.x (자동 부여)</div>
+      </div>
+
+    </div>
+
+    <!-- P2P 연결 표시 -->
+    <div class="p2p-connections">
+      <div class="p2p-line"><div class="p2p-dot"></div> 맥북 ↔ 라즈베리파이</div>
+      <div class="p2p-line"><div class="p2p-dot"></div> 팀원 ↔ 라즈베리파이</div>
+      <div class="p2p-line"><div class="p2p-dot"></div> 맥북 ↔ 팀원</div>
+      <span style="font-size:12px;color:#aaa;margin-left:4px;">모두 암호화 P2P 연결</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── 요약 ── -->
+<div class="section">
+  <div class="section-label">요약</div>
+  <div class="summary-grid">
+
+    <div class="summary-card before">
+      <div class="sc-label">✕ Tailscale 없을 때</div>
+      <p>팀원 노트북은 라즈베리파이와 물리적으로 다른 네트워크에 있어 <code style="font-size:12px;background:#fdecea;padding:1px 5px;border-radius:3px;">100.118.241.66</code>로 접근 자체가 불가능</p>
+    </div>
+
+    <div class="summary-card after">
+      <div class="sc-label">✓ Tailscale 설치 후</div>
+      <p>팀원이 같은 tailnet에 합류하면 <code style="font-size:12px;background:#e8f5e9;padding:1px 5px;border-radius:3px;">100.118.241.66:8080</code>으로 바로 백엔드 API에 접근 가능</p>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
