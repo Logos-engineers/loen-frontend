@@ -22,7 +22,7 @@ export default function ProfileSetupScreen() {
     try {
       // 백엔드에 프로필 업데이트 요청
       await apiClient('/users/me', {
-        method: 'PATCH',
+        method: 'PUT',
         body: JSON.stringify({
           nickname: nickname.trim(),
         }),

@@ -45,3 +45,9 @@ app-example
 
 # local AI tool configs
 .gemini/
+
+# Firebase
+google-services.json
+
+# IDE
+.idea/

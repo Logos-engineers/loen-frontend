@@ -59,7 +59,8 @@
           "sounds": []
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

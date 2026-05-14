@@ -58,7 +58,7 @@ const QUESTIONS = [
       },
       {
         number: '2-1',
-        textParts: ['"하나님의 인도하심은', '항상 계속된다"라는 진리를 보여줍니다.'],
+        textParts: ['"하나님의 인도하심은', '항상 계속된다"라는 진리를 보여줍니다.'] as [string, string],
       },
       {
         number: '2-2',

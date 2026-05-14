@@ -98,7 +98,7 @@ export function useAlarms() {
   const cancelAlarm = useCallback(async (notifIds: string[]): Promise<void> => {
     await Promise.all(
       notifIds.map(id =>
-        Notifications.cancelScheduledNotificationAsync(id).catch(e =>
+        Notifications.cancelScheduledNotificationAsync(id).catch((e: unknown) =>
           console.warn('[useAlarms] cancelAlarm 실패', id, e)
         )
       )
