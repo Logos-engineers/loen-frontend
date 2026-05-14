@@ -9,7 +9,7 @@ import { apiClient } from '@/utils/apiClient';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 
 const IS_DEV = __DEV__;
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const IS_EXPO_GO = Constants.executionEnvironment === 'storeClient';
 
 // Expo Go에서는 네이티브 모듈 미지원 — 런타임에 조건부 로드
 let GoogleSignin: any = null;
