@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/store/auth-store';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -15,10 +16,26 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const { isLoggedIn, isNewUser, isInitialized, initialize } = useAuthStore();
 
   useEffect(() => {
-    // 앱 백그라운드/종료 상태에서 알림 클릭 시 해당 탭으로 이동
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+    initialize();
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    if (!isLoggedIn) {
+      router.replace('/login');
+    } else if (isNewUser) {
+      router.replace('/profile-setup');
+    } else {
+      router.replace('/(tabs)');
+    }
+  }, [isInitialized, isLoggedIn, isNewUser]);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
       const type = response.notification.request.content.data?.type;
       if (type === 'bible-plan') {
         router.push('/(tabs)/plan');
@@ -28,10 +45,11 @@ export default function RootLayout() {
   }, []);
 
   return (
-    // GestureHandlerRootView must wrap the entire app for Swipeable / GestureDetector to work
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="bible" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/index" options={{ headerShown: false }} />
@@ -44,7 +62,6 @@ export default function RootLayout() {
           <Stack.Screen name="challenge/edit" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/select-bible" options={{ headerShown: false }} />
           <Stack.Screen name="obs/index" options={{ headerShown: false }} />
-          <Stack.Screen name="obs/start" options={{ headerShown: false }} />
           <Stack.Screen name="obs/scripture" options={{ headerShown: false }} />
           <Stack.Screen name="obs/summary" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
