@@ -87,11 +87,31 @@ function ObsCard({ item, isLatest }: { item: ObsContent; isLatest: boolean }) {
         </View>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={isLatest ? styles.btnSolid : styles.btnOutline}
+            style={[styles.ctaButton, styles.obsViewButton]}
+            activeOpacity={0.8}
+            onPress={() => router.push({
+              pathname: '/obs/intro',
+              params: {
+                contentId: String(item.id),
+                title: item.title,
+                verse: item.biblePassage,
+                weekLabel: item.weekLabel,
+              },
+            })}
+          >
+            <Text style={styles.obsViewButtonText}>OBS 보기</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ctaButton, isLatest ? styles.btnSolid : styles.btnOutline]}
             activeOpacity={0.8}
             onPress={() => router.push({
               pathname: '/review/intro',
-              params: { contentId: item.id, title: item.title, verse: item.biblePassage, date: formatKoreanDate(item.publishedDate) },
+              params: {
+                contentId: String(item.id),
+                title: item.title,
+                verse: item.biblePassage,
+                date: formatKoreanDate(item.publishedDate),
+              },
             })}
           >
             <Text style={isLatest ? styles.btnSolidText : styles.btnOutlineText}>복습하기</Text>
@@ -561,12 +581,29 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
-  btnSolid: {
-    backgroundColor: colors.primary,
+  ctaButton: {
+    flex: 1,
     borderRadius: radius.md,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  obsViewButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  obsViewButtonText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+  btnSolid: {
+    backgroundColor: colors.primary,
   },
   btnSolidText: {
     fontSize: fontSize.base,
@@ -575,9 +612,6 @@ const styles = StyleSheet.create({
   },
   btnOutline: {
     backgroundColor: 'rgba(101,97,255,0.2)',
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    alignItems: 'center',
   },
   btnOutlineText: {
     fontSize: fontSize.base,

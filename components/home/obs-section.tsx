@@ -5,7 +5,7 @@ import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { formatKoreanDate, useObsContents } from '@/hooks/useObs';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function ObsSection() {
   const router = useRouter();
@@ -40,18 +40,28 @@ export function ObsSection() {
               </View>
 
               <View style={styles.buttonWrapper}>
-                <PrimaryButton
-                  label={latestObs.reviewStatus === 'DONE' ? '복습하기' : 'OBS 시작하기'}
-                  onPress={() => router.push({
-                    pathname: '/review/intro',
-                    params: {
-                      contentId: String(latestObs.id),
-                      title: latestObs.title,
-                      verse: latestObs.biblePassage,
-                      date: formatKoreanDate(latestObs.publishedDate),
-                    },
-                  })}
-                />
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.secondaryButton]}
+                    activeOpacity={0.8}
+                    onPress={() => router.push('/obs')}
+                  >
+                    <Text style={styles.secondaryButtonText}>OBS 보기</Text>
+                  </TouchableOpacity>
+                  <PrimaryButton
+                    label={latestObs.reviewStatus === 'DONE' ? '복습하기' : 'OBS 시작하기'}
+                    onPress={() => router.push({
+                      pathname: '/review/intro',
+                      params: {
+                        contentId: String(latestObs.id),
+                        title: latestObs.title,
+                        verse: latestObs.biblePassage,
+                        date: formatKoreanDate(latestObs.publishedDate),
+                      },
+                    })}
+                    style={styles.actionButton}
+                  />
+                </View>
               </View>
             </>
           ) : (
@@ -100,6 +110,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
     paddingTop: spacing.sm,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  secondaryButtonText: {
+    color: colors.primary,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
   },
   stateBox: {
     minHeight: 132,
