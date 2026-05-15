@@ -40,9 +40,23 @@ export default function HomeScreen() {
         
         <TouchableOpacity
           style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
-          onPress={() => router.push('/challenge/complete')}
+          onPress={() => router.push('/challenge/list')}
         >
           <Text style={[styles.tempButtonText, { color: colors.primary }]}>내가 참여한 성경챌린지</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
+          onPress={() => router.push('/challenge/bible')}
+        >
+          <Text style={[styles.tempButtonText, { color: colors.primary }]}>성경챌린지</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
+          onPress={() => router.push('/challenge/faith')}
+        >
+          <Text style={[styles.tempButtonText, { color: colors.primary }]}>신앙챌린지</Text>
         </TouchableOpacity>
         {/* --- 임시 버튼 끝 --- */}
 
