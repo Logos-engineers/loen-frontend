@@ -20,6 +20,7 @@
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { AlarmItem, useBiblePlan } from '@/hooks/useBiblePlan';
+import { useBibleHistory } from '@/hooks/useBibleHistory';
 import { useAlarms } from '@/hooks/useAlarms';
 import BibleSelectSheet from '@/components/plan/BibleSelectSheet';
 import AlarmTimeSheet from '@/components/plan/AlarmTimeSheet';
@@ -133,6 +134,7 @@ const sp = StyleSheet.create({
 // ─── 메인 ──────────────────────────────────────────────────────────────
 export default function GoalScreen() {
   const { planData, isLoading, saveGoalAndAlarms, addAlarm, removeAlarm, toggleAlarm } = useBiblePlan();
+  const { goal: existingGoal, createGoal, updateGoal } = useBibleHistory();
   const { requestPermission, scheduleAlarm, cancelAlarm } = useAlarms();
 
   // 로컬 편집 상태
@@ -250,13 +252,30 @@ export default function GoalScreen() {
     setIsSaving(true);
     try {
       await saveGoalAndAlarms(days, chaptersPerDay, selectedBook, alarms);
+
+      const bookCode = selectedBook ?? 'GEN';
+      const notificationEnabled = alarms.length > 0 && alarms.some(a => a.enabled);
+      const firstAlarm = alarms.find(a => a.enabled) ?? alarms[0];
+      const notificationDays = firstAlarm?.days.map(d => DAY_MAP[d]) ?? [];
+      const notificationTime = firstAlarm
+        ? `${String(firstAlarm.hour).padStart(2, '0')}:${String(firstAlarm.minute).padStart(2, '0')}`
+        : '08:00';
+
+      const payload = { bookCode, daysPerWeek: days, chaptersPerDay, notificationEnabled, notificationDays, notificationTime };
+
+      if (existingGoal?.id) {
+        await updateGoal(existingGoal.id, payload);
+      } else {
+        await createGoal(payload);
+      }
+
       router.replace('/plan/goal-success');
     } catch (e) {
       console.warn('[GoalScreen] 저장 실패', e);
       Alert.alert('오류', '목표 저장에 실패했습니다.');
       setIsSaving(false);
     }
-  }, [days, chaptersPerDay, selectedBook, alarms, saveGoalAndAlarms, isSaving]);
+  }, [days, chaptersPerDay, selectedBook, alarms, saveGoalAndAlarms, existingGoal, createGoal, updateGoal, isSaving]);
 
   // ── 스와이프 우측 삭제 버튼 ──────────────────────────────────────
   const renderRightActions = useCallback(

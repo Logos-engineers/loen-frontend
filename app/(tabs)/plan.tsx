@@ -8,6 +8,7 @@ import BookCard from '@/components/BiblePlan/BookCard';
 import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
+import { useBibleHistory } from '@/hooks/useBibleHistory';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -30,16 +31,32 @@ const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export default function PlanScreen() {
   const { isLoading, stats, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
+  const { history, checkChapters, uncheckChapters } = useBibleHistory();
   const [activeTestament, setActiveTestament] = useState<Testament>('old');
   const [activeBottomTab, setActiveBottomTab] = useState('성경통독');
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
 
   const bookList = BIBLE_BOOKS.filter(b => b.testament === activeTestament);
 
+  // 서버 통계로 로컬 stats를 덮어씀 (서버 데이터 없으면 로컬 fallback)
+  const mergedStats = {
+    ...stats,
+    todayRead: history?.todayReadCount ?? stats.todayRead,
+    totalRead: history?.accruedReadCount ?? stats.totalRead,
+  };
+
   const handleBookPress = (book: BibleBook) => setSelectedBook(book);
   const handleModalConfirm = async (selectedChapters: number[]) => {
     if (!selectedBook) return;
+
+    const currentChapters = history?.readCheckList?.[selectedBook.code] ?? getReadChaptersForBook(selectedBook.code);
+    const toCheck = selectedChapters.filter(ch => !currentChapters.includes(ch));
+    const toUncheck = currentChapters.filter(ch => !selectedChapters.includes(ch));
+
     await saveSelectedChapters(selectedBook.code, selectedChapters);
+    if (toCheck.length > 0) await checkChapters(selectedBook.code, toCheck);
+    if (toUncheck.length > 0) await uncheckChapters(selectedBook.code, toUncheck);
+
     setSelectedBook(null);
   };
   const handleModalClose = () => setSelectedBook(null);
@@ -107,15 +124,15 @@ export default function PlanScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.statsValue}>
-                <Text style={styles.statsNum}>{stats.weekRead}</Text>
-                <Text style={styles.statsSuffix}> / {stats.weeklyGoal}장</Text>
+                <Text style={styles.statsNum}>{mergedStats.weekRead}</Text>
+                <Text style={styles.statsSuffix}> / {mergedStats.weeklyGoal}장</Text>
               </Text>
             </View>
             <View style={styles.statsDivider} />
             <View style={styles.statsItem}>
               <Text style={styles.statsLabel}>오늘</Text>
               <Text style={styles.statsValue}>
-                <Text style={styles.statsNum}>{stats.todayRead}</Text>
+                <Text style={styles.statsNum}>{mergedStats.todayRead}</Text>
                 <Text style={styles.statsSuffix}>장</Text>
               </Text>
             </View>
@@ -123,8 +140,8 @@ export default function PlanScreen() {
             <View style={styles.statsItem}>
               <Text style={styles.statsLabel}>전체</Text>
               <Text style={styles.statsValue}>
-                <Text style={styles.statsNum}>{stats.totalRead}</Text>
-                <Text style={styles.statsSuffix}> / {stats.totalChapters}장</Text>
+                <Text style={styles.statsNum}>{mergedStats.totalRead}</Text>
+                <Text style={styles.statsSuffix}> / {mergedStats.totalChapters}장</Text>
               </Text>
             </View>
           </View>
