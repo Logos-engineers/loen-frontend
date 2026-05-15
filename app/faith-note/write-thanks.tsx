@@ -1,10 +1,11 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { faithNoteStore, getTodayKey } from '@/utils/faith-note-store';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -148,26 +149,18 @@ export default function WriteThanksScreen() {
     router.back();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isSubmitEnabled) return;
-
-    // 입력된 항목만 content 배열로 구성
-    const content = inputs.filter((v) => v.trim().length > 0);
-
-    // 스토어에 새 노트 추가
-    faithNoteStore.addNote({
-      id: `thanks-${Date.now()}`,
-      tab: 'THANKS',
-      dayKey: getTodayKey(),
-      author: { handle: 'me', name: '나', hasAvatar: false, initial: '나' },
-      timeAgo: '방금',
-      content,
-      likeCount: 0,
-      commentCount: 0,
-      isLiked: false,
-    });
-
-    router.replace('/faith-note/publish?noteType=THANKS');
+    const answers = inputs.filter((v) => v.trim().length > 0);
+    try {
+      await apiClient('/notes/thanks', {
+        method: 'POST',
+        body: JSON.stringify({ answers, isFixed: false, isHidden: false }),
+      });
+      router.replace('/faith-note/publish?noteType=THANKS');
+    } catch (e) {
+      Alert.alert('오류', '노트 저장에 실패했습니다.');
+    }
   };
 
   return (

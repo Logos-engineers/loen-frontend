@@ -1,10 +1,11 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { faithNoteStore, getTodayKey } from '@/utils/faith-note-store';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -75,21 +76,21 @@ export default function WritePrayerScreen() {
     else router.back();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isSubmitEnabled) return;
-    faithNoteStore.addNote({
-      id: `prayer-${Date.now()}`,
-      tab: 'PRAYER',
-      dayKey: getTodayKey(),
-      author: { handle: 'me', name: '나', hasAvatar: false, initial: '나' },
-      timeAgo: '방금',
-      content: inputs.filter((v) => v.trim().length > 0),
-      likeCount: 0,
-      commentCount: 0,
-      isLiked: false,
-    });
-    router.replace('/faith-note/publish?noteType=PRAYER');
+    const prayers = inputs.filter((v) => v.trim().length > 0);
+    try {
+      await apiClient('/notes/prayers', {
+        method: 'POST',
+        body: JSON.stringify({ prayers, isHidden: false, isOpenToOikos: false }),
+      });
+      router.replace('/faith-note/publish?noteType=PRAYER');
+    } catch (e) {
+      Alert.alert('오류', '노트 저장에 실패했습니다.');
+    }
   };
+
+
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>

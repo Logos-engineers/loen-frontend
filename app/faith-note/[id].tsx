@@ -1,7 +1,6 @@
 import { FaithNoteCard, FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { faithNoteStore } from '@/utils/faith-note-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -96,12 +95,8 @@ function CommentRow({ item }: { item: CommentItem }) {
 export default function FaithNoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // 스토어에서 노트 찾기
-  const storeNotes = faithNoteStore.getNotes();
-  const initialNote = storeNotes.find((n) => n.id === id) ?? FALLBACK_NOTE;
-
   // 로컬 노트 상태 (이 화면 안에서 좋아요 토글)
-  const [note, setNote] = useState<FaithNoteItem>(initialNote);
+  const [note, setNote] = useState<FaithNoteItem>(FALLBACK_NOTE);
   const [comments, setComments] = useState<CommentItem[]>(MOCK_COMMENTS[id ?? ''] ?? []);
 
   // 댓글 입력 상태
@@ -114,9 +109,7 @@ export default function FaithNoteDetailScreen() {
   const inputRef = useRef<TextInput>(null);
   const hasText = commentText.trim().length > 0;
 
-  // 좋아요 토글 (로컬 + 스토어)
-  const handleLikeToggle = (noteId: string) => {
-    faithNoteStore.toggleLike(noteId);
+  const handleLikeToggle = (_noteId: string) => {
     setNote((prev) => ({
       ...prev,
       isLiked: !prev.isLiked,

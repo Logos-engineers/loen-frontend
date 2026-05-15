@@ -2,15 +2,16 @@ import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/token
 import {
   BiblePassage,
   clearPendingPassages,
-  faithNoteStore,
   getPendingPassages,
-  getTodayKey,
 } from '@/utils/faith-note-store';
+import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -111,24 +112,32 @@ export default function WriteWordScreen() {
     router.push('/faith-note/select-bible');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!hasContent) return;
-    const content: string[] = [];
-    if (passageLabel) content.push(passageLabel);
-    if (bodyText.trim()) content.push(bodyText.trim());
-    faithNoteStore.addNote({
-      id: `word-${Date.now()}`,
-      tab: 'WORD',
-      dayKey: getTodayKey(),
-      author: { handle: 'me', name: '나', hasAvatar: false, initial: '나' },
-      timeAgo: '방금',
-      content,
-      likeCount: 0,
-      commentCount: 0,
-      isLiked: false,
-    });
-    clearPendingPassages();
-    router.replace('/faith-note/publish?noteType=WORD');
+    const firstPassage = passages[0];
+    const bookMeta = firstPassage
+      ? BIBLE_BOOKS.find(b => b.korName === firstPassage.book)
+      : null;
+    try {
+      await apiClient('/bible/notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          bibleName: firstPassage?.book ?? '',
+          bibleEnglishShort: bookMeta?.code ?? '',
+          chapter: firstPassage?.chapter ?? 1,
+          phaseStart: 1,
+          phaseEnd: 1,
+          title: passageLabel || (firstPassage?.book ?? ''),
+          description: bodyText.trim(),
+          isHidden: false,
+          isOpenToOikos: false,
+        }),
+      });
+      clearPendingPassages();
+      router.replace('/faith-note/publish?noteType=WORD');
+    } catch (e) {
+      Alert.alert('오류', '노트 저장에 실패했습니다.');
+    }
   };
 
   return (
