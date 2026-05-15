@@ -1,6 +1,7 @@
+import { startObsReview } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop, SvgXml } from 'react-native-svg';
 
@@ -25,11 +26,13 @@ function getWeekOfMonth(dateString?: string) {
 }
 
 export default function ReviewIntroScreen() {
-  const params = useLocalSearchParams<{ title?: string; verse?: string; date?: string }>();
-  
+  const params = useLocalSearchParams<{ contentId?: string; title?: string; verse?: string; date?: string }>();
+  const [isStarting, setIsStarting] = useState(false);
+
   const weekText = getWeekOfMonth(params.date);
   const titleText = params.title || '시들어버린 박넝쿨의 역사';
   const verseText = params.verse || '요나 4:1-11';
+  const contentId = params.contentId ? Number(params.contentId) : null;
 
   return (
     <>
@@ -77,12 +80,20 @@ export default function ReviewIntroScreen() {
           >
             <Text style={styles.skipButtonText}>다음에 할래요</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.ctaButton} 
+          <TouchableOpacity
+            style={styles.ctaButton}
             activeOpacity={0.8}
-            onPress={() => router.push('/review/ox')}
+            disabled={isStarting}
+            onPress={async () => {
+              if (!contentId) { router.push('/review/ox'); return; }
+              setIsStarting(true);
+              let reviewId = 0;
+              try { reviewId = await startObsReview(contentId); } catch { /* 409 or error — proceed without reviewId */ }
+              setIsStarting(false);
+              router.push({ pathname: '/review/ox', params: { contentId: String(contentId), reviewId: String(reviewId) } });
+            }}
           >
-            <Text style={styles.ctaButtonText}>복습 시작하기</Text>
+            {isStarting ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaButtonText}>복습 시작하기</Text>}
           </TouchableOpacity>
         </View>
 

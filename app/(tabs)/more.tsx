@@ -1,22 +1,60 @@
-import { colors, fontSize, fontWeight } from '@/constants/tokens';
+import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface MenuItem {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+}
+
+const MENU_ITEMS: MenuItem[] = [
+  { label: '공지사항', icon: 'notifications-outline', onPress: () => router.push('/notice') },
+];
 
 export default function MoreScreen() {
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.center}>
-        <Text style={styles.text}>더보기</Text>
-        <Text style={styles.sub}>준비 중입니다</Text>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar style="dark" />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>더보기</Text>
+      </View>
+      <View style={styles.menuList}>
+        {MENU_ITEMS.map((item) => (
+          <TouchableOpacity key={item.label} style={styles.menuRow} activeOpacity={0.7} onPress={item.onPress}>
+            <Ionicons name={item.icon} size={22} color={colors.text.primary} />
+            <Text style={styles.menuLabel}>{item.label}</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+        ))}
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background.base },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  text: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  sub: { fontSize: fontSize.md, color: colors.text.secondary },
+  safe: { flex: 1, backgroundColor: colors.background.base },
+  header: {
+    height: 52,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary },
+  menuList: { padding: spacing.md, gap: spacing.sm },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    gap: spacing.sm,
+  },
+  menuLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
 });

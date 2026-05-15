@@ -7,9 +7,11 @@
  * - 배경: #F2F4F7 (background/fill/elevated)
  */
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { ObsContent, formatKoreanDate, useObsContents } from '@/hooks/useObs';
 import { router, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Animated,
     Dimensions,
     FlatList,
@@ -61,63 +63,39 @@ function isChoseongOnly(str: string): boolean {
   return /^[ㄱ-ㅎ]+$/.test(str);
 }
 
-// ─── OBS 데이터 ────────────────────────────────────────────────────────────────
-interface ObsItem {
-  id: string;
-  date: string;
-  dateMs: number;   // 정렬용 타임스탬프
-  title: string;
-  verse: string;
-  isLatest: boolean;
-  reviewCount?: number; // 0, 1, 2...
-}
-
-const OBS_LIST: ObsItem[] = [
-  { id: '1', date: '2025년 7월 14일', dateMs: Date.parse('2025-07-14'), title: '시들어버린 박넝쿨의 역사',      verse: '요나 4:1-11',       isLatest: true, reviewCount: 1 },
-  { id: '2', date: '2025년 7월 7일',  dateMs: Date.parse('2025-07-07'), title: '불타지 않은 제단의 침묵',       verse: '말라기 1:1-8',      isLatest: false, reviewCount: 1 },
-  { id: '3', date: '2025년 6월 30일', dateMs: Date.parse('2025-06-30'), title: '흔들리는 등불 아래서',          verse: '사무엘상 16:32-37', isLatest: false },
-  { id: '4', date: '2025년 6월 23일', dateMs: Date.parse('2025-06-23'), title: '무너진 성벽 위에서 다시 세우다', verse: '느헤미야 4:23-28', isLatest: false, reviewCount: 2 },
-];
-
 type FilterType = 'latest' | 'oldest' | 'scrap';
 
 // ─── OBS 카드 ──────────────────────────────────────────────────────────────────
-function ObsCard({ item }: { item: ObsItem }) {
+function ObsCard({ item, isLatest }: { item: ObsContent; isLatest: boolean }) {
+  const isDone = item.reviewStatus === 'DONE';
   return (
     <View style={styles.cardWrapper}>
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.cardDate}>{item.date}</Text>
+            <Text style={styles.cardDate}>{formatKoreanDate(item.publishedDate)}</Text>
             <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardVerse}>{item.verse}</Text>
+            <Text style={styles.cardVerse}>{item.biblePassage}</Text>
           </View>
-          {item.reviewCount ? (
+          {isDone && (
             <View style={styles.cardHeaderRight}>
               <View style={styles.reviewTag}>
-                <Text style={styles.reviewTagText}>복습 {item.reviewCount}회 완료</Text>
+                <Text style={styles.reviewTagText}>복습 완료</Text>
               </View>
             </View>
-          ) : null}
+          )}
         </View>
         <View style={styles.buttonContainer}>
-          {item.isLatest ? (
-            <TouchableOpacity 
-              style={styles.btnSolid} 
-              activeOpacity={0.8}
-              onPress={() => router.push({ pathname: '/review/intro', params: { title: item.title, verse: item.verse, date: item.date } })}
-            >
-              <Text style={styles.btnSolidText}>복습하기</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              style={styles.btnOutline} 
-              activeOpacity={0.8}
-              onPress={() => router.push({ pathname: '/review/intro', params: { title: item.title, verse: item.verse, date: item.date } })}
-            >
-              <Text style={styles.btnOutlineText}>복습하기</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={isLatest ? styles.btnSolid : styles.btnOutline}
+            activeOpacity={0.8}
+            onPress={() => router.push({
+              pathname: '/review/intro',
+              params: { contentId: item.id, title: item.title, verse: item.biblePassage, date: formatKoreanDate(item.publishedDate) },
+            })}
+          >
+            <Text style={isLatest ? styles.btnSolidText : styles.btnOutlineText}>복습하기</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -132,40 +110,45 @@ export default function ObsScreen() {
   const [showPicker, setShowPicker]         = useState(false);
   const [selectedDate, setSelectedDate]     = useState<Date | null>(null);
 
+  const { contents, isLoading, error } = useObsContents();
+
   // ── 정렬 + 검색 + 날짜 필터 ──────────────────────────────────────────────────
   const filteredList = useMemo(() => {
-    let list = [...OBS_LIST];
+    let list = [...contents];
 
-    // 1) 정렬 (최신순 / 오래된순)
-    if (activeFilter === 'oldest') {
-      list.sort((a, b) => a.dateMs - b.dateMs);
-    } else {
-      list.sort((a, b) => b.dateMs - a.dateMs);   // 최신순 (기본)
+    // 1) 스크랩 필터
+    if (activeFilter === 'scrap') {
+      list = list.filter(item => item.isScraped);
     }
 
-    // 2) 날짜 필터 (달력에서 날짜 선택 시)
+    // 2) 정렬 (최신순 / 오래된순)
+    if (activeFilter === 'oldest') {
+      list.sort((a, b) => a.publishedDate.localeCompare(b.publishedDate));
+    } else {
+      list.sort((a, b) => b.publishedDate.localeCompare(a.publishedDate));
+    }
+
+    // 3) 날짜 필터 (달력에서 날짜 선택 시)
     if (selectedDate) {
       const y = selectedDate.getFullYear();
       const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const d = String(selectedDate.getDate()).padStart(2, '0');
-      const target = Date.parse(`${y}-${m}-${d}`);
-      list = list.filter(item => item.dateMs === target);
+      const target = `${y}-${m}-${d}`;
+      list = list.filter(item => item.publishedDate === target);
     }
 
-    // 3) 텍스트 검색
+    // 4) 텍스트 검색
     if (searchText.trim()) {
       const q = searchText.trim();
       if (isChoseongOnly(q)) {
-        // 초성 검색
         list = list.filter(item => extractChoseong(item.title).includes(q));
       } else {
-        // 제목 부분 검색 (대소문자 무시)
         list = list.filter(item => item.title.toLowerCase().includes(q.toLowerCase()));
       }
     }
 
     return list;
-  }, [searchText, activeFilter, selectedDate]);
+  }, [searchText, activeFilter, selectedDate, contents]);
 
   // ── 커스텀 달력 상태 ────────────────────────────────────────────────────────
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -278,10 +261,15 @@ export default function ObsScreen() {
       </View>
 
       {/* ── 스크롤 콘텐츠 ── */}
+      {isLoading && <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />}
+      {error && !isLoading && (
+        <Text style={{ textAlign: 'center', color: colors.text.secondary, padding: spacing.xl, flex: 1 }}>{error}</Text>
+      )}
+      {!isLoading && !error && (
       <FlatList
         data={filteredList}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <ObsCard item={item} />}
+        keyExtractor={item => String(item.id)}
+        renderItem={({ item, index }) => <ObsCard item={item} isLatest={index === 0 && activeFilter !== 'oldest'} />}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
@@ -341,6 +329,7 @@ export default function ObsScreen() {
         }
         contentContainerStyle={styles.listContent}
       />
+      )}
 
       {/* ── Custom Calendar Modal ── */}
       <Modal

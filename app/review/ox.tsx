@@ -1,6 +1,7 @@
-import { Stack, router } from 'expo-router';
-import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
@@ -26,21 +27,36 @@ const ID_LINE_COMPLETED = `<svg width="100%" height="2" preserveAspectRatio="non
 const ID_LINE_INACTIVE = `<svg width="100%" height="2" preserveAspectRatio="none" viewBox="0 0 100 2" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 1H100" stroke="#0D1C2D" stroke-opacity="0.08" stroke-width="2"/></svg>`;
 
 export default function OXQuizScreen() {
-  const [selectedAnswer, setSelectedAnswer] = React.useState<'O' | 'X' | null>(null);
-  const [isModalVisible, setIsModalVisible] = React.useState(false);
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string }>();
+  const contentId = params.contentId ? Number(params.contentId) : null;
+  const reviewId = params.reviewId ?? '0';
 
-  // Assuming 'O' is the correct answer for this question
-  const isCorrect = selectedAnswer === 'O';
+  const [quiz, setQuiz] = useState<ObsQuiz | null>(null);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(!!contentId);
+  const [selectedAnswer, setSelectedAnswer] = useState<'O' | 'X' | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (!contentId) return;
+    fetchObsQuizzes(contentId)
+      .then((quizzes) => {
+        const oxQuiz = quizzes.find((q) => q.questionType === 'OX');
+        if (oxQuiz) setQuiz(oxQuiz);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingQuiz(false));
+  }, [contentId]);
+
+  const correctAnswer = quiz?.correctAnswer ?? 'O';
+  const isCorrect = selectedAnswer === correctAnswer;
 
   const handleSubmit = () => {
-    if (selectedAnswer) {
-      setIsModalVisible(true);
-    }
+    if (selectedAnswer) setIsModalVisible(true);
   };
 
   const handleNextQuiz = () => {
     setIsModalVisible(false);
-    router.push('/review/multiple');
+    router.push({ pathname: '/review/multiple', params: { contentId: String(contentId ?? ''), reviewId } });
   };
 
   // Calculate generic active progress item
@@ -112,13 +128,16 @@ export default function OXQuizScreen() {
                 <Text style={styles.tagText}>O/X퀴즈</Text>
               </View>
             </View>
-            
+            {isLoadingQuiz ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
+            ) : (
             <View style={styles.questionRow}>
               <Text style={styles.questionQ}>Q.</Text>
               <Text style={styles.questionText}>
-                '쓴 뿌리' 는 우리가 가진 부정적인 감정상태나 상처를의미하며, 단순히 기분이 나쁜 것을 말한다.
+                {quiz?.questionText ?? "'쓴 뿌리' 는 우리가 가진 부정적인 감정상태나 상처를 의미하며, 단순히 기분이 나쁜 것을 말한다."}
               </Text>
             </View>
+            )}
 
             <View style={styles.optionsRow}>
               {/* O Option */}
