@@ -1,4 +1,4 @@
-import { ObsQuiz, completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
+import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
@@ -68,13 +68,15 @@ export default function MultipleChoiceQuizScreen() {
     setModalType('showAnswer');
   };
 
-  const handleNextQuiz = async () => {
+  const handleNextQuiz = () => {
     setModalType('none');
-    if (reviewId > 0) {
-      try { await completeObsReview(reviewId); } catch { /* ignore */ }
-    }
-    router.dismissAll();
-    router.replace('/(tabs)');
+    router.push({
+      pathname: '/obs/q3',
+      params: {
+        contentId: String(contentId ?? ''),
+        reviewId: String(reviewId),
+      },
+    });
   };
 
   // Calculate generic active progress item

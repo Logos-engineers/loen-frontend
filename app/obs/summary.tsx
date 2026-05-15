@@ -162,7 +162,7 @@ export default function ObsSummaryScreen() {
           <TouchableOpacity style={[styles.ctaButton, styles.prevButton]} activeOpacity={0.85} onPress={() => router.back()}>
             <Text style={styles.prevButtonText}>이전으로</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.ctaButton, styles.nextButton]} activeOpacity={0.85} onPress={() => router.push('/obs/q3')}>
+          <TouchableOpacity style={[styles.ctaButton, styles.nextButton]} activeOpacity={0.85} onPress={() => router.push('/obs/finish')}>
             <Text style={styles.nextButtonText}>다음으로</Text>
           </TouchableOpacity>
         </View>

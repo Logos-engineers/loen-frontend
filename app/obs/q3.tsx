@@ -1,19 +1,55 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
+import { completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
 
 const BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9395 3.93934C12.5252 3.35355 13.4748 3.35355 14.0606 3.93934C14.6463 4.52513 14.6463 5.47465 14.0606 6.06043L8.1211 11.9999L14.0606 17.9393C14.6463 18.5251 14.6463 19.4746 14.0606 20.0604C13.4748 20.6462 12.5252 20.6462 11.9395 20.0604L4.93946 13.0604C4.35368 12.4746 4.35368 11.5251 4.93946 10.9393L11.9395 3.93934Z" fill="#0D1C2D" fill-opacity="0.8"/></svg>`;
 
 export default function ObsQ3Screen() {
   const [revealed, setRevealed] = useState(false);
-  const params = useLocalSearchParams<{ title?: string; question?: string; answer?: string }>();
-  const question = params.question ?? '';
-  const answer = params.answer ?? '';
+  const params = useLocalSearchParams<{
+    title?: string;
+    question?: string;
+    answer?: string;
+    contentId?: string;
+    reviewId?: string;
+  }>();
+
+  const contentId = params.contentId ? Number(params.contentId) : null;
+  const reviewId = params.reviewId ? Number(params.reviewId) : 0;
+
+  const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
+  const [fetchedAnswer, setFetchedAnswer] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!!contentId);
+
+  useEffect(() => {
+    if (!contentId) return;
+    fetchObsQuizzes(contentId)
+      .then((quizzes) => {
+        const essay = quizzes.find((q) => q.questionType === 'ESSAY');
+        if (essay) {
+          setFetchedQuestion(essay.questionText);
+          setFetchedAnswer(essay.correctAnswer ?? '');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [contentId]);
+
+  const question = fetchedQuestion ?? params.question ?? '';
+  const answer = fetchedAnswer ?? params.answer ?? '';
+
+  const handleNext = async () => {
+    if (reviewId > 0) {
+      try { await completeObsReview(reviewId); } catch { /* ignore */ }
+    }
+    router.push('/obs/finish');
+  };
 
   return (
     <>
@@ -57,12 +93,16 @@ export default function ObsQ3Screen() {
               </View>
 
               {/* Q. + 질문 텍스트 */}
+              {isLoading ? (
+                <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
+              ) : (
               <View style={styles.questionRow}>
                 <View style={styles.qCol}>
                   <Text style={styles.qMark}>Q.</Text>
                 </View>
                 <Text style={styles.questionText}>{question || '문제 데이터가 없습니다'}</Text>
               </View>
+              )}
 
               {/* 답변 영역 — 오버레이로 가려진 상태 / 공개 상태 토글 */}
               <View style={styles.answerArea}>
@@ -103,7 +143,7 @@ export default function ObsQ3Screen() {
             <TouchableOpacity
               style={styles.nextButton}
               activeOpacity={0.85}
-              onPress={() => router.push('/obs/finish')}
+              onPress={handleNext}
             >
               <Text style={styles.nextButtonText}>다음으로 넘어가기</Text>
             </TouchableOpacity>
