@@ -9,7 +9,7 @@ export type BibleHistory = {
 };
 
 export type BibleGoal = {
-  id: number;
+  id: string;
   bookCode: string;
   bookName: string;
   daysPerWeek: number;
@@ -46,7 +46,9 @@ export function useBibleHistory() {
           apiClient<BibleGoal>('/bible/goal'),
         ]);
         if (!mounted) return;
-        if (histResult.status === 'fulfilled') setHistory(histResult.value);
+        if (histResult.status === 'fulfilled') {
+          setHistory({ ...histResult.value, readCheckList: histResult.value.readCheckList ?? {} });
+        }
         if (goalResult.status === 'fulfilled') setGoal(goalResult.value);
       } catch (e: any) {
         if (mounted) setError(e?.message ?? '불러오기 실패');
@@ -63,7 +65,7 @@ export function useBibleHistory() {
         method: 'POST',
         body: JSON.stringify({ bookCode, chapters }),
       });
-      setHistory(updated);
+      setHistory({ ...updated, readCheckList: updated.readCheckList ?? {} });
     } catch (e) {
       console.warn('[useBibleHistory] checkChapters 실패', e);
     }
@@ -75,7 +77,7 @@ export function useBibleHistory() {
         method: 'POST',
         body: JSON.stringify({ bookCode, chapters }),
       });
-      setHistory(updated);
+      setHistory({ ...updated, readCheckList: updated.readCheckList ?? {} });
     } catch (e) {
       console.warn('[useBibleHistory] uncheckChapters 실패', e);
     }
@@ -90,7 +92,7 @@ export function useBibleHistory() {
     return created;
   }, []);
 
-  const updateGoal = useCallback(async (goalId: number, payload: Partial<GoalPayload>): Promise<BibleGoal> => {
+  const updateGoal = useCallback(async (goalId: string, payload: Partial<GoalPayload>): Promise<BibleGoal> => {
     const updated = await apiClient<BibleGoal>(`/bible/goal/${goalId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),

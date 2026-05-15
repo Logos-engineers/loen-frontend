@@ -103,7 +103,7 @@ export default function ObsFinishScreen() {
               <View style={styles.divider} />
               <View style={styles.questionSection}>
                 <Text style={styles.questionText}>
-                  나에게는 품고 기도할 "태신자"가 있습니까? 아직 없다면 2025년 1년 동안 품고 기도할 "태신자"를 찾게 해달라고 함께 기도해 봅시다.
+                  나에게는 품고 기도할 태신자가 있습니까? 아직 없다면 2025년 1년 동안 품고 기도할 태신자를 찾게 해달라고 함께 기도해 봅시다.
                 </Text>
               </View>
               <View style={styles.inputSection}>

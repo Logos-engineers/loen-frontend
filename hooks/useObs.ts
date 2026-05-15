@@ -8,18 +8,26 @@ export type ObsContent = {
   publishedDate: string;
   weekLabel: string;
   isScraped: boolean;
-  reviewStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
+  reviewStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | null;
 };
 
 export type ObsQuiz = {
-  quizId: number;
+  id: number;
   stepNumber: number;
   questionType: 'OX' | 'SHORT' | 'ESSAY';
   questionText: string;
   correctAnswer: string | null;
+  explanation?: string;
 };
 
-type ContentsPage = { content: ObsContent[]; page: number; totalElements: number };
+type ContentsPage = {
+  content?: ObsContent[];
+  contents?: ObsContent[];
+  page?: number;
+  currentPage?: number;
+  totalElements: number;
+  totalPages?: number;
+};
 
 export function useObsContents() {
   const [contents, setContents] = useState<ObsContent[]>([]);
@@ -31,7 +39,7 @@ export function useObsContents() {
     setError(null);
     try {
       const data = await apiClient<ContentsPage>('/obs/contents?sort=publishedDate,desc&size=50');
-      setContents(data.content ?? []);
+      setContents(data.contents ?? data.content ?? []);
     } catch (e: any) {
       setError(e?.message ?? '오류가 발생했습니다.');
     } finally {
@@ -53,11 +61,11 @@ export async function fetchObsQuizzes(obsId: number): Promise<ObsQuiz[]> {
 }
 
 export async function startObsReview(obsId: number): Promise<number> {
-  const data = await apiClient<{ reviewId: number; obsId: number; status: string }>(
+  const data = await apiClient<{ id?: number; reviewId?: number; obsContentId?: number; obsId?: number; status: string }>(
     `/obs/contents/${obsId}/reviews`,
     { method: 'POST' },
   );
-  return data.reviewId;
+  return data.reviewId ?? data.id ?? 0;
 }
 
 export async function completeObsReview(reviewId: number): Promise<void> {

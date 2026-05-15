@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   LayoutAnimation,
@@ -33,40 +33,6 @@ const DashedLine = ({ height, flex }: { height?: number; flex?: number }) => (
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const SUMMARY_TEXT =
-  '이스라엘 백성들은 출애굽 후, 약속의 땅 가나안에 들어갈 때까지 수많은 기적을 체험했다. 바로가 이스라엘 백성들이 애굽을 떠나려는 것을 막자, 하나님께서는 이스라엘 백성들이 거주하던 고센 땅을 제외한 애굽 전역에 10가지 재앙을 내리셨다. 애굽을 떠나기 직전에는 홍해 바다가 갈라지는 기적을 보여주셨다. 광야 생활 40년 동안, 만나와 메추라기를 하늘로부터 내려주셨고, 마실 물이 필요할 때는 반석을 갈라서 물을 주셨다. 또한, 갈 길을 몰라하는 이스라엘 민족을 위해서 구름 기둥과 불 기둥으로 인도해 주셨다.';
-
-const QUESTIONS = [
-  {
-    id: 'first',
-    title: '첫번째 질문',
-    items: [
-      {
-        number: '1',
-        text: '오늘 성경 본문에 나오는 구름 기둥과 불 기둥의 역사가 다른 기적들과는 조금 다른 특별한 의미가 있는 이유를 생각해 봅시다.',
-      },
-    ],
-  },
-  {
-    id: 'second',
-    title: '두번째 질문',
-    items: [
-      {
-        number: '2',
-        text: '그렇다면, 구름 기둥과 불 기둥의 역사는 우리에게 어떤 영적 교훈을 주고 있을까요?',
-      },
-      {
-        number: '2-1',
-        textParts: ['"하나님의 인도하심은', '항상 계속된다"라는 진리를 보여줍니다.'] as [string, string],
-      },
-      {
-        number: '2-2',
-        text: '하나님께서 낮이나 밤이나, 오늘도 어제도, 이 땅에서 내 삶이 끝날 때까지 나를 인도하시고 보호하시는 이유는 무엇일까요?',
-      },
-    ],
-  },
-];
 
 type QuestionSectionProps = {
   title: string;
@@ -150,6 +116,9 @@ function QuestionSection({ title, items, initiallyExpanded = true }: QuestionSec
 }
 
 export default function ObsSummaryScreen() {
+  const params = useLocalSearchParams<{ summary?: string }>();
+  const questions: QuestionSectionProps[] = [];
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -174,13 +143,13 @@ export default function ObsSummaryScreen() {
                 <Text style={styles.summaryTitle}>말씀 정리하기</Text>
               </View>
               <View style={styles.divider} />
-              <Text style={styles.summaryText}>{SUMMARY_TEXT}</Text>
+              <Text style={styles.summaryText}>{params.summary || '말씀 정리 데이터가 없습니다'}</Text>
             </View>
           </View>
 
-          {QUESTIONS.map((question, index) => (
+          {questions.map((question, index) => (
             <QuestionSection
-              key={question.id}
+              key={question.title}
               title={question.title}
               items={question.items}
               initiallyExpanded={index === 0}

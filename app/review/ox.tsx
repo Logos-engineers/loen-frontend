@@ -23,7 +23,6 @@ const PROGRESS_3_INACTIVE_SVG = `<svg width="44" height="44" viewBox="0 0 44 44"
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
 // Progress Indicator SVG Components
-const ID_LINE_COMPLETED = `<svg width="100%" height="2" preserveAspectRatio="none" viewBox="0 0 100 2" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 1H100" stroke="#0D1C2D" stroke-opacity="0.08" stroke-width="2"/></svg>`;
 const ID_LINE_INACTIVE = `<svg width="100%" height="2" preserveAspectRatio="none" viewBox="0 0 100 2" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 1H100" stroke="#0D1C2D" stroke-opacity="0.08" stroke-width="2"/></svg>`;
 
 export default function OXQuizScreen() {
@@ -103,7 +102,7 @@ export default function OXQuizScreen() {
             
             {/* Header: Title */}
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>시들어버린 박넝쿨의 역사</Text>
+              <Text style={styles.cardTitle}>OBS</Text>
             </View>
 
             {/* Progress Indicator */}
@@ -134,7 +133,7 @@ export default function OXQuizScreen() {
             <View style={styles.questionRow}>
               <Text style={styles.questionQ}>Q.</Text>
               <Text style={styles.questionText}>
-                {quiz?.questionText ?? "'쓴 뿌리' 는 우리가 가진 부정적인 감정상태나 상처를 의미하며, 단순히 기분이 나쁜 것을 말한다."}
+                {quiz?.questionText ?? '퀴즈 데이터가 없습니다'}
               </Text>
             </View>
             )}
@@ -225,7 +224,7 @@ export default function OXQuizScreen() {
               <View style={styles.modalTextWrapper}>
                 <Text style={styles.modalTitle}>{isCorrect ? '정답이에요!' : '오답이에요!'}</Text>
                 <Text style={styles.modalDesc}>
-                  쓴 뿌리는 죄의 씨앗이며, 방치되면 하나님의 은혜에서 멀어지게 돼요.
+                  {quiz?.explanation || '해설 데이터가 없습니다'}
                 </Text>
               </View>
 

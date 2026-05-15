@@ -2,8 +2,9 @@ import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ADD_EMOJI_SVG, FIRE_SVG, HEART_SVG } from '@/constants/icons';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
+import { useFaithNotes } from '@/hooks/useFaithNotes';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 interface ReactionTag {
@@ -12,35 +13,12 @@ interface ReactionTag {
   active?: boolean;    // 활성이면 primary 배경
 }
 
-interface PrayerItem {
+type PrayerItem = {
   id: string;
   name: string;
   content: string;
   reactions: ReactionTag[];
-}
-
-const PRAYERS: PrayerItem[] = [
-  {
-    id: '1',
-    name: '이윤재',
-    content: '교회에 처음 온 내 친구가 잘 정착하기를',
-    reactions: [
-      { svg: HEART_SVG, count: 8, active: true },    // #6561FF 배경
-      { svg: FIRE_SVG, count: 1, active: false },
-      { svg: ADD_EMOJI_SVG, count: 0, active: false },
-    ],
-  },
-  {
-    id: '2',
-    name: '김서연',
-    content: '이번 주 사업이 잘 되기를 기도해 주세요',
-    reactions: [
-      { svg: HEART_SVG, count: 3, active: true },
-      { svg: FIRE_SVG, count: 2, active: false },
-      { svg: ADD_EMOJI_SVG, count: 0, active: false },
-    ],
-  },
-];
+};
 
 function PrayerCard({ item }: { item: PrayerItem }) {
   return (
@@ -86,13 +64,31 @@ function PrayerCard({ item }: { item: PrayerItem }) {
 }
 
 export function PrayerSection() {
+  const { notes, isLoading, error } = useFaithNotes('PRAYER');
+  const prayers: PrayerItem[] = notes.slice(0, 2).map(note => ({
+    id: note.id,
+    name: note.author.name || note.author.handle || '익명',
+    content: note.content.join('\n'),
+    reactions: [
+      { svg: HEART_SVG, count: note.likeCount, active: note.isLiked },
+      { svg: FIRE_SVG, count: 0, active: false },
+      { svg: ADD_EMOJI_SVG, count: 0, active: false },
+    ],
+  }));
+
   return (
     <View style={styles.wrapper}>
       <SectionHeader title="같이 기도해요" />
       <View style={styles.cardsWrapper}>
-        {PRAYERS.map(item => (
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : error ? (
+          <Text style={styles.emptyText}>기도노트를 불러오지 못했습니다</Text>
+        ) : prayers.length > 0 ? prayers.map(item => (
           <PrayerCard key={item.id} item={item} />
-        ))}
+        )) : (
+          <Text style={styles.emptyText}>등록된 기도노트가 없습니다</Text>
+        )}
       </View>
     </View>
   );
@@ -179,5 +175,11 @@ const styles = StyleSheet.create({
   },
   reactionCountActive: {
     color: '#FFFFFF',
+  },
+  emptyText: {
+    color: colors.text.secondary,
+    fontSize: fontSize.md,
+    paddingVertical: spacing.md,
+    textAlign: 'center',
   },
 });

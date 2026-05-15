@@ -4,7 +4,7 @@ import type { FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import type { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
 
 type ThanksNote = {
-  id: number;
+  id: string;
   writerName: string;
   answers: string[];
   likeCount: number;
@@ -13,14 +13,14 @@ type ThanksNote = {
 };
 
 type PrayerNote = {
-  id: number;
+  id: string;
   writerName: string;
   prayers: string[];
   createdAt: string;
 };
 
 type WordNote = {
-  id: number;
+  id: string;
   writerName: string;
   bibleName: string;
   chapter: number;
@@ -31,6 +31,12 @@ type WordNote = {
   likeCount: number;
   isLiked: boolean;
   createdAt: string;
+};
+
+type NoteListResponse<T> = {
+  content: T[];
+  page: number;
+  totalElements: number;
 };
 
 const DAY_KEYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -111,14 +117,14 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     setError(null);
     try {
       if (tab === 'THANKS') {
-        const raw = await apiClient<ThanksNote[]>(ENDPOINTS.THANKS);
-        setNotes((raw ?? []).map(fromThanks));
+        const raw = await apiClient<NoteListResponse<ThanksNote>>(ENDPOINTS.THANKS);
+        setNotes((raw.content ?? []).map(fromThanks));
       } else if (tab === 'PRAYER') {
-        const raw = await apiClient<PrayerNote[]>(ENDPOINTS.PRAYER);
-        setNotes((raw ?? []).map(fromPrayer));
+        const raw = await apiClient<NoteListResponse<PrayerNote>>(ENDPOINTS.PRAYER);
+        setNotes((raw.content ?? []).map(fromPrayer));
       } else {
-        const raw = await apiClient<WordNote[]>(ENDPOINTS.WORD);
-        setNotes((raw ?? []).map(fromWord));
+        const raw = await apiClient<NoteListResponse<WordNote>>(ENDPOINTS.WORD);
+        setNotes((raw.content ?? []).map(fromWord));
       }
     } catch (e: any) {
       setError(e?.message ?? '불러오기 실패');

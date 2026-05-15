@@ -1,19 +1,11 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useChallenge } from '@/hooks/useChallenge';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useMemo, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, TextInput } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
-type Comment = {
-  id: string;
-  text: string;
-  createdAt: string;
-};
-
-const STORAGE_KEY = 'LOEN_FAITH_CHALLENGE_COMMENTS_v1';
 
 export default function FaithChallengeScreen() {
   const router = useRouter();
@@ -24,184 +16,17 @@ export default function FaithChallengeScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
-  const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
-  
-  const [commentsMap, setCommentsMap] = useState<Record<string, Comment[]>>({});
-  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
-  const [commentInput, setCommentInput] = useState('');
-  
-  const [commentBottomSheetVisible, setCommentBottomSheetVisible] = useState(false);
-  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
-  const [selectedCommentFeedId, setSelectedCommentFeedId] = useState<string | null>(null);
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editingFeedId, setEditingFeedId] = useState<string | null>(null);
+  const { challenges, isLoading, error } = useChallenge();
+  const challenge = challenges.find(item => item.type === 'FAITH');
 
-  useEffect(() => {
-    const loadComments = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          setCommentsMap(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    loadComments();
-  }, []);
-
-  const handleAddComment = async (feedId: string) => {
-    if (!commentInput.trim()) return;
-
-    let updatedMap = { ...commentsMap };
-    const currentComments = updatedMap[feedId] || [];
-
-    if (editingCommentId && editingFeedId === feedId) {
-      // 수정 모드
-      updatedMap[feedId] = currentComments.map(c => 
-        c.id === editingCommentId ? { ...c, text: commentInput.trim() } : c
-      );
-      setEditingCommentId(null);
-      setEditingFeedId(null);
-    } else {
-      // 추가 모드
-      const newComment: Comment = {
-        id: Date.now().toString(),
-        text: commentInput.trim(),
-        createdAt: new Date().toISOString(),
-      };
-      updatedMap[feedId] = [...currentComments, newComment];
-    }
-    
-    setCommentsMap(updatedMap);
-    setCommentInput('');
-    
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMap));
-    } catch (e) {
-      console.error(e);
-    }
+  const formatShortDate = (isoStr?: string) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const yy = d.getFullYear().toString().slice(2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yy}.${mm}.${dd}`;
   };
-
-  const startEditingComment = () => {
-    if (!selectedCommentId || !selectedCommentFeedId) return;
-    
-    const commentToEdit = commentsMap[selectedCommentFeedId]?.find(c => c.id === selectedCommentId);
-    if (commentToEdit) {
-      setCommentInput(commentToEdit.text);
-      setEditingCommentId(selectedCommentId);
-      setEditingFeedId(selectedCommentFeedId);
-      setExpandedComments(prev => ({ ...prev, [selectedCommentFeedId]: true }));
-    }
-    setCommentBottomSheetVisible(false);
-  };
-
-  const handleDeleteComment = async () => {
-    if (!selectedCommentId || !selectedCommentFeedId) return;
-    
-    const currentComments = commentsMap[selectedCommentFeedId] || [];
-    const updatedComments = currentComments.filter(c => c.id !== selectedCommentId);
-    const updatedMap = { ...commentsMap, [selectedCommentFeedId]: updatedComments };
-    
-    setCommentsMap(updatedMap);
-    setCommentBottomSheetVisible(false);
-    
-    if (editingCommentId === selectedCommentId) {
-      setEditingCommentId(null);
-      setEditingFeedId(null);
-      setCommentInput('');
-    }
-    
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMap));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleLike = (feedId: string) => {
-    setLikedMap(prev => ({ ...prev, [feedId]: !prev[feedId] }));
-  };
-
-  const toggleComments = (feedId: string) => {
-    setExpandedComments(prev => ({ ...prev, [feedId]: !prev[feedId] }));
-  };
-
-  // 더미 추천 챌린지 데이터
-  const dummyRecommended: {
-    id: string;
-    badges: string[];
-    icon: keyof typeof Ionicons.glyphMap;
-    iconBg: string;
-    dateRange: string;
-    title: string;
-    subtitle: string;
-  }[] = [
-    {
-      id: 'r1',
-      badges: ['성경 챌린지', '23명 참여중'],
-      icon: 'book',
-      iconBg: '#007AFF',
-      dateRange: '26.01.28 ~ 26.02.28',
-      title: '애굽 탈출하자!',
-      subtitle: '출애굽기 · 40장',
-    },
-    {
-      id: 'r2',
-      badges: ['신앙 챌린지', '10명 참여중'],
-      icon: 'sunny',
-      iconBg: '#FFB800',
-      dateRange: '26.01.01 ~ 26.01.08',
-      title: '일주일 새벽예배 챌린지',
-      subtitle: '수요예배, 금요예배 전참',
-    },
-    {
-      id: 'r3',
-      badges: ['성경 챌린지'],
-      icon: 'book',
-      iconBg: '#007AFF',
-      dateRange: '',
-      title: '예수님 제자되기',
-      subtitle: '마태복음, 마가복음, 누가복음 · 총 68장',
-    },
-  ];
-
-  // 더미 인증 피드 데이터
-  const dummyFeeds = [
-    {
-      id: 'f1',
-      nickname: 'tabo1234',
-      name: '이윤재',
-      time: '1분',
-      text: '금요예배 인증합니다.',
-      hasImage: false,
-      isLocked: false,
-      likes: 8,
-      comments: 3,
-    },
-    {
-      id: 'f2',
-      nickname: 'yonipark',
-      name: '박채연',
-      time: '2시간',
-      text: '금요예배 갔더니 굉장히 뿌듯했다.\n다음주에도 꼭 와야징',
-      hasImage: true,
-      isLocked: false,
-      likes: 0,
-      comments: 0,
-    },
-    {
-      id: 'f3',
-      nickname: 'potatolover_',
-      name: '남현서',
-      time: '38분',
-      text: '작성자만 볼 수 있는 글이에요.',
-      hasImage: false,
-      isLocked: true,
-      likes: 0,
-      comments: 0,
-    },
-  ];
 
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -277,13 +102,15 @@ export default function FaithChallengeScreen() {
       >
         {/* 상단 챌린지 정보 */}
         <View style={styles.infoSection}>
-          <Text style={styles.mainTitle}>천국 가즈아!!</Text>
-          <Text style={styles.dateText}>26.01.01 ~ 26.12.31</Text>
+          <Text style={styles.mainTitle}>{challenge?.name ?? '신앙 챌린지'}</Text>
+          <Text style={styles.dateText}>
+            {challenge ? `${formatShortDate(challenge.startDate)} ~ ${formatShortDate(challenge.endDate)}` : '등록된 챌린지가 없습니다'}
+          </Text>
           
           <View style={styles.badgeRow}>
             <View style={styles.badge}><Text style={styles.badgeText}>신앙 챌린지</Text></View>
-            <View style={styles.badge}><Text style={styles.badgeText}>10명 참여중</Text></View>
-            <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>
+            {challenge && <View style={styles.badge}><Text style={styles.badgeText}>{challenge.participantCount}명 참여중</Text></View>}
+            {challenge?.isOwner && <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>}
           </View>
         </View>
 
@@ -294,7 +121,7 @@ export default function FaithChallengeScreen() {
           </View>
           <View>
             <Text style={styles.rangeLabel}>챌린지 목표</Text>
-            <Text style={styles.rangeValue}>수요예배, 금요예배 전참</Text>
+            <Text style={styles.rangeValue}>목표 정보 API가 필요합니다</Text>
           </View>
         </View>
 
@@ -367,132 +194,17 @@ export default function FaithChallengeScreen() {
         </View>
 
         {/* 인증 피드 리스트 */}
-        {dummyFeeds.map(feed => {
-          const isLiked = likedMap[feed.id];
-          const displayLikes = feed.likes + (isLiked ? 1 : 0);
-          const commentsCount = commentsMap[feed.id]?.length ?? 0;
-
-          return (
-            <View key={feed.id} style={styles.feedCard}>
-              <View style={styles.feedHeader}>
-                <View style={styles.feedUserInfo}>
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={20} color={colors.white} />
-                  </View>
-                  <View>
-                    <View style={styles.feedNameRow}>
-                      <Text style={styles.feedNickname}>{feed.nickname}</Text>
-                      <Text style={styles.feedTime}>{feed.time}</Text>
-                    </View>
-                    <Text style={styles.feedName}>{feed.name}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => setIsBottomSheetVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
-
-              {feed.isLocked ? (
-                <View style={styles.lockedRow}>
-                  <Ionicons name="lock-closed" size={16} color={colors.text.secondary} />
-                  <Text style={styles.feedText}>{feed.text}</Text>
-                </View>
-              ) : (
-                <Text style={styles.feedText}>{feed.text}</Text>
-              )}
-
-              {feed.hasImage && (
-                <View>
-                  <View style={styles.imagePlaceholder}>
-                    <Ionicons name="image-outline" size={48} color={colors.text.dim} />
-                  </View>
-                  {/* 페이지 인디케이터 모방 */}
-                  <View style={styles.pageIndicatorContainer}>
-                    <View style={[styles.pageDot, styles.pageDotActive]} />
-                    <View style={styles.pageDot} />
-                    <View style={styles.pageDot} />
-                    <View style={styles.pageDot} />
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.feedActions}>
-                <TouchableOpacity style={styles.actionPill} onPress={() => toggleLike(feed.id)}>
-                  <Ionicons name={isLiked ? "heart" : "heart-outline"} size={14} color={isLiked ? (colors.reaction?.red || '#FF3B30') : colors.text.secondary} />
-                  {displayLikes > 0 && <Text style={styles.actionPillText}>{displayLikes}</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionPill} onPress={() => toggleComments(feed.id)}>
-                  <Ionicons name="chatbubble" size={14} color={colors.text.secondary} />
-                  {commentsCount > 0 && <Text style={styles.actionPillText}>{commentsCount}</Text>}
-                </TouchableOpacity>
-              </View>
-
-              {expandedComments[feed.id] && (
-                <>
-                  {/* 추가된 댓글 리스트 표시 */}
-                  {commentsMap[feed.id] && commentsMap[feed.id].length > 0 && (
-                    <View style={styles.commentsList}>
-                      {commentsMap[feed.id].map(c => (
-                        <View key={c.id} style={styles.commentItem}>
-                          <Text style={styles.commentText}>{c.text}</Text>
-                          <TouchableOpacity 
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => {
-                              setSelectedCommentId(c.id);
-                              setSelectedCommentFeedId(feed.id);
-                              setCommentBottomSheetVisible(true);
-                            }}
-                          >
-                            <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* 댓글 입력 폼 */}
-                  <View style={styles.commentInputWrapper}>
-                    <TouchableOpacity style={styles.cameraButton}>
-                      <Ionicons name="camera" size={20} color={colors.white} />
-                    </TouchableOpacity>
-                    <TextInput 
-                      style={styles.commentInput} 
-                      placeholder={editingFeedId === feed.id ? "댓글을 수정해주세요" : "댓글을 입력해주세요"}
-                      placeholderTextColor={colors.text.secondary}
-                      value={commentInput}
-                      onChangeText={setCommentInput}
-                      onSubmitEditing={() => handleAddComment(feed.id)}
-                      returnKeyType="send"
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          );
-        })}
+        <View style={styles.feedCard}>
+          <Text style={styles.emptyText}>챌린지 인증 피드 API가 필요합니다</Text>
+        </View>
 
         {/* 추천 챌린지 섹션 */}
         <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>추천 챌린지</Text>
-        {dummyRecommended.map(item => (
-          <TouchableOpacity key={item.id} style={styles.challengeCard} activeOpacity={0.7}>
-            <View style={styles.cardBadgeRow}>
-              {item.badges.map((badge, idx) => (
-                <View key={idx} style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>
-              ))}
-            </View>
-            <View style={styles.cardContent}>
-              <View style={[styles.cardIconWrapper, { backgroundColor: item.iconBg }]}>
-                <Ionicons name={item.icon} size={24} color={colors.white} />
-              </View>
-              <View style={styles.cardTextContainer}>
-                {!!item.dateRange && <Text style={styles.cardDate}>{item.dateRange}</Text>}
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                <Text style={styles.cardSubtitle} numberOfLines={1}>{item.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.border} />
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.challengeCard}>
+          <Text style={styles.emptyText}>
+            {isLoading ? '추천 챌린지를 불러오는 중입니다' : error ? '추천 챌린지를 불러오지 못했습니다' : '추천 챌린지 API가 필요합니다'}
+          </Text>
+        </View>
         
       </ScrollView>
 
@@ -518,30 +230,6 @@ export default function FaithChallengeScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={[styles.bottomSheetOption, { borderBottomWidth: 0 }]} onPress={() => { console.log('챌린지 종료하기'); setIsBottomSheetVisible(false); }}>
               <Text style={styles.bottomSheetOptionText}>챌린지 종료하기</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* 댓글 더보기 바텀시트 모달 */}
-      <Modal
-        visible={commentBottomSheetVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setCommentBottomSheetVisible(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={() => setCommentBottomSheetVisible(false)}
-        >
-          <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
-            <View style={styles.bottomSheetHandle} />
-            <TouchableOpacity style={styles.bottomSheetOption} onPress={startEditingComment}>
-              <Text style={styles.bottomSheetOptionText}>댓글 수정</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.bottomSheetOption, { borderBottomWidth: 0 }]} onPress={handleDeleteComment}>
-              <Text style={[styles.bottomSheetOptionText, { color: colors.reaction?.red || '#FF3B30' }]}>댓글 삭제</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -638,4 +326,5 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: 11, color: colors.text.secondary, marginBottom: 2 },
   cardTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: 4 },
   cardSubtitle: { fontSize: 12, color: colors.text.secondary },
+  emptyText: { color: colors.text.secondary, fontSize: fontSize.md, textAlign: 'center' },
 });

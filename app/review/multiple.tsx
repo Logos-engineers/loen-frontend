@@ -45,7 +45,7 @@ export default function MultipleChoiceQuizScreen() {
       .finally(() => setIsLoadingQuiz(false));
   }, [contentId]);
 
-  const CORRECT_ANSWER = quiz?.correctAnswer ?? '쓴뿌리';
+  const CORRECT_ANSWER = quiz?.correctAnswer ?? '';
 
   const handleInputChange = (text: string) => {
     setInputText(text);
@@ -133,7 +133,7 @@ export default function MultipleChoiceQuizScreen() {
               
               {/* Header: Title */}
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{quiz?.questionText ? '단답형 퀴즈' : '시들어버린 박넝쿨의 역사'}</Text>
+                <Text style={styles.cardTitle}>{quiz?.questionText ? '단답형 퀴즈' : 'OBS'}</Text>
               </View>
 
               {/* Progress Indicator */}
@@ -165,7 +165,7 @@ export default function MultipleChoiceQuizScreen() {
               <View style={styles.questionRow}>
                 <Text style={styles.questionQ}>Q.</Text>
                 <Text style={styles.questionText}>
-                  {quiz?.questionText ?? '하나님의 은혜를 가로막고 회개의 은총까지 놓치게 만드는 내면의 문제는 무엇인가요?'}
+                  {quiz?.questionText ?? '퀴즈 데이터가 없습니다'}
                 </Text>
               </View>
               )}
@@ -260,7 +260,7 @@ export default function MultipleChoiceQuizScreen() {
                   <View style={styles.modalTextWrapper}>
                     <Text style={styles.modalTitle}>정답이에요!</Text>
                     <Text style={styles.modalDesc}>
-                      하나님의 은혜를 지속적으로 경험하기 위해 쓴 뿌리를 발견하고 뽑아내는 기도가 필요해요.
+                      {quiz?.explanation || '해설 데이터가 없습니다'}
                     </Text>
                   </View>
                   <View style={styles.modalBtnWrapper}>
@@ -274,9 +274,9 @@ export default function MultipleChoiceQuizScreen() {
               {modalType === 'showAnswer' && (
                 <>
                   <View style={[styles.modalTextWrapper, { paddingTop: 32 }]}>
-                    <Text style={[styles.modalTitle, { marginBottom: 8 }]}>정답은 '쓴뿌리' 에요!</Text>
+                    <Text style={[styles.modalTitle, { marginBottom: 8 }]}>정답은 {CORRECT_ANSWER || '데이터 없음'} 이에요!</Text>
                     <Text style={styles.modalDesc}>
-                      하나님의 은혜를 지속적으로 경험하기 위해 쓴 뿌리를 발견하고 뽑아내는 기도가 필요해요.
+                      {quiz?.explanation || '해설 데이터가 없습니다'}
                     </Text>
                   </View>
                   <View style={styles.modalBtnWrapper}>

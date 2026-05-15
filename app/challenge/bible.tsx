@@ -1,4 +1,5 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useChallenge } from '@/hooks/useChallenge';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -14,54 +15,17 @@ export default function BibleChallengeScreen() {
   const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
+  const { challenges, isLoading, error } = useChallenge();
+  const challenge = challenges.find(item => item.type === 'BIBLE');
 
-  const dummyRecommended: {
-    id: string;
-    badges: string[];
-    icon: keyof typeof Ionicons.glyphMap;
-    iconBg: string;
-    dateRange: string;
-    title: string;
-    subtitle: string;
-  }[] = [
-    {
-      id: 'r1',
-      badges: ['성경 챌린지', '23명 참여중'],
-      icon: 'book',
-      iconBg: '#007AFF',
-      dateRange: '26.01.28 ~ 26.02.28',
-      title: '애굽 탈출하자!',
-      subtitle: '출애굽기 · 40장',
-    },
-    {
-      id: 'r2',
-      badges: ['신앙 챌린지', '10명 참여중'],
-      icon: 'sunny',
-      iconBg: '#FFB800',
-      dateRange: '26.01.01 ~ 26.01.08',
-      title: '일주일 새벽예배 챌린지',
-      subtitle: '수요예배, 금요예배 전참',
-    },
-    {
-      id: 'r3',
-      badges: ['성경 챌린지'],
-      icon: 'book',
-      iconBg: '#007AFF',
-      dateRange: '',
-      title: '예수님 제자되기',
-      subtitle: '마태복음, 마가복음, 누가복음 · 총 68장',
-    },
-  ];
-
-  const userDates = [
-    { day: '일', status: 'checked' },
-    { day: '월', status: 'checked' },
-    { day: '화', status: 'checked' },
-    { day: '수', status: 'checked' },
-    { day: '목', status: 'none', label: '25' },
-    { day: '금', status: 'none', label: '26' },
-    { day: '토', status: 'none', label: '27' },
-  ];
+  const formatShortDate = (isoStr?: string) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const yy = d.getFullYear().toString().slice(2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yy}.${mm}.${dd}`;
+  };
 
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -138,13 +102,15 @@ export default function BibleChallengeScreen() {
       >
         {/* 상단 챌린지 정보 */}
         <View style={styles.infoSection}>
-          <Text style={styles.mainTitle}>애굽 탈출하기</Text>
-          <Text style={styles.dateText}>26.01.01 ~ 26.12.31</Text>
+          <Text style={styles.mainTitle}>{challenge?.name ?? '성경 챌린지'}</Text>
+          <Text style={styles.dateText}>
+            {challenge ? `${formatShortDate(challenge.startDate)} ~ ${formatShortDate(challenge.endDate)}` : '등록된 챌린지가 없습니다'}
+          </Text>
           
           <View style={styles.badgeRow}>
             <View style={styles.badge}><Text style={styles.badgeText}>성경 챌린지</Text></View>
-            <View style={styles.badge}><Text style={styles.badgeText}>10명 참여중</Text></View>
-            <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>
+            {challenge && <View style={styles.badge}><Text style={styles.badgeText}>{challenge.participantCount}명 참여중</Text></View>}
+            {challenge?.isOwner && <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>}
           </View>
         </View>
 
@@ -155,7 +121,7 @@ export default function BibleChallengeScreen() {
           </View>
           <View>
             <Text style={styles.rangeLabel}>읽을 범위</Text>
-            <Text style={styles.rangeValue}>출애굽기 1:1~40:38</Text>
+            <Text style={styles.rangeValue}>{challenge?.bibleBooks?.join(', ') || '읽기 범위 정보 없음'}</Text>
           </View>
         </View>
 
@@ -234,60 +200,17 @@ export default function BibleChallengeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 사용자 인증 카드 */}
         <View style={styles.userCard}>
-          <View style={styles.userHeader}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={20} color={colors.white} />
-              </View>
-              <View>
-                <Text style={styles.userName}>POTATOLOVER</Text>
-                <Text style={styles.userDesc}>남현서</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.userCalendarRow}>
-            {userDates.map((item, index) => (
-              <View key={index} style={styles.calendarCell}>
-                <Text style={styles.calendarDayText}>{item.day}</Text>
-                {item.status === 'checked' ? (
-                  <View style={[styles.dateCircle, styles.dateChecked]}>
-                    <Ionicons name="checkmark" size={16} color={colors.white} />
-                  </View>
-                ) : (
-                  <View style={styles.dateCircle}>
-                    <Text style={styles.dateCircleText}>{item.label}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
+          <Text style={styles.emptyText}>챌린지 인증 내역 API가 필요합니다</Text>
         </View>
 
         {/* 추천 챌린지 섹션 */}
         <Text style={styles.sectionTitle}>추천 챌린지</Text>
-        {dummyRecommended.map(item => (
-          <TouchableOpacity key={item.id} style={styles.challengeCard} activeOpacity={0.7}>
-            <View style={styles.cardBadgeRow}>
-              {item.badges.map((badge, idx) => (
-                <View key={idx} style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>
-              ))}
-            </View>
-            <View style={styles.cardContent}>
-              <View style={[styles.cardIconWrapper, { backgroundColor: item.iconBg }]}>
-                <Ionicons name={item.icon} size={24} color={colors.white} />
-              </View>
-              <View style={styles.cardTextContainer}>
-                {!!item.dateRange && <Text style={styles.cardDate}>{item.dateRange}</Text>}
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                <Text style={styles.cardSubtitle} numberOfLines={1}>{item.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.border} />
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.challengeCard}>
+          <Text style={styles.emptyText}>
+            {isLoading ? '추천 챌린지를 불러오는 중입니다' : error ? '추천 챌린지를 불러오지 못했습니다' : '추천 챌린지 API가 필요합니다'}
+          </Text>
+        </View>
         
       </ScrollView>
     </SafeAreaView>
@@ -337,6 +260,7 @@ const styles = StyleSheet.create({
   calendarFullViewText: { fontSize: 12, color: colors.text.secondary, fontWeight: fontWeight.medium },
 
   userCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.xxl },
+  emptyText: { color: colors.text.secondary, fontSize: fontSize.md, textAlign: 'center' },
   userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xl },
   userInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   avatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
