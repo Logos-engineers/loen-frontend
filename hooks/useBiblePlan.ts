@@ -32,7 +32,7 @@ export type AlarmItem = {
   minute: number;       // 0–59
   days: number[];       // [0=일, 1=월, 2=화, 3=수, 4=목, 5=금, 6=토]
   enabled: boolean;
-  notifIds: string[];   // expo-notifications identifier 목록
+  notificationIds: string[];   // expo-notifications identifier 목록
 };
 
 export type ReadChapters = {
@@ -273,9 +273,9 @@ export function useBiblePlan() {
   );
 
   const toggleAlarm = useCallback(
-    async (id: string, enabled: boolean) => {
+    async (id: string, enabled: boolean, notificationIds: string[]) => {
       const nextAlarms = planData.alarms.map((a) => 
-        a.id === id ? { ...a, enabled } : a
+        a.id === id ? { ...a, enabled, notificationIds } : a
       );
       await save({ ...planData, alarms: nextAlarms });
     },

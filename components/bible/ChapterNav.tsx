@@ -7,9 +7,11 @@
  */
 import LeftArrowIcon from '@/assets/icons/LeftArrow.svg';
 import RightArrowIcon from '@/assets/icons/RightArrow.svg';
-import { shadow } from '@/constants/tokens';
+import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, shadow } from '@/constants/tokens';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ChapterNavProps = {
@@ -17,9 +19,12 @@ type ChapterNavProps = {
   onNext: () => void;
   hasPrev: boolean;
   hasNext: boolean;
+  isChapterRead: boolean;
+  onReadCheck: () => void;
+  showReadCheck: boolean;
 };
 
-export function ChapterNav({ onPrev, onNext, hasPrev, hasNext }: ChapterNavProps) {
+export function ChapterNav({ onPrev, onNext, hasPrev, hasNext, isChapterRead, onReadCheck, showReadCheck }: ChapterNavProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -41,6 +46,32 @@ export function ChapterNav({ onPrev, onNext, hasPrev, hasNext }: ChapterNavProps
           <LeftArrowIcon width={30} height={30} />
         </View>
       </TouchableOpacity>
+
+      {/* Center Read Check Button */}
+      {showReadCheck ? (
+        <TouchableOpacity
+          onPress={onReadCheck}
+          activeOpacity={0.8}
+          style={[
+            styles.readCheckBtn,
+            isChapterRead ? styles.readCheckBtnActive : styles.readCheckBtnInactive
+          ]}
+        >
+          <Text style={[
+            styles.readCheckText,
+            isChapterRead ? styles.readCheckTextActive : styles.readCheckTextInactive
+          ]}>
+            {isChapterRead ? '이미 읽은 장이에요' : '읽음 표시하고 다음장으로'}
+          </Text>
+          {isChapterRead ? (
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+          ) : (
+            <CheckCircleIcon width={20} height={20} color={colors.text.dim} />
+          )}
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.readCheckPlaceholder} />
+      )}
 
       {/* Right arrow */}
       <TouchableOpacity
@@ -89,5 +120,38 @@ const styles = StyleSheet.create({
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  readCheckBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    height: 44,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: shadow.color,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  readCheckPlaceholder: {
+    width: 1, // 빈 공간일 때 좌우 화살표 간격 유지를 위한 최소 너비
+  },
+  readCheckBtnActive: {
+    backgroundColor: '#384859', // 진한 남색
+  },
+  readCheckBtnInactive: {
+    backgroundColor: colors.background.base, // 부드러운 밝은 회색
+  },
+  readCheckText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  readCheckTextActive: {
+    color: colors.white,
+  },
+  readCheckTextInactive: {
+    color: colors.text.primary, // 진한 회색 (dark gray) 토큰
   },
 });

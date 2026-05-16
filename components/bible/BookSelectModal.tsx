@@ -7,15 +7,16 @@ import { colors, fontSize, radius, spacing } from '@/constants/tokens';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
 const SECTION_ORDER = [
@@ -179,14 +180,13 @@ export function BookSelectModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent />
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton} hitSlop={8}>
+          <TouchableOpacity onPress={onClose} style={styles.backButton} hitSlop={12}>
             <ChevronLeftIcon width={24} height={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>성경 선택</Text>
-          <View style={styles.headerSide} />
         </View>
 
         <View style={styles.controls}>
@@ -229,10 +229,10 @@ export function BookSelectModal({
                         key={book.code}
                         activeOpacity={0.85}
                         onPress={() => handleBookPress(book.code)}
-                        style={[styles.rowButton, styles.bookRow, isSelected && styles.rowButtonSelected]}
+                        style={[styles.bookRow, isSelected && styles.bookRowSelected]}
                       >
                         <View>
-                          <Text style={[styles.bookNameText, isSelected && styles.rowTextSelected]}>
+                          <Text style={[styles.bookNameText, isSelected && styles.bookNameTextSelected]}>
                             {book.korName}
                           </Text>
                           <Text style={[styles.bookEnglishText, isSelected && styles.bookEnglishTextSelected]}>
@@ -254,11 +254,11 @@ export function BookSelectModal({
                 return (
                   <TouchableOpacity
                     key={chapter.chapter}
-                    activeOpacity={0.85}
+                    activeOpacity={0.7}
                     onPress={() => handleChapterPress(chapter.chapter)}
-                    style={[styles.rowButton, isSelected && styles.rowButtonSelected]}
+                    style={[styles.numberRow, isSelected && styles.numberRowSelected]}
                   >
-                    <Text style={[styles.rowText, isSelected && styles.rowTextSelected]}>
+                    <Text style={[styles.numberText, isSelected && styles.numberTextSelected]}>
                       {chapter.chapter}장
                     </Text>
                   </TouchableOpacity>
@@ -274,11 +274,11 @@ export function BookSelectModal({
                 return (
                   <TouchableOpacity
                     key={verse.verse}
-                    activeOpacity={0.85}
+                    activeOpacity={0.7}
                     onPress={() => handleVersePress(verse.verse)}
-                    style={[styles.rowButton, isSelected && styles.rowButtonSelected]}
+                    style={[styles.numberRow, isSelected && styles.numberRowSelected]}
                   >
-                    <Text style={[styles.rowText, isSelected && styles.rowTextSelected]}>
+                    <Text style={[styles.numberText, isSelected && styles.numberTextSelected]}>
                       {verse.verse}절
                     </Text>
                   </TouchableOpacity>
@@ -297,7 +297,7 @@ export function BookSelectModal({
             <Text style={styles.continueButtonText}>최근 읽은 성경 이어읽기</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -308,50 +308,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   header: {
-    height: 46,
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
+    width: 32,
+    height: 32,
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  headerSide: {
-    width: 40,
-    height: 40,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: 18,
-    lineHeight: 25,
-    color: colors.text.primary,
-  },
   controls: {
-    paddingHorizontal: spacing.md,
-    paddingTop: 2,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingBottom: 10,
   },
   searchField: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.background.base,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(13,28,45,0.05)',
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 0,
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: fontSize.base,
-    lineHeight: 24,
+    fontFamily: 'Pretendard-Medium',
+    fontSize: fontSize.md,
+    lineHeight: 20,
     color: colors.text.primary,
   },
   clearButton: {
@@ -373,67 +360,84 @@ const styles = StyleSheet.create({
     borderRightColor: colors.border,
   },
   bookColumn: {
-    width: '40%',
+    width: '36%',
+    backgroundColor: colors.background.base,
   },
   chapterColumn: {
-    width: '28%',
+    width: '32%',
+    backgroundColor: colors.white,
   },
   verseColumn: {
     width: '32%',
     borderRightWidth: 0,
+    backgroundColor: colors.white,
   },
   columnContent: {
     paddingBottom: 96,
   },
-  rowButton: {
-    minHeight: 64,
+  // ── Book List Styles ──
+  bookRow: {
+    minHeight: 56,
     paddingHorizontal: 16,
     justifyContent: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(13,28,45,0.04)',
   },
-  bookRow: {
-    paddingRight: 12,
+  bookRowSelected: {
+    backgroundColor: colors.text.primary,
   },
   sectionHeader: {
-    minHeight: 56,
+    minHeight: 40,
     justifyContent: 'center',
     paddingHorizontal: 16,
     backgroundColor: colors.background.base,
   },
   sectionHeaderText: {
     fontFamily: 'Pretendard-Medium',
-    fontSize: fontSize.md,
-    lineHeight: 21,
+    fontSize: 12,
     color: colors.text.secondary,
-  },
-  rowButtonSelected: {
-    backgroundColor: colors.text.primary,
-  },
-  rowText: {
-    fontFamily: 'Pretendard-Medium',
-    fontSize: fontSize.lg,
-    lineHeight: 28,
-    color: colors.text.secondary,
-  },
-  rowTextSelected: {
-    color: colors.white,
   },
   bookNameText: {
     fontFamily: 'Pretendard-SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.text.primary,
+  },
+  bookNameTextSelected: {
+    color: colors.white,
   },
   bookEnglishText: {
     fontFamily: 'Pretendard-Medium',
-    fontSize: fontSize.md,
-    lineHeight: 21,
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.text.secondary,
+    marginTop: 2,
   },
   bookEnglishTextSelected: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
   },
+  // ── Chapter & Verse List Styles ──
+  numberRow: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  numberRowSelected: {
+    backgroundColor: colors.white,
+  },
+  numberText: {
+    fontFamily: 'Pretendard-Medium',
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.text.primary,
+  },
+  numberTextSelected: {
+    color: colors.primary,
+    fontFamily: 'Pretendard-Bold',
+  },
+  // ── Bottom Floating Button ──
   fixedBottomWrap: {
     position: 'absolute',
     left: 0,
@@ -443,18 +447,18 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     minHeight: 42,
-    paddingHorizontal: 20,
-    borderRadius: 16,
+    paddingHorizontal: 24,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(101,97,255,0.6)',
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: 'rgba(101,97,255,0.3)',
+    backgroundColor: 'rgba(101,97,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   continueButtonText: {
     fontFamily: 'Pretendard-SemiBold',
-    fontSize: fontSize.base,
-    lineHeight: 26,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.primary,
   },
 });
