@@ -1,7 +1,7 @@
 import { ObsCard } from '@/components/obs/obs-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, spacing } from '@/constants/tokens';
-import { formatKoreanDate, useObsContents } from '@/hooks/useObs';
+import { formatKoreanDate, formatWeekLabel, useObsContents } from '@/hooks/useObs';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -41,7 +41,7 @@ export function ObsSection() {
               contentId: String(previousObs.id),
               title: previousObs.title,
               verse: previousObs.biblePassage,
-              weekLabel: previousObs.weekLabel,
+              weekLabel: formatWeekLabel(previousObs.publishedDate),
             },
           })}
           onPressReview={() => router.push({

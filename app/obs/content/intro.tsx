@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleBadge: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.primary,
     fontWeight: fontWeight.semibold,
   },
@@ -183,6 +183,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: fontWeight.semibold,
+    textDecorationLine: 'underline',
   },
   ctaButton: {
     backgroundColor: colors.primary,

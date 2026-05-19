@@ -8,7 +8,7 @@
  */
 import { ObsCard } from '@/components/obs/obs-card';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { formatKoreanDate, useObsContents } from '@/hooks/useObs';
+import { formatKoreanDate, formatWeekLabel, useObsContents } from '@/hooks/useObs';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -242,7 +242,7 @@ export default function ObsScreen() {
                 contentId: String(item.id),
                 title: item.title,
                 verse: item.biblePassage,
-                weekLabel: item.weekLabel,
+                weekLabel: formatWeekLabel(item.publishedDate),
               },
             })}
             onPressReview={() => router.push({
