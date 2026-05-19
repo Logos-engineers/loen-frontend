@@ -20,11 +20,15 @@ export default function ObsQ3Screen() {
     contentId?: string;
     reviewId?: string;
     preview?: string;
+    step1Result?: string;
+    step2Result?: string;
   }>();
 
   const contentId = params.contentId ? Number(params.contentId) : null;
   const reviewId = params.reviewId ? Number(params.reviewId) : 0;
   const isPreview = params.preview === 'true';
+  const step1Result = (params.step1Result === 'correct' || params.step1Result === 'incorrect') ? params.step1Result : null;
+  const step2Result = (params.step2Result === 'correct' || params.step2Result === 'incorrect') ? params.step2Result : null;
 
   const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
   const [fetchedAnswer, setFetchedAnswer] = useState<string | null>(null);
@@ -75,7 +79,7 @@ export default function ObsQ3Screen() {
               <View style={styles.cardTitleRow}>
                 <Text style={styles.obsTitle}>{params.title ?? 'OBS'}</Text>
               </View>
-              <QuizProgress currentStep={3} />
+              <QuizProgress currentStep={3} results={[step1Result, step2Result, null]} />
             </View>
           </View>
 
@@ -101,27 +105,25 @@ export default function ObsQ3Screen() {
               </View>
               )}
 
-              {/* 답변 영역 — 오버레이로 가려진 상태 / 공개 상태 토글 */}
+              {/* 답변 영역 */}
               <View style={styles.answerArea}>
-                {/* 답변 필드 */}
-                <View style={styles.answerField}>
-                  <Text style={revealed ? styles.answerTextRevealed : styles.answerTextHidden}>
+                {/* 답변 필드 — 미공개 시 blur filter 적용 */}
+                <View style={[styles.answerField, !revealed && styles.answerFieldBlurred]}>
+                  <Text style={styles.answerTextRevealed}>
                     {answer || '정답 데이터가 없습니다'}
                   </Text>
                 </View>
 
-                {/* 정답 보기 오버레이 */}
+                {/* 정답 보기 오버레이 — 텍스트가 blur된 위에 버튼만 표시 */}
                 {!revealed && (
-                  <View style={StyleSheet.absoluteFillObject}>
-                    <View style={styles.blurOverlay}>
-                      <TouchableOpacity
-                        style={styles.revealButton}
-                        activeOpacity={0.85}
-                        onPress={() => setRevealed(true)}
-                      >
-                        <Text style={styles.revealButtonText}>정답 보기</Text>
-                      </TouchableOpacity>
-                    </View>
+                  <View style={[StyleSheet.absoluteFillObject, styles.blurOverlay]}>
+                    <TouchableOpacity
+                      style={styles.revealButton}
+                      activeOpacity={0.85}
+                      onPress={() => setRevealed(true)}
+                    >
+                      <Text style={styles.revealButtonText}>정답 보기</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -269,11 +271,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     minHeight: 130,
   },
-  answerTextHidden: {
-    fontSize: 18,
-    lineHeight: 18 * 1.4,
-    fontWeight: fontWeight.semibold,
-    color: 'transparent', // 오버레이 아래 텍스트는 투명하게
+  answerFieldBlurred: {
+    filter: [{ blur: 8 }] as any,
   },
   answerTextRevealed: {
     fontSize: 18,
@@ -281,13 +280,11 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
-  // Figma D8VQ16: frosted glass overlay
   blurOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(224, 223, 255, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 130,
+    backgroundColor: 'rgba(224, 223, 255, 0.35)',
   },
   revealButton: {
     backgroundColor: colors.primary,

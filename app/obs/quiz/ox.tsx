@@ -50,7 +50,15 @@ export default function OXQuizScreen() {
 
   const handleNextQuiz = () => {
     setIsModalVisible(false);
-    router.push({ pathname: '/obs/quiz/multiple', params: { contentId: String(contentId ?? ''), reviewId, ...(isPreview ? { preview: 'true' } : {}) } });
+    router.push({
+      pathname: '/obs/quiz/multiple',
+      params: {
+        contentId: String(contentId ?? ''),
+        reviewId,
+        step1Result: isCorrect ? 'correct' : 'incorrect',
+        ...(isPreview ? { preview: 'true' } : {}),
+      },
+    });
   };
 
   return (
@@ -100,7 +108,7 @@ export default function OXQuizScreen() {
                 {selectedAnswer === 'O' ? <WhiteOMarkIcon width={80} height={80} /> : <OMarkIcon width={80} height={80} />}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'X' ? '#6561FF' : '#F2F4F7' }]}
+                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'X' ? '#FF5358' : '#F2F4F7' }]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedAnswer('X')}
               >

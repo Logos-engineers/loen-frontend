@@ -3,25 +3,40 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, fontWeight } from '@/constants/tokens';
 
+type StepResult = 'correct' | 'incorrect' | null;
+
 type QuizProgressProps = {
   currentStep: 1 | 2 | 3;
+  results?: [StepResult, StepResult, StepResult];
 };
 
-export function QuizProgress({ currentStep }: QuizProgressProps) {
+export function QuizProgress({ currentStep, results = [null, null, null] }: QuizProgressProps) {
   return (
     <View style={styles.row}>
-      {[1, 2, 3].map((step, index) => (
-        <Fragment key={step}>
-          <View style={step === currentStep ? styles.activeOuter : styles.inactiveOuter}>
-            <View style={[styles.circle, step === currentStep ? styles.activeCircle : styles.inactiveCircle]}>
-              <Text style={[styles.label, step === currentStep ? styles.activeLabel : styles.inactiveLabel]}>
-                {step}
-              </Text>
+      {[1, 2, 3].map((step, index) => {
+        const isActive = step === currentStep;
+        const isDone = step < currentStep;
+        const result = isDone ? results[step - 1] : null;
+
+        return (
+          <Fragment key={step}>
+            <View style={isActive ? styles.activeOuter : styles.inactiveOuter}>
+              <View style={[styles.circle, isActive ? styles.activeCircle : styles.inactiveCircle]}>
+                {isDone && result ? (
+                  <Text style={styles.resultLabel}>
+                    {result === 'correct' ? 'O' : '×'}
+                  </Text>
+                ) : (
+                  <Text style={[styles.label, isActive ? styles.activeLabel : styles.inactiveLabel]}>
+                    {step}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-          {index < 2 ? <View style={styles.line} /> : null}
-        </Fragment>
-      ))}
+            {index < 2 ? <View style={styles.line} /> : null}
+          </Fragment>
+        );
+      })}
     </View>
   );
 }
@@ -70,6 +85,12 @@ const styles = StyleSheet.create({
   },
   inactiveLabel: {
     color: 'rgba(13, 28, 45, 0.16)',
+  },
+  resultLabel: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: fontWeight.bold,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   line: {
     flex: 1,

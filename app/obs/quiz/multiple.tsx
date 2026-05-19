@@ -1,6 +1,6 @@
 import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
@@ -15,11 +15,13 @@ import HumanOMarkIcon from '@/assets/icons/humanOmark.svg';
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
 export default function MultipleChoiceQuizScreen() {
-  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string }>();
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string; step1Result?: string }>();
   const contentId = params.contentId ? Number(params.contentId) : null;
   const reviewId = params.reviewId ? Number(params.reviewId) : 0;
   const isPreview = params.preview === 'true';
+  const step1Result = (params.step1Result === 'correct' || params.step1Result === 'incorrect') ? params.step1Result : null;
 
+  const inputRef = useRef<TextInput>(null);
   const [quiz, setQuiz] = useState<ObsQuiz | null>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(!!contentId);
   const [inputText, setInputText] = useState('');
@@ -41,10 +43,17 @@ export default function MultipleChoiceQuizScreen() {
   const handleInputChange = (text: string) => {
     setInputText(text);
     setQuizState('idle');
+    if (CORRECT_ANSWER.length > 0 && text.length === CORRECT_ANSWER.length) {
+      if (text === CORRECT_ANSWER) {
+        setModalType('correct');
+      } else {
+        setQuizState('incorrect');
+      }
+    }
   };
 
   const handleSubmit = () => {
-    if (inputText.trim() === CORRECT_ANSWER) {
+    if (inputText === CORRECT_ANSWER) {
       setModalType('correct');
     } else {
       setQuizState('incorrect');
@@ -59,11 +68,14 @@ export default function MultipleChoiceQuizScreen() {
 
   const handleNextQuiz = () => {
     setModalType('none');
+    const step2Result = inputText.trim() === CORRECT_ANSWER ? 'correct' : 'incorrect';
     router.push({
       pathname: '/obs/quiz/essay',
       params: {
         contentId: String(contentId ?? ''),
         reviewId: String(reviewId),
+        ...(step1Result ? { step1Result } : {}),
+        step2Result,
         ...(isPreview ? { preview: 'true' } : {}),
       },
     });
@@ -76,7 +88,7 @@ export default function MultipleChoiceQuizScreen() {
         
         {/* Navigation Bar */}
         <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => setModalType('quit')}>
+          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
             <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
           </TouchableOpacity>
         </View>
@@ -102,7 +114,7 @@ export default function MultipleChoiceQuizScreen() {
               </View>
 
               {/* Progress Indicator */}
-              <QuizProgress currentStep={2} />
+              <QuizProgress currentStep={2} results={[step1Result, null, null]} />
               
             </View>
 
@@ -125,20 +137,60 @@ export default function MultipleChoiceQuizScreen() {
               </View>
               )}
 
-              {/* Text Input */}
-              <View style={styles.inputContainer}>
+              {/* Character Box Input */}
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={() => inputRef.current?.focus()}
+                style={styles.charBoxContainer}
+              >
+                <View style={styles.charBoxRow}>
+                  {CORRECT_ANSWER.length > 0
+                    ? Array.from({ length: CORRECT_ANSWER.length }).map((_, i) => {
+                        const char = inputText[i];
+                        const isFilled = i < inputText.length;
+                        const isActive = i === inputText.length;
+                        const isError = quizState === 'incorrect' && isFilled;
+                        return (
+                          <View
+                            key={i}
+                            style={[
+                              styles.charBox,
+                              isError
+                                ? styles.charBoxError
+                                : isFilled
+                                ? styles.charBoxFilled
+                                : isActive
+                                ? styles.charBoxActive
+                                : styles.charBoxEmpty,
+                            ]}
+                          >
+                            <Text style={[styles.charText, isError && styles.charTextError]}>
+                              {char ?? ''}
+                            </Text>
+                          </View>
+                        );
+                      })
+                    : [0, 1, 2].map((i) => (
+                        <View key={i} style={[styles.charBox, styles.charBoxEmpty]} />
+                      ))}
+                </View>
                 <TextInput
-                  style={[styles.answerInput, quizState === 'incorrect' && styles.answerInputError]}
+                  ref={inputRef}
                   value={inputText}
-                  onChangeText={handleInputChange}
-                  placeholder="답을 입력하세요"
-                  placeholderTextColor="rgba(13,28,45,0.3)"
+                  onChangeText={(text) => {
+                    if (!CORRECT_ANSWER.length || text.length <= CORRECT_ANSWER.length) {
+                      handleInputChange(text);
+                    }
+                  }}
+                  maxLength={CORRECT_ANSWER.length || 20}
+                  style={styles.hiddenInput}
                   autoCorrect={false}
                   spellCheck={false}
+                  autoCapitalize="none"
                   returnKeyType="done"
                   onSubmitEditing={handleSubmit}
                 />
-              </View>
+              </TouchableOpacity>
 
               {/* Incorrect Feedback Message */}
               {quizState === 'incorrect' && (
@@ -150,14 +202,12 @@ export default function MultipleChoiceQuizScreen() {
             </View>
           </ScrollView>
 
-          {/* Bottom CTA Area - Secured to the bottom of the padded container */}
-          <View style={[styles.ctaWrapper, { 
-             paddingBottom: Platform.OS === 'ios' ? 20 : 20 
-          }]}>
-            {quizState === 'incorrect' ? (
+          {/* Bottom CTA Area - only visible after incorrect answer */}
+          {quizState === 'incorrect' && (
+            <View style={[styles.ctaWrapper, { paddingBottom: 20 }]}>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity
-                  style={[styles.ctaButton, { flex: 1, backgroundColor: 'rgba(101, 97, 255, 0.2)' }]}
+                  style={[styles.ctaButton, { flex: 1, backgroundColor: 'rgba(101, 97, 255, 0.1)' }]}
                   activeOpacity={0.8}
                   onPress={handleShowAnswer}
                 >
@@ -166,30 +216,13 @@ export default function MultipleChoiceQuizScreen() {
                 <TouchableOpacity
                   style={[styles.ctaButton, { flex: 1, backgroundColor: 'rgba(101, 97, 255, 0.4)' }]}
                   activeOpacity={0.8}
-                  disabled={true} 
+                  onPress={handleNextQuiz}
                 >
                   <Text style={[styles.ctaButtonText, { color: '#FFFFFF' }]}>다음 퀴즈 풀기</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
-              <TouchableOpacity 
-                style={[
-                  styles.ctaButton,
-                  { backgroundColor: inputText.trim().length > 0 ? colors.primary : 'rgba(101, 97, 255, 0.4)' }
-                ]} 
-                activeOpacity={0.8}
-                onPress={handleSubmit}
-                disabled={inputText.trim().length === 0}
-              >
-                <Text style={[
-                  styles.ctaButtonText,
-                  { color: '#FFFFFF' }
-                ]}>
-                  선택할게요  
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
         </KeyboardAvoidingView>
       </SafeAreaView>
 
@@ -393,24 +426,50 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     lineHeight: 28,
   },
-  inputContainer: {
+  charBoxContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingVertical: 24,
   },
-  answerInput: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(101, 97, 255, 0.3)',
-    borderRadius: radius.md,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: 'rgba(13, 28, 45, 0.8)',
-    backgroundColor: 'rgba(101, 97, 255, 0.05)',
+  charBoxRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'center',
   },
-  answerInputError: {
-    borderColor: 'rgba(255, 84, 73, 0.5)',
-    backgroundColor: 'rgba(255, 84, 73, 0.05)',
+  charBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  charBoxEmpty: {
+    backgroundColor: 'rgba(101, 97, 255, 0.10)',
+  },
+  charBoxActive: {
+    backgroundColor: 'rgba(101, 97, 255, 0.20)',
+  },
+  charBoxFilled: {
+    backgroundColor: 'rgba(101, 97, 255, 0.20)',
+  },
+  charBoxError: {
+    backgroundColor: 'rgba(255, 83, 88, 0.2)',
+    borderRadius: 12,
+  },
+  charText: {
+    fontSize: 24,
+    fontWeight: '600' as const,
+    color: colors.primary,
+    textAlign: 'center',
+  },
+  charTextError: {
+    color: '#FF5358',
+  },
+  hiddenInput: {
+    position: 'absolute',
+    opacity: 0,
+    width: 0,
+    height: 0,
   },
   feedbackWrapper: {
     alignItems: 'center',
@@ -419,7 +478,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 14,
     fontWeight: fontWeight.semibold,
-    color: '#FF5449', // Red error text
+    color: '#FF5358',
   },
   ctaWrapper: {
     backgroundColor: '#FFFFFF', 
