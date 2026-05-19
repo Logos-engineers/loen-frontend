@@ -85,12 +85,12 @@ export default function ReviewIntroScreen() {
             activeOpacity={0.8}
             disabled={isStarting}
             onPress={async () => {
-              if (!contentId) { router.push('/review/ox'); return; }
+              if (!contentId) { router.push('/obs/quiz/ox'); return; }
               setIsStarting(true);
               let reviewId = 0;
               try { reviewId = await startObsReview(contentId); } catch { /* 409 or error — proceed without reviewId */ }
               setIsStarting(false);
-              router.push({ pathname: '/review/ox', params: { contentId: String(contentId), reviewId: String(reviewId) } });
+              router.push({ pathname: '/obs/quiz/ox', params: { contentId: String(contentId), reviewId: String(reviewId) } });
             }}
           >
             {isStarting ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaButtonText}>복습 시작하기</Text>}

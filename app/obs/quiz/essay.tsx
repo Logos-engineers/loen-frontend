@@ -1,11 +1,12 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
+import { QuizProgress } from '@/components/obs/quiz-progress';
 import { completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
 
 const BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9395 3.93934C12.5252 3.35355 13.4748 3.35355 14.0606 3.93934C14.6463 4.52513 14.6463 5.47465 14.0606 6.06043L8.1211 11.9999L14.0606 17.9393C14.6463 18.5251 14.6463 19.4746 14.0606 20.0604C13.4748 20.6462 12.5252 20.6462 11.9395 20.0604L4.93946 13.0604C4.35368 12.4746 4.35368 11.5251 4.93946 10.9393L11.9395 3.93934Z" fill="#0D1C2D" fill-opacity="0.8"/></svg>`;
@@ -18,10 +19,16 @@ export default function ObsQ3Screen() {
     answer?: string;
     contentId?: string;
     reviewId?: string;
+    preview?: string;
+    step1Result?: string;
+    step2Result?: string;
   }>();
 
   const contentId = params.contentId ? Number(params.contentId) : null;
   const reviewId = params.reviewId ? Number(params.reviewId) : 0;
+  const isPreview = params.preview === 'true';
+  const step1Result = (params.step1Result === 'correct' || params.step1Result === 'incorrect') ? params.step1Result : null;
+  const step2Result = (params.step2Result === 'correct' || params.step2Result === 'incorrect') ? params.step2Result : null;
 
   const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
   const [fetchedAnswer, setFetchedAnswer] = useState<string | null>(null);
@@ -45,16 +52,16 @@ export default function ObsQ3Screen() {
   const answer = fetchedAnswer ?? params.answer ?? '';
 
   const handleNext = async () => {
-    if (reviewId > 0) {
+    if (!isPreview && reviewId > 0) {
       try { await completeObsReview(reviewId); } catch { /* ignore */ }
     }
-    router.push('/obs/finish');
+    router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
   };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
             <SvgXml xml={BACK_SVG} width={24} height={24} />
@@ -72,13 +79,7 @@ export default function ObsQ3Screen() {
               <View style={styles.cardTitleRow}>
                 <Text style={styles.obsTitle}>{params.title ?? 'OBS'}</Text>
               </View>
-              <View style={styles.progressRow}>
-                <Image
-                  source={require('@/assets/icons/obs/obs_quiz_progress.png')}
-                  style={styles.progressImage}
-                  resizeMode="contain"
-                />
-              </View>
+              <QuizProgress currentStep={3} results={[step1Result, step2Result, null]} />
             </View>
           </View>
 
@@ -104,27 +105,25 @@ export default function ObsQ3Screen() {
               </View>
               )}
 
-              {/* 답변 영역 — 오버레이로 가려진 상태 / 공개 상태 토글 */}
+              {/* 답변 영역 */}
               <View style={styles.answerArea}>
-                {/* 답변 필드 */}
-                <View style={styles.answerField}>
-                  <Text style={revealed ? styles.answerTextRevealed : styles.answerTextHidden}>
+                {/* 답변 필드 — 미공개 시 blur filter 적용 */}
+                <View style={[styles.answerField, !revealed && styles.answerFieldBlurred]}>
+                  <Text style={styles.answerTextRevealed}>
                     {answer || '정답 데이터가 없습니다'}
                   </Text>
                 </View>
 
-                {/* 정답 보기 오버레이 */}
+                {/* 정답 보기 오버레이 — 텍스트가 blur된 위에 버튼만 표시 */}
                 {!revealed && (
-                  <View style={StyleSheet.absoluteFillObject}>
-                    <View style={styles.blurOverlay}>
-                      <TouchableOpacity
-                        style={styles.revealButton}
-                        activeOpacity={0.85}
-                        onPress={() => setRevealed(true)}
-                      >
-                        <Text style={styles.revealButtonText}>정답 보기</Text>
-                      </TouchableOpacity>
-                    </View>
+                  <View style={[StyleSheet.absoluteFillObject, styles.blurOverlay]}>
+                    <TouchableOpacity
+                      style={styles.revealButton}
+                      activeOpacity={0.85}
+                      onPress={() => setRevealed(true)}
+                    >
+                      <Text style={styles.revealButtonText}>정답 보기</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -272,11 +271,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     minHeight: 130,
   },
-  answerTextHidden: {
-    fontSize: 18,
-    lineHeight: 18 * 1.4,
-    fontWeight: fontWeight.semibold,
-    color: 'transparent', // 오버레이 아래 텍스트는 투명하게
+  answerFieldBlurred: {
+    filter: [{ blur: 8 }] as any,
   },
   answerTextRevealed: {
     fontSize: 18,
@@ -284,13 +280,11 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
-  // Figma D8VQ16: frosted glass overlay
   blurOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(224, 223, 255, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 130,
+    backgroundColor: 'rgba(224, 223, 255, 0.35)',
   },
   revealButton: {
     backgroundColor: colors.primary,

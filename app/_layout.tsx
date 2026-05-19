@@ -62,9 +62,15 @@ export default function RootLayout() {
           <Stack.Screen name="challenge/edit" options={{ headerShown: false }} />
           <Stack.Screen name="challenge/select-bible" options={{ headerShown: false }} />
           <Stack.Screen name="obs/index" options={{ headerShown: false }} />
-          <Stack.Screen name="obs/intro" options={{ headerShown: false }} />
-          <Stack.Screen name="obs/scripture" options={{ headerShown: false }} />
-          <Stack.Screen name="obs/summary" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/content/intro" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/content/scripture" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/content/summary" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/content/finish" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/content/complete" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/quiz/intro" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/quiz/ox" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/quiz/multiple" options={{ headerShown: false }} />
+          <Stack.Screen name="obs/quiz/essay" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/index" options={{ headerShown: false }} />
