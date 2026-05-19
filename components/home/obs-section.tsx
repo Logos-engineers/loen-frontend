@@ -36,7 +36,7 @@ export function ObsSection() {
           item={previousObs}
           reviewLabel="OBS 복습하기"
           onPressView={() => router.push({
-            pathname: '/obs/intro',
+            pathname: '/obs/content/intro',
             params: {
               contentId: String(previousObs.id),
               title: previousObs.title,
@@ -45,7 +45,7 @@ export function ObsSection() {
             },
           })}
           onPressReview={() => router.push({
-            pathname: '/review/intro',
+            pathname: '/obs/quiz/intro',
             params: {
               contentId: String(previousObs.id),
               title: previousObs.title,
