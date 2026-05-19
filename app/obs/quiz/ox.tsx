@@ -1,12 +1,12 @@
 import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SvgXml } from 'react-native-svg';
 
-// tokens
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
+import { BottomModal } from '@/components/obs/bottom-modal';
+import { OBSHeader } from '@/components/obs/obs-header';
 import { QuizProgress } from '@/components/obs/quiz-progress';
 
 import OMarkIcon from '@/assets/icons/O mark.svg';
@@ -15,9 +15,6 @@ import HumanOMarkIcon from '@/assets/icons/humanOmark.svg';
 import HumanXMarkIcon from '@/assets/icons/humanXmark.svg';
 import WhiteOMarkIcon from '@/assets/icons/whiteO mark.svg';
 import WhiteXMarkIcon from '@/assets/icons/whiteX mark.svg';
-
-// Navigation SVGs
-const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
 export default function OXQuizScreen() {
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string }>();
@@ -37,7 +34,7 @@ export default function OXQuizScreen() {
         const oxQuiz = quizzes.find((q) => q.questionType === 'OX');
         if (oxQuiz) setQuiz(oxQuiz);
       })
-      .catch(() => {})
+      .catch(() => console.warn('[OX] fetchObsQuizzes 실패'))
       .finally(() => setIsLoadingQuiz(false));
   }, [contentId]);
 
@@ -65,13 +62,8 @@ export default function OXQuizScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        
-        {/* Navigation Bar */}
-        <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
-            <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
-          </TouchableOpacity>
-        </View>
+
+        <OBSHeader />
 
         {/* Content Area */}
         <View style={styles.content}>
@@ -101,14 +93,14 @@ export default function OXQuizScreen() {
             )}
             <View style={styles.optionsRow}>
               <TouchableOpacity
-                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'O' ? '#6561FF' : '#F2F4F7' }]}
+                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'O' ? colors.primary : colors.background.base }]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedAnswer('O')}
               >
                 {selectedAnswer === 'O' ? <WhiteOMarkIcon width={80} height={80} /> : <OMarkIcon width={80} height={80} />}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'X' ? '#FF5358' : '#F2F4F7' }]}
+                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'X' ? colors.incorrect : colors.background.base }]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedAnswer('X')}
               >
@@ -120,72 +112,45 @@ export default function OXQuizScreen() {
 
         {/* Bottom CTA Area */}
         <View style={styles.ctaWrapper}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.ctaButton,
               { backgroundColor: selectedAnswer ? colors.primary : 'rgba(101, 97, 255, 0.4)' }
-            ]} 
+            ]}
             activeOpacity={0.8}
             onPress={handleSubmit}
             disabled={!selectedAnswer}
           >
-            <Text style={[
-              styles.ctaButtonText,
-              { color: '#FFFFFF' }
-            ]}>
-              선택할게요
-            </Text>
+            <Text style={styles.ctaButtonText}>선택할게요</Text>
           </TouchableOpacity>
         </View>
 
       </SafeAreaView>
 
-      {/* Result Modal */}
-      <Modal
-        visible={isModalVisible}
-        transparent={true}
-        animationType="fade"
-      >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsModalVisible(false)}>
-          <TouchableWithoutFeedback>
-            <View style={styles.modalContent}>
-              {/* Top Handle */}
-              <View style={styles.modalHandleWrapper}>
-                <View style={styles.modalHandle} />
-              </View>
-
-              {/* Illustration Area */}
-              <View style={styles.modalImageWrapper}>
-                {isCorrect ? (
-                  <HumanOMarkIcon width={80} height={80} />
-                ) : (
-                  <HumanXMarkIcon width={80} height={80} />
-                )}
-              </View>
-
-              {/* Text Area */}
-              <View style={styles.modalTextWrapper}>
-                <Text style={styles.modalTitle}>{isCorrect ? '정답이에요!' : '오답이에요!'}</Text>
-                <Text style={styles.modalDesc}>
-                  {quiz?.explanation || '해설 데이터가 없습니다'}
-                </Text>
-              </View>
-
-              {/* Next Button */}
-              <View style={styles.modalBtnWrapper}>
-                <TouchableOpacity 
-                  style={styles.modalBtn} 
-                  activeOpacity={0.8}
-                  onPress={handleNextQuiz}
-                >
-                  <Text style={styles.modalBtnText}>다음 퀴즈 풀기</Text>
-                </TouchableOpacity>
-              </View>
-
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
+      <BottomModal visible={isModalVisible} onClose={() => setIsModalVisible(false)}>
+        <View style={styles.modalImageWrapper}>
+          {isCorrect ? (
+            <HumanOMarkIcon width={80} height={80} />
+          ) : (
+            <HumanXMarkIcon width={80} height={80} />
+          )}
+        </View>
+        <View style={styles.modalTextWrapper}>
+          <Text style={styles.modalTitle}>{isCorrect ? '정답이에요!' : '오답이에요!'}</Text>
+          <Text style={styles.modalDesc}>
+            {quiz?.explanation || '해설 데이터가 없습니다'}
+          </Text>
+        </View>
+        <View style={styles.modalBtnWrapper}>
+          <TouchableOpacity
+            style={styles.modalBtn}
+            activeOpacity={0.8}
+            onPress={handleNextQuiz}
+          >
+            <Text style={styles.modalBtnText}>다음 퀴즈 풀기</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomModal>
     </>
   );
 }
@@ -193,20 +158,7 @@ export default function OXQuizScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F2F4F7', // background/fill/elevated
-  },
-  navBar: {
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    justifyContent: 'space-between',
-  },
-  backBtn: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.background.base,
   },
   content: {
     flex: 1,
@@ -215,51 +167,20 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   quizCard: {
-    backgroundColor: '#FFFFFF', // white
-    borderRadius: radius.lg, // 16px
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
     paddingBottom: 16,
   },
   cardHeader: {
     padding: 16,
   },
   cardTitle: {
-    fontSize: fontSize.xl, // 20px
+    fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
-    color: 'rgba(13, 28, 45, 0.8)',
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  progressItemInactiveContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressItemActiveContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(101, 97, 255, 0.2)', // Light primary bg shell
-  },
-  progressItemInner: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressLine: {
-    flex: 1,
-    height: 2,
-    marginHorizontal: 8,
+    color: colors.text.primary,
   },
   questionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
     paddingTop: 16,
     paddingBottom: 24,
@@ -269,15 +190,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   tagBadge: {
-    backgroundColor: 'rgba(101, 97, 255, 0.2)', // Light primary
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: radius.sm, // 8px
+    borderRadius: radius.sm,
     alignSelf: 'flex-start',
   },
   tagText: {
     color: colors.primary,
-    fontSize: 12, 
+    fontSize: 12,
     fontWeight: '600',
     lineHeight: 18,
   },
@@ -298,7 +219,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: fontWeight.bold,
-    color: 'rgba(13, 28, 45, 0.8)',
+    color: colors.text.primary,
     paddingRight: 16,
     lineHeight: 28,
   },
@@ -316,58 +237,32 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   ctaWrapper: {
-    backgroundColor: '#FFFFFF', // white
+    backgroundColor: colors.background.elevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 10,
   },
   ctaButton: {
-    borderRadius: radius.md, // 12px
+    borderRadius: radius.md,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaButtonText: {
-    fontSize: fontSize.lg, // 18px
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(13, 28, 45, 0.6)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    padding: 16,
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    width: '100%',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  modalHandleWrapper: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  modalHandle: {
-    width: 80,
-    height: 5,
-    backgroundColor: 'rgba(13, 28, 45, 0.08)',
-    borderRadius: 10,
+    color: colors.white,
   },
   modalImageWrapper: {
     height: 152,
-    backgroundColor: '#F2F4F7', 
+    backgroundColor: colors.background.base,
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 20,
@@ -377,18 +272,18 @@ const styles = StyleSheet.create({
   modalTextWrapper: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 32, // More spacing before the button 
-    gap: 12, // Increased gap slightly
+    paddingBottom: 32,
+    gap: 12,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: fontWeight.bold,
-    color: 'rgba(13, 28, 45, 0.8)',
+    color: colors.text.primary,
   },
   modalDesc: {
     fontSize: 16,
-    fontWeight: fontWeight.semibold, // Figma 6413-29693 SemiBold
-    color: 'rgba(13, 28, 45, 0.8)',
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
     lineHeight: 25.6,
   },
   modalBtnWrapper: {
@@ -403,8 +298,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 18,
-    fontWeight: fontWeight.bold, // Figma 6413-29693 Bold
+    fontWeight: fontWeight.bold,
   },
 });

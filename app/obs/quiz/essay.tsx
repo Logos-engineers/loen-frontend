@@ -3,13 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
+import { OBSHeader } from '@/components/obs/obs-header';
 import { QuizProgress } from '@/components/obs/quiz-progress';
 import { completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
-
-const BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9395 3.93934C12.5252 3.35355 13.4748 3.35355 14.0606 3.93934C14.6463 4.52513 14.6463 5.47465 14.0606 6.06043L8.1211 11.9999L14.0606 17.9393C14.6463 18.5251 14.6463 19.4746 14.0606 20.0604C13.4748 20.6462 12.5252 20.6462 11.9395 20.0604L4.93946 13.0604C4.35368 12.4746 4.35368 11.5251 4.93946 10.9393L11.9395 3.93934Z" fill="#0D1C2D" fill-opacity="0.8"/></svg>`;
 
 export default function ObsQ3Screen() {
   const [revealed, setRevealed] = useState(false);
@@ -44,7 +42,7 @@ export default function ObsQ3Screen() {
           setFetchedAnswer(essay.correctAnswer ?? '');
         }
       })
-      .catch(() => {})
+      .catch(() => console.warn('[Essay] fetchObsQuizzes 실패'))
       .finally(() => setIsLoading(false));
   }, [contentId]);
 
@@ -53,7 +51,7 @@ export default function ObsQ3Screen() {
 
   const handleNext = async () => {
     if (!isPreview && reviewId > 0) {
-      try { await completeObsReview(reviewId); } catch { /* ignore */ }
+      try { await completeObsReview(reviewId); } catch { console.warn('[Essay] completeObsReview 실패'); }
     }
     router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
   };
@@ -62,11 +60,7 @@ export default function ObsQ3Screen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
-            <SvgXml xml={BACK_SVG} width={24} height={24} />
-          </TouchableOpacity>
-        </View>
+        <OBSHeader />
 
         <ScrollView
           style={styles.scroll}
@@ -157,18 +151,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background.base,
-  },
-  navBar: {
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  backBtn: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   scroll: {
     flex: 1,

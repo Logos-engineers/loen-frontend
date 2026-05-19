@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient, BASE_URL } from '@/utils/apiClient';
 import { useAuthStore } from '@/store/auth-store';
+import type { BaseObsContent } from '@/types/obs';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type AdminObsContent = {
-  id: number;
-  title: string;
-  biblePassage: string;
-  publishedDate: string;
-  weekLabel?: string;
+export type AdminObsContent = BaseObsContent & {
   isPublished: boolean;
 };
 
