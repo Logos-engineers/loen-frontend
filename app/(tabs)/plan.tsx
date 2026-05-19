@@ -10,6 +10,7 @@ import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constan
 import { useBiblePlan } from '@/hooks/useBiblePlan';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -79,8 +80,9 @@ export default function PlanScreen() {
           style={styles.headerBack}
           activeOpacity={0.7}
           onPress={() => { if (router.canGoBack()) router.back(); }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.headerBackText}>{'<'}</Text>
+          <Ionicons name="chevron-back" size={24} color="rgba(13,28,45,0.3)" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>성경 통독표</Text>
         <View style={styles.headerBack} />
@@ -213,24 +215,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,        // 일회성 세부조정값 — 미세 간격
+    height: 48,
     backgroundColor: colors.background.base,
   },
   headerBack: {
-    width: 32,                  // 일회성: 터치 영역 고정 너비
-    alignItems: 'center',
+    width: 32,
+    height: 32,
+    alignItems: 'flex-start',
     justifyContent: 'center',
-  },
-  headerBackText: {
-    fontSize: fontSize.lg,      // 20px — 뒤로가기 화살표
-    fontWeight: fontWeight.semibold,
-    color: colors.text.primary,
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
     fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.semibold,
     color: colors.text.primary,
   },
 

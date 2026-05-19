@@ -18,12 +18,15 @@ import { VerseList, VerseListHandle, VerseListItem } from '@/components/bible/Ve
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { getBibleBook } from '@/constants/bibleLoader';
 import { colors } from '@/constants/tokens';
+import { StatusBar } from 'expo-status-bar';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -48,6 +51,9 @@ export default function BibleReadScreen() {
 
   // ── modals ──────────────────────────────────────────────────────────────
   const [showBookModal, setShowBookModal] = useState(false);
+
+  // ── scroll state ────────────────────────────────────────────────────────
+  const [isAtBottom, setIsAtBottom] = useState(false);
 
   // ── bible plan sync ─────────────────────────────────────────────────────
   const { planData, toggleChapter } = useBiblePlan();
@@ -137,13 +143,27 @@ export default function BibleReadScreen() {
 
   // ── read-check ────────────────────────────────────────────────────────────
   const handleReadCheck = useCallback(async () => {
-    if (!isChapterRead) {
+    if (isChapterRead) {
+      // 이미 읽은 상태일 때 -> 읽음 해제만 수행, 다음 장으로 이동 금지
       await toggleChapter(bookCode, chapterNum);
+      return;
     }
+    
+    // 아직 읽지 않은 상태일 때 -> 읽음 처리 후 다음 장으로 이동
+    await toggleChapter(bookCode, chapterNum);
     if (chapterNum < totalChapters) {
       goToChapter(bookCode, chapterNum + 1);
     }
   }, [bookCode, chapterNum, goToChapter, isChapterRead, toggleChapter, totalChapters]);
+
+  // ── scroll ───────────────────────────────────────────────────────────────
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+    if (contentSize.height === 0) return;
+    
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 100;
+    setIsAtBottom(isCloseToBottom);
+  }, []);
 
   // ── search ───────────────────────────────────────────────────────────────
   const handleSearchPress = useCallback(() => {
@@ -160,6 +180,7 @@ export default function BibleReadScreen() {
 
   return (
     <View style={styles.root}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent />
       <BibleHeader
         bookName={bookMeta?.korName ?? bookCode}
         chapterNum={chapterNum}
@@ -172,32 +193,20 @@ export default function BibleReadScreen() {
           ref={listRef}
           items={verseListItems}
           highlightVerseNum={highlightVerseNum}
-          listFooter={
-            <View style={styles.endLine}>
-              <TouchableOpacity
-                onPress={handleReadCheck}
-                activeOpacity={0.85}
-                style={[
-                  styles.readCheckBtn,
-                  isChapterRead && styles.readCheckBtnActive,
-                ]}
-              >
-                <Text style={[styles.readCheckText, isChapterRead && styles.readCheckTextActive]}>
-                  {isChapterRead ? '이미 읽은 장이에요' : '읽음 표시하고 다음장으로'}
-                </Text>
-                <CheckCircleIcon width={16} height={16} />
-              </TouchableOpacity>
-            </View>
-          }
+          onScroll={handleScroll}
+          listFooter={<View style={styles.endLine} />}
         />
       </View>
 
-      {/* Floating prev/next arrows */}
+      {/* Floating prev/next arrows & read check button */}
       <ChapterNav
         onPrev={handlePrev}
         onNext={handleNext}
         hasPrev={chapterNum > 1}
         hasNext={chapterNum < totalChapters}
+        isChapterRead={isChapterRead}
+        onReadCheck={handleReadCheck}
+        showReadCheck={isAtBottom}
       />
 
       {/* Book / Chapter select modal */}
@@ -231,34 +240,7 @@ const styles = StyleSheet.create({
   },
   // ── end line (read-check) ──
   endLine: {
-    alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 16,
-  },
-  readCheckBtn: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderWidth: 1,
-    borderColor: 'rgba(101,97,255,0.6)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 6,
-  },
-  readCheckBtnActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: 'transparent',
-  },
-  readCheckText: {
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: 16,
-    lineHeight: 26,
-    color: colors.primary,
-  },
-  readCheckTextActive: {
-    color: colors.primary,
+    paddingBottom: 80, // 하단 플로팅 버튼 여백 추가
   },
 });

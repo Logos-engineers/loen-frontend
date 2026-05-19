@@ -4,7 +4,7 @@
  * Figma: section header pt 16 pb 8 px 16, Bold 16px, rgba(13,28,45,0.5)
  */
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/tokens';
 import { VerseItem } from './VerseItem';
@@ -17,6 +17,7 @@ type VerseListProps = {
   items: VerseListItem[];
   highlightVerseNum: number | null;
   listFooter?: React.ReactNode;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
 export type VerseListHandle = {
@@ -24,7 +25,7 @@ export type VerseListHandle = {
 };
 
 const VerseList = forwardRef<VerseListHandle, VerseListProps>(
-  ({ items, highlightVerseNum, listFooter }, ref) => {
+  ({ items, highlightVerseNum, listFooter, onScroll }, ref) => {
     const listRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
     const paddingTop = insets.top + 68;
@@ -70,6 +71,8 @@ const VerseList = forwardRef<VerseListHandle, VerseListProps>(
           // Graceful fallback: scroll to end
           listRef.current?.scrollToEnd({ animated: true });
         }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         ListFooterComponent={listFooter ? () => <>{listFooter}</> : undefined}
       />
