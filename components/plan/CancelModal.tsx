@@ -19,26 +19,25 @@ export default function CancelModal({ visible, onKeepEditing, onLeave }: Props) 
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.overlay}>
         <View style={styles.dialog}>
-          <Text style={styles.title}>변경사항이 있어요</Text>
           <Text style={styles.body}>
-            저장하지 않고 나가면{'\n'}변경한 내용이 사라져요.
+            지금까지 입력한 내용이 저장되지 않습니다. 그래도{'\n'}나가시겠어요?
           </Text>
 
           <View style={styles.btnRow}>
             <TouchableOpacity
               style={[styles.btn, styles.btnSecondary]}
               activeOpacity={0.7}
-              onPress={onLeave}
+              onPress={onKeepEditing}
             >
-              <Text style={[styles.btnText, styles.btnTextSecondary]}>나가기</Text>
+              <Text style={[styles.btnText, styles.btnTextSecondary]}>계속 작성하기</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.btn, styles.btnPrimary]}
               activeOpacity={0.85}
-              onPress={onKeepEditing}
+              onPress={onLeave}
             >
-              <Text style={[styles.btnText, styles.btnTextPrimary]}>계속 편집</Text>
+              <Text style={[styles.btnText, styles.btnTextPrimary]}>나가기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -62,11 +61,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   title: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
+    display: 'none', // 제거됨
   },
   body: {
     fontSize: fontSize.sm,
@@ -74,7 +69,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    marginTop: spacing.md,
   },
   btnRow: {
     flexDirection: 'row',
@@ -88,19 +84,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnSecondary: {
-    backgroundColor: colors.background.base,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: '#EBE9FF', // 연보라색
   },
   btnPrimary: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary, // 진한 보라색
   },
   btnText: {
     fontSize: fontSize.base,
     fontWeight: fontWeight.bold,
   },
   btnTextSecondary: {
-    color: colors.text.secondary,
+    color: colors.primary, // 연보라색 위 진보라 텍스트
   },
   btnTextPrimary: {
     color: colors.white,

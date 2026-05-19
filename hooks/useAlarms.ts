@@ -60,8 +60,8 @@ export function useAlarms() {
    * @returns 등록된 notification identifier 목록
    */
   const scheduleAlarm = useCallback(
-    async (alarm: Omit<AlarmItem, 'notifIds'>): Promise<string[]> => {
-      const notifIds: string[] = [];
+    async (alarm: Omit<AlarmItem, 'notificationIds'>): Promise<string[]> => {
+      const notificationIds: string[] = [];
 
       for (const day of alarm.days) {
         // 우리 앱 day(0=일) → WEEKLY weekday(1=일)
@@ -83,21 +83,21 @@ export function useAlarms() {
               minute: alarm.minute,
             },
           });
-          notifIds.push(id);
+          notificationIds.push(id);
         } catch (e) {
           console.warn(`[useAlarms] scheduleAlarm 실패 — day:${day} weekday:${weekday}`, e);
         }
       }
 
-      return notifIds;
+      return notificationIds;
     },
     []
   );
 
   // ── 알람 취소 ─────────────────────────────────────────────────────
-  const cancelAlarm = useCallback(async (notifIds: string[]): Promise<void> => {
+  const cancelAlarm = useCallback(async (notificationIds: string[]): Promise<void> => {
     await Promise.all(
-      notifIds.map(id =>
+      notificationIds.map(id =>
         Notifications.cancelScheduledNotificationAsync(id).catch((e: unknown) =>
           console.warn('[useAlarms] cancelAlarm 실패', id, e)
         )

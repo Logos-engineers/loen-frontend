@@ -7,6 +7,7 @@
  */
 
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -14,9 +15,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BigTargetIcon } from '@/components/plan/PlanIcons';
 
 export default function GoalSuccessScreen() {
-  const handleDone = () => {
-    // 확인 후 plan 탭으로 이동 (또는 성경 읽기 뷰로 이동)
-    router.replace('/(tabs)/plan');
+  const handleDone = async () => {
+    try {
+      const posStr = await AsyncStorage.getItem('LOEN_BIBLE_POSITION_v1');
+      if (posStr) {
+        const pos = JSON.parse(posStr);
+        if (pos && pos.bookCode && pos.chapterNum) {
+          router.replace({
+            pathname: '/bible/read',
+            params: { book: pos.bookCode, chapter: String(pos.chapterNum) }
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('최근 읽은 성경 정보를 불러오지 못했습니다:', e);
+    }
+    // 기록이 없을 때 fallback
+    router.replace({
+      pathname: '/bible/read',
+      params: { book: 'GEN', chapter: '1' }
+    });
   };
 
   const handleLater = () => {
@@ -29,8 +48,7 @@ export default function GoalSuccessScreen() {
 
         {/* 상단 텍스트 구조 */}
         <View style={s.textGroup}>
-          <Text style={s.weekTag}>7월 3째주</Text>
-          <Text style={s.title}>목표 설정 완료</Text>
+          <Text style={s.weekTag}>7월 3주차</Text>
           <Text style={s.desc}>창세기 21장 읽기에 도전해요!</Text>
         </View>
 
@@ -47,9 +65,8 @@ export default function GoalSuccessScreen() {
           <Text style={s.btnText}>성경 읽으러 가기</Text>
         </TouchableOpacity>
         
-        {/* FIX 6: "다음에 읽을게요" button MISSING */}
         <TouchableOpacity onPress={handleLater} activeOpacity={0.7} style={s.laterBtn}>
-          <Text style={s.laterText}>다음에 읽을게요</Text>
+          <Text style={s.laterText}>다음에 할게요</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -58,7 +75,7 @@ export default function GoalSuccessScreen() {
 
 // FIX 6: Goal Success Screen Formatting
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: '#F8F8FD' },
   content: {
     flex: 1,
     alignItems: 'center',
@@ -71,27 +88,15 @@ const s = StyleSheet.create({
     marginBottom: 48,
   },
   weekTag: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#6554FF',
-    backgroundColor: '#F0EFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 100,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1B1E26',
-    marginBottom: 12,
-    textAlign: 'center',
+    marginBottom: 20,
   },
   desc: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    color: '#8B95A1',
+    color: '#333333',
     textAlign: 'center',
   },
 
@@ -123,13 +128,15 @@ const s = StyleSheet.create({
     color: '#FFFFFF',
   },
   laterBtn: {
-    height: 56,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   laterText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
-    color: '#8B95A1',
+    color: '#6554FF',
+    textDecorationLine: 'underline',
   },
 });
