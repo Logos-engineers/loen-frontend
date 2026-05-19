@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,18 +42,42 @@ export default function ObsAdminReviewScreen() {
 
   const [title, setTitle] = useState(params.title ?? '');
   const [verse, setVerse] = useState(params.verse ?? '');
-  const [publishedDate, setPublishedDate] = useState(params.publishedDate ?? '');
   const [quizzes, setQuizzes] = useState<ObsAdminQuiz[]>(parsed?.quizzes ?? []);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showIosPicker, setShowIosPicker] = useState(false);
+
+  const parseInitialDate = (s?: string): Date => {
+    if (!s) return new Date();
+    const normalized = s.replace(/\./g, '-').replace(/\//g, '-');
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+  const [selectedDate, setSelectedDate] = useState<Date>(parseInitialDate(params.publishedDate));
+
+  const formatDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const openDatePicker = () => {
+    if (Platform.OS === 'android') {
+      const { DateTimePickerAndroid } = require('@react-native-community/datetimepicker');
+      DateTimePickerAndroid.open({
+        value: selectedDate,
+        mode: 'date',
+        onChange: (_: any, date?: Date) => { if (date) setSelectedDate(date); },
+      });
+    } else {
+      setShowIosPicker(true);
+    }
+  };
 
   const updateQuiz = (index: number, field: keyof ObsAdminQuiz, value: string) => {
     setQuizzes((prev) => prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)));
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !verse.trim() || !publishedDate.trim()) {
-      Alert.alert('입력 오류', '제목, 말씀, 발행일을 모두 입력해주세요.');
+    if (!title.trim() || !verse.trim()) {
+      Alert.alert('입력 오류', '제목과 말씀을 모두 입력해주세요.');
       return;
     }
     setIsSaving(true);
@@ -58,7 +85,7 @@ export default function ObsAdminReviewScreen() {
       await saveObsContent({
         title,
         biblePassage: verse,
-        publishedDate,
+        publishedDate: formatDate(selectedDate),
         sections: parsed?.sections ?? [],
         summary: parsed?.summary ?? [],
         quizzes,
@@ -101,9 +128,13 @@ export default function ObsAdminReviewScreen() {
       Alert.alert('입력 오류', '미리보기 전 제목과 말씀을 입력해주세요.');
       return;
     }
+    if (!existingId) {
+      Alert.alert('안내', '저장 후 미리보기를 이용해주세요.');
+      return;
+    }
     router.push({
       pathname: '/obs/intro',
-      params: { title, verse, preview: 'true' },
+      params: { contentId: String(existingId), title, verse, preview: 'true' },
     });
   };
 
@@ -150,14 +181,31 @@ export default function ObsAdminReviewScreen() {
 
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>발행일</Text>
-              <TextInput
-                style={styles.input}
-                value={publishedDate}
-                onChangeText={setPublishedDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.text.secondary}
-              />
+              <TouchableOpacity style={styles.dateInput} onPress={openDatePicker} activeOpacity={0.7}>
+                <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+                <Text style={styles.dateIcon}>📅</Text>
+              </TouchableOpacity>
             </View>
+
+            {/* iOS date picker modal */}
+            {Platform.OS === 'ios' && (
+              <Modal transparent animationType="slide" visible={showIosPicker}>
+                <View style={styles.iosPickerOverlay}>
+                  <View style={styles.iosPickerContainer}>
+                    <TouchableOpacity style={styles.iosPickerDone} onPress={() => setShowIosPicker(false)}>
+                      <Text style={styles.iosPickerDoneText}>완료</Text>
+                    </TouchableOpacity>
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(_, date) => { if (date) setSelectedDate(date); }}
+                      locale="ko-KR"
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
           </View>
 
           {/* 퀴즈 편집 */}
@@ -278,6 +326,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.base,
   },
   inputMulti: { minHeight: 80, textAlignVertical: 'top', paddingTop: 10 },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.background.base,
+  },
+  dateText: { fontSize: fontSize.base, color: colors.text.primary },
+  dateIcon: { fontSize: 18 },
+  iosPickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  iosPickerContainer: {
+    backgroundColor: colors.background.elevated,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+  },
+  iosPickerDone: { alignItems: 'flex-end', paddingHorizontal: 20, paddingVertical: 12 },
+  iosPickerDoneText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.primary },
   quizCard: {
     borderWidth: 1,
     borderColor: colors.border,

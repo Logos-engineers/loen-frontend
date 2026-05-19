@@ -1,7 +1,7 @@
 import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
@@ -20,9 +20,10 @@ import WhiteXMarkIcon from '@/assets/icons/whiteX mark.svg';
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
 export default function OXQuizScreen() {
-  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string }>();
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string }>();
   const contentId = params.contentId ? Number(params.contentId) : null;
   const reviewId = params.reviewId ?? '0';
+  const isPreview = params.preview === 'true';
 
   const [quiz, setQuiz] = useState<ObsQuiz | null>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(!!contentId);
@@ -49,13 +50,13 @@ export default function OXQuizScreen() {
 
   const handleNextQuiz = () => {
     setIsModalVisible(false);
-    router.push({ pathname: '/review/multiple', params: { contentId: String(contentId ?? ''), reviewId } });
+    router.push({ pathname: '/review/multiple', params: { contentId: String(contentId ?? ''), reviewId, ...(isPreview ? { preview: 'true' } : {}) } });
   };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         
         {/* Navigation Bar */}
         <View style={styles.navBar}>
@@ -67,15 +68,10 @@ export default function OXQuizScreen() {
         {/* Content Area */}
         <View style={styles.content}>
           <View style={styles.quizCard}>
-            
-            {/* Header: Title */}
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>OBS</Text>
             </View>
-
-            {/* Progress Indicator */}
-          <QuizProgress currentStep={1} />
-            
+            <QuizProgress currentStep={1} />
           </View>
 
           {/* Question Area */}
@@ -88,49 +84,30 @@ export default function OXQuizScreen() {
             {isLoadingQuiz ? (
               <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
             ) : (
-            <View style={styles.questionRow}>
-              <Text style={styles.questionQ}>Q.</Text>
-              <Text style={styles.questionText}>
-                {quiz?.questionText ?? '퀴즈 데이터가 없습니다'}
-              </Text>
-            </View>
+              <View style={styles.questionRow}>
+                <Text style={styles.questionQ}>Q.</Text>
+                <Text style={styles.questionText}>
+                  {quiz?.questionText ?? '퀴즈 데이터가 없습니다'}
+                </Text>
+              </View>
             )}
-
             <View style={styles.optionsRow}>
-              {/* O Option */}
-              <TouchableOpacity 
-                style={[
-                  styles.optionBtn, 
-                  { backgroundColor: selectedAnswer === 'O' ? '#6561FF' : '#F2F4F7' }
-                ]}
+              <TouchableOpacity
+                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'O' ? '#6561FF' : '#F2F4F7' }]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedAnswer('O')}
               >
-                {selectedAnswer === 'O' ? (
-                  <WhiteOMarkIcon width={80} height={80} />
-                ) : (
-                  <OMarkIcon width={80} height={80} />
-                )}
+                {selectedAnswer === 'O' ? <WhiteOMarkIcon width={80} height={80} /> : <OMarkIcon width={80} height={80} />}
               </TouchableOpacity>
-              
-              {/* X Option */}
-              <TouchableOpacity 
-                style={[
-                  styles.optionBtn, 
-                  { backgroundColor: selectedAnswer === 'X' ? '#6561FF' : '#F2F4F7' }
-                ]}
+              <TouchableOpacity
+                style={[styles.optionBtn, { backgroundColor: selectedAnswer === 'X' ? '#6561FF' : '#F2F4F7' }]}
                 activeOpacity={0.8}
                 onPress={() => setSelectedAnswer('X')}
               >
-                {selectedAnswer === 'X' ? (
-                  <WhiteXMarkIcon width={80} height={80} />
-                ) : (
-                  <XMarkIcon width={80} height={80} />
-                )}
+                {selectedAnswer === 'X' ? <WhiteXMarkIcon width={80} height={80} /> : <XMarkIcon width={80} height={80} />}
               </TouchableOpacity>
             </View>
           </View>
-
         </View>
 
         {/* Bottom CTA Area */}
@@ -336,7 +313,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingTop: 16,
     paddingHorizontal: 16,
-    paddingBottom: 34, // approximate safe area bottom
+    paddingBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

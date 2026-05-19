@@ -85,8 +85,8 @@ export function useAdminObsContents() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await apiClient<AdminObsContent[]>('/admin/obs/contents');
-      setContents(data ?? []);
+      const data = await apiClient<{ contents: AdminObsContent[] } | AdminObsContent[]>('/admin/obs/contents');
+      setContents(Array.isArray(data) ? data : (data as any)?.contents ?? []);
     } catch (e: any) {
       setError(e?.message ?? '오류가 발생했습니다.');
     } finally {

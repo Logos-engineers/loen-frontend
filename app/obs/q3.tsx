@@ -51,13 +51,13 @@ export default function ObsQ3Screen() {
     if (!isPreview && reviewId > 0) {
       try { await completeObsReview(reviewId); } catch { /* ignore */ }
     }
-    router.replace('/obs/complete');
+    router.replace(isPreview ? '/obs/admin' : '/obs/complete');
   };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
             <SvgXml xml={BACK_SVG} width={24} height={24} />

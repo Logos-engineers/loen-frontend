@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { fetchObsContent } from '@/hooks/useObs';
 import {
   Image,
   Modal,
@@ -28,17 +29,33 @@ const EMOTIONS = [
 ];
 
 export default function ObsFinishScreen() {
-  const params = useLocalSearchParams<{ flow?: string }>();
+  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string }>();
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [goalText, setGoalText] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [applicationText, setApplicationText] = useState('');
   const isViewFlow = params.flow === 'view';
+  const isPreview = params.preview === 'true';
+  const contentId = params.contentId ? Number(params.contentId) : null;
 
   useEffect(() => {
     if (!isViewFlow) {
       router.replace('/obs/complete');
     }
   }, [isViewFlow]);
+
+  useEffect(() => {
+    if (!contentId) return;
+    fetchObsContent(contentId)
+      .then((data) => {
+        const appSection = data.sections.find((s) => s.type === 'application');
+        if (appSection?.type === 'application' && appSection.items.length > 0) {
+          const texts = appSection.items.map((item) => item.text).filter(Boolean).join('\n');
+          setApplicationText(texts);
+        }
+      })
+      .catch(() => {});
+  }, [contentId]);
 
   const toggleEmotion = (emotion: string) => {
     if (selectedEmotions.includes(emotion)) {
@@ -119,7 +136,7 @@ export default function ObsFinishScreen() {
               <View style={styles.divider} />
               <View style={styles.questionSection}>
                 <Text style={styles.questionText}>
-                  나에게는 품고 기도할 태신자가 있습니까? 아직 없다면 2025년 1년 동안 품고 기도할 태신자를 찾게 해달라고 함께 기도해 봅시다.
+                  {applicationText || '적용하기 데이터가 없습니다.'}
                 </Text>
               </View>
               <View style={styles.inputSection}>
@@ -152,13 +169,29 @@ export default function ObsFinishScreen() {
             >
               <Text style={styles.prevButtonText}>이전으로</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.ctaButton, styles.finishButton]}
-              activeOpacity={0.85}
-              onPress={() => setShowModal(true)}
-            >
-              <Text style={styles.finishButtonText}>OBS 완료하기</Text>
-            </TouchableOpacity>
+            {isPreview ? (
+              <TouchableOpacity
+                style={[styles.ctaButton, styles.finishButton]}
+                activeOpacity={0.85}
+                onPress={() => router.push({
+                  pathname: '/review/ox',
+                  params: {
+                    contentId: params.contentId,
+                    preview: 'true',
+                  },
+                })}
+              >
+                <Text style={styles.finishButtonText}>퀴즈 보기</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.ctaButton, styles.finishButton]}
+                activeOpacity={0.85}
+                onPress={() => setShowModal(true)}
+              >
+                <Text style={styles.finishButtonText}>OBS 완료하기</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -184,7 +217,7 @@ export default function ObsFinishScreen() {
                   activeOpacity={0.85}
                   onPress={() => {
                     setShowModal(false);
-                    router.replace('/obs/complete');
+                    router.replace(isPreview ? '/obs/admin' : '/obs/complete');
                   }}
                 >
                   <Text style={styles.modalBtnPrimaryText}>완료하기</Text>
