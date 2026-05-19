@@ -82,7 +82,7 @@ export default function ObsFinishScreen() {
           setGoalText(data.applicationAnswer);
         }
       })
-      .catch(() => {});
+      .catch(() => console.warn('[Finish] fetchObsContent 실패'));
   }, [contentId]);
 
   const toggleEmotion = (emotion: string) => {
@@ -252,7 +252,7 @@ export default function ObsFinishScreen() {
                         if (tags.length > 0) await saveObsEmotions(reviewId, tags);
                         if (goalText.trim()) await saveObsApplication(reviewId, goalText.trim());
                         await completeObsReview(reviewId);
-                      } catch { /* 저장 실패 시 흐름 유지 */ } finally {
+                      } catch { console.warn('[Finish] 리뷰 저장 실패'); } finally {
                         setIsSaving(false);
                       }
                     }

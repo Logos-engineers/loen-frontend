@@ -15,14 +15,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SvgXml } from 'react-native-svg';
-
+import { OBSHeader } from '@/components/obs/obs-header';
 import { getBibleBook } from '@/constants/bibleLoader';
 import { colors, fontWeight } from '@/constants/tokens';
 import { fetchObsContent, saveObsSummaryAnswers, startObsReview } from '@/hooks/useObs';
 import type { ObsTreeNode } from '@/utils/obs-normalize';
-
-const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
 const KOR_TO_CODE: Record<string, string> = {
   창세기: 'GEN', 창: 'GEN',
@@ -458,11 +455,7 @@ export default function ObsSummaryScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
-            <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
-          </TouchableOpacity>
-        </View>
+        <OBSHeader />
 
         {isLoading ? (
           <View style={styles.centerState}>
@@ -555,18 +548,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background.base,
-  },
-  navBar: {
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  backBtn: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centerState: {
     flex: 1,

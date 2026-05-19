@@ -8,9 +8,9 @@
  */
 import { ObsCard } from '@/components/obs/obs-card';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { formatKoreanDate, formatWeekLabel, useObsContents } from '@/hooks/useObs';
+import { formatKoreanDate, formatWeekLabel, useObsContents, type ObsContent } from '@/hooks/useObs';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -209,6 +209,30 @@ export default function ObsScreen() {
 
   const clearDate = () => setSelectedDate(null);
 
+  const renderItem = useCallback(({ item }: { item: ObsContent }) => (
+    <ObsCard
+      item={item}
+      onPressView={() => router.push({
+        pathname: '/obs/content/intro',
+        params: {
+          contentId: String(item.id),
+          title: item.title,
+          verse: item.biblePassage,
+          weekLabel: formatWeekLabel(item.publishedDate),
+        },
+      })}
+      onPressReview={() => router.push({
+        pathname: '/obs/quiz/intro',
+        params: {
+          contentId: String(item.id),
+          title: item.title,
+          verse: item.biblePassage,
+          date: formatKoreanDate(item.publishedDate),
+        },
+      })}
+    />
+  ), [router]);
+
   return (
     // 최상단부터 시작 — SafeAreaView로 복구하여 상태바(9:41, 배터리) 아래로 내림
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -233,29 +257,7 @@ export default function ObsScreen() {
       <FlatList
         data={filteredList}
         keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => (
-          <ObsCard
-            item={item}
-            onPressView={() => router.push({
-              pathname: '/obs/content/intro',
-              params: {
-                contentId: String(item.id),
-                title: item.title,
-                verse: item.biblePassage,
-                weekLabel: formatWeekLabel(item.publishedDate),
-              },
-            })}
-            onPressReview={() => router.push({
-              pathname: '/obs/quiz/intro',
-              params: {
-                contentId: String(item.id),
-                title: item.title,
-                verse: item.biblePassage,
-                date: formatKoreanDate(item.publishedDate),
-              },
-            })}
-          />
-        )}
+        renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={

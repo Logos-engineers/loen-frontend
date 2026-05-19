@@ -50,6 +50,9 @@ export const colors = {
     yellow: '#F1C100',
   },
 
+  correct: '#1687F4',
+  incorrect: '#FF5358',
+
   // ─── 모달 / 오버레이 딤 처리 ────────────────────────────────────
   overlay: {
     default: 'rgba(13,28,45,0.55)',      // 다이얼로그 반투명 배경
