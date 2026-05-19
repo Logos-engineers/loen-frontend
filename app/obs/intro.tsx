@@ -24,33 +24,32 @@ export default function ObsIntroScreen() {
     title?: string;
     verse?: string;
     weekLabel?: string;
+    preview?: string;
   }>();
   const [isStarting, setIsStarting] = useState(false);
+  const isPreview = params.preview === 'true';
 
   const handleStart = async () => {
     const contentId = Number(params.contentId);
+    const nextParams = {
+      contentId: String(contentId || 0),
+      title: params.title,
+      verse: params.verse,
+      ...(isPreview ? { preview: 'true' } : {}),
+    };
+
+    if (isPreview) {
+      router.push({ pathname: '/obs/scripture', params: nextParams });
+      return;
+    }
+
     if (!contentId) return;
     setIsStarting(true);
     try {
       const reviewId = await startObsReview(contentId);
-      router.push({
-        pathname: '/obs/scripture',
-        params: {
-          contentId: String(contentId),
-          reviewId: String(reviewId),
-          title: params.title,
-          verse: params.verse,
-        },
-      });
+      router.push({ pathname: '/obs/scripture', params: { ...nextParams, reviewId: String(reviewId) } });
     } catch {
-      router.push({
-        pathname: '/obs/scripture',
-        params: {
-          contentId: String(contentId),
-          title: params.title,
-          verse: params.verse,
-        },
-      });
+      router.push({ pathname: '/obs/scripture', params: nextParams });
     } finally {
       setIsStarting(false);
     }

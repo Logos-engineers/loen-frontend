@@ -1,13 +1,17 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { decodeJwtPayload } from '@/utils/jwtDecode';
 
 const KEYS = {
   ACCESS_TOKEN: 'loen_access_token',
   REFRESH_TOKEN: 'loen_refresh_token',
 } as const;
 
+export type UserRole = 'USER' | 'ADMIN';
+
 interface AuthState {
   accessToken: string | null;
+  role: UserRole | null;
   isLoggedIn: boolean;
   isNewUser: boolean;
   isInitialized: boolean;
@@ -22,14 +26,17 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
+  role: null,
   isLoggedIn: false,
   isNewUser: false,
   isInitialized: false,
 
   initialize: async () => {
     const accessToken = await SecureStore.getItemAsync(KEYS.ACCESS_TOKEN);
+    const role = accessToken ? (decodeJwtPayload(accessToken)?.role as UserRole ?? null) : null;
     set({
       accessToken,
+      role,
       isLoggedIn: !!accessToken,
       isInitialized: true,
     });
@@ -38,18 +45,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   setTokens: async ({ accessToken, refreshToken, isNewUser = false }) => {
     await SecureStore.setItemAsync(KEYS.ACCESS_TOKEN, accessToken);
     await SecureStore.setItemAsync(KEYS.REFRESH_TOKEN, refreshToken);
-    set({ accessToken, isLoggedIn: true, isNewUser });
+    const role = decodeJwtPayload(accessToken)?.role as UserRole ?? null;
+    set({ accessToken, role, isLoggedIn: true, isNewUser });
   },
 
   setAccessToken: (token: string) => {
     SecureStore.setItemAsync(KEYS.ACCESS_TOKEN, token);
-    set({ accessToken: token });
+    const role = decodeJwtPayload(token)?.role as UserRole ?? null;
+    set({ accessToken: token, role });
   },
 
   clearTokens: async () => {
     await SecureStore.deleteItemAsync(KEYS.ACCESS_TOKEN);
     await SecureStore.deleteItemAsync(KEYS.REFRESH_TOKEN);
-    set({ accessToken: null, isLoggedIn: false, isNewUser: false });
+    set({ accessToken: null, role: null, isLoggedIn: false, isNewUser: false });
   },
 
   getRefreshToken: () => SecureStore.getItemAsync(KEYS.REFRESH_TOKEN),

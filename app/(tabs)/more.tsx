@@ -1,4 +1,5 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useAuthStore } from '@/store/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -12,11 +13,20 @@ interface MenuItem {
   onPress: () => void;
 }
 
-const MENU_ITEMS: MenuItem[] = [
+const BASE_MENU_ITEMS: MenuItem[] = [
   { label: '공지사항', icon: 'notifications-outline', onPress: () => router.push('/notice') },
 ];
 
 export default function MoreScreen() {
+  const role = useAuthStore((s) => s.role);
+
+  const MENU_ITEMS: MenuItem[] = [
+    ...BASE_MENU_ITEMS,
+    ...(role === 'ADMIN'
+      ? [{ label: 'OBS 관리', icon: 'settings-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/obs/admin') }]
+      : []),
+  ];
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />

@@ -18,10 +18,12 @@ export default function ObsQ3Screen() {
     answer?: string;
     contentId?: string;
     reviewId?: string;
+    preview?: string;
   }>();
 
   const contentId = params.contentId ? Number(params.contentId) : null;
   const reviewId = params.reviewId ? Number(params.reviewId) : 0;
+  const isPreview = params.preview === 'true';
 
   const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
   const [fetchedAnswer, setFetchedAnswer] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export default function ObsQ3Screen() {
   const answer = fetchedAnswer ?? params.answer ?? '';
 
   const handleNext = async () => {
-    if (reviewId > 0) {
+    if (!isPreview && reviewId > 0) {
       try { await completeObsReview(reviewId); } catch { /* ignore */ }
     }
     router.push('/obs/finish');

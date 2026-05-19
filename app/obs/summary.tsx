@@ -116,7 +116,7 @@ function QuestionSection({ title, items, initiallyExpanded = true }: QuestionSec
 }
 
 export default function ObsSummaryScreen() {
-  const params = useLocalSearchParams<{ summary?: string }>();
+  const params = useLocalSearchParams<{ summary?: string; contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string }>();
   const questions: QuestionSectionProps[] = [];
 
   return (
@@ -162,7 +162,7 @@ export default function ObsSummaryScreen() {
           <TouchableOpacity style={[styles.ctaButton, styles.prevButton]} activeOpacity={0.85} onPress={() => router.back()}>
             <Text style={styles.prevButtonText}>이전으로</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.ctaButton, styles.nextButton]} activeOpacity={0.85} onPress={() => router.push('/obs/finish')}>
+          <TouchableOpacity style={[styles.ctaButton, styles.nextButton]} activeOpacity={0.85} onPress={() => router.push({ pathname: '/obs/finish', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}) } })}>
             <Text style={styles.nextButtonText}>다음으로</Text>
           </TouchableOpacity>
         </View>
