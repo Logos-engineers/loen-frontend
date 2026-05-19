@@ -13,7 +13,7 @@ function getBaseUrl() {
   return Platform.OS === 'android' ? 'http://10.0.2.2:8080/api/v1' : 'http://localhost:8080/api/v1';
 }
 
-const BASE_URL = getBaseUrl();
+export const BASE_URL = getBaseUrl();
 
 export interface ApiResponse<T> {
   status: number;

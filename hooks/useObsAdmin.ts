@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiClient } from '@/utils/apiClient';
+import { apiClient, BASE_URL } from '@/utils/apiClient';
 import { useAuthStore } from '@/store/auth-store';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ export async function uploadObsPdf(file: { uri: string; name: string; mimeType: 
   const formData = new FormData();
   formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as any);
 
-  const res = await fetch(`${getAdminBaseUrl()}/upload`, {
+  const res = await fetch(`${BASE_URL}/admin/obs/upload`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
@@ -99,15 +99,3 @@ export function useAdminObsContents() {
   return { contents, isLoading, error, refetch: fetch };
 }
 
-function getAdminBaseUrl(): string {
-  // mirrors getBaseUrl() logic from apiClient but returns admin path
-  const { Platform } = require('react-native');
-  const Constants = require('expo-constants').default;
-  const expoPublicApiUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (expoPublicApiUrl) return `${expoPublicApiUrl}/admin/obs`;
-  const debuggerHost = Constants.expoConfig?.hostUri;
-  if (debuggerHost) return `http://${debuggerHost.split(':')[0]}:8080/api/v1/admin/obs`;
-  return Platform.OS === 'android'
-    ? 'http://10.0.2.2:8080/api/v1/admin/obs'
-    : 'http://localhost:8080/api/v1/admin/obs';
-}
