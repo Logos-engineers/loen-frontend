@@ -133,7 +133,7 @@ export default function ObsAdminReviewScreen() {
       return;
     }
     router.push({
-      pathname: '/obs/intro',
+      pathname: '/obs/content/intro',
       params: { contentId: String(existingId), title, verse, preview: 'true' },
     });
   };

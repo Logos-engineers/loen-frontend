@@ -92,7 +92,7 @@ export default function ObsScriptureScreen() {
           <TouchableOpacity
             style={styles.nextButton}
             activeOpacity={0.85}
-            onPress={() => router.push({ pathname: '/obs/summary', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}) } })}
+            onPress={() => router.push({ pathname: '/obs/content/summary', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}) } })}
           >
             <Text style={styles.nextButtonText}>다음으로</Text>
           </TouchableOpacity>

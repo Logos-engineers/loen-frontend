@@ -51,7 +51,7 @@ export default function ObsQ3Screen() {
     if (!isPreview && reviewId > 0) {
       try { await completeObsReview(reviewId); } catch { /* ignore */ }
     }
-    router.replace(isPreview ? '/obs/admin' : '/obs/complete');
+    router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
   };
 
   return (

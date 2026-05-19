@@ -40,7 +40,7 @@ export default function ObsFinishScreen() {
 
   useEffect(() => {
     if (!isViewFlow) {
-      router.replace('/obs/complete');
+      router.replace('/obs/content/complete');
     }
   }, [isViewFlow]);
 
@@ -174,7 +174,7 @@ export default function ObsFinishScreen() {
                 style={[styles.ctaButton, styles.finishButton]}
                 activeOpacity={0.85}
                 onPress={() => router.push({
-                  pathname: '/review/ox',
+                  pathname: '/obs/quiz/ox',
                   params: {
                     contentId: params.contentId,
                     preview: 'true',
@@ -217,7 +217,7 @@ export default function ObsFinishScreen() {
                   activeOpacity={0.85}
                   onPress={() => {
                     setShowModal(false);
-                    router.replace(isPreview ? '/obs/admin' : '/obs/complete');
+                    router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
                   }}
                 >
                   <Text style={styles.modalBtnPrimaryText}>완료하기</Text>

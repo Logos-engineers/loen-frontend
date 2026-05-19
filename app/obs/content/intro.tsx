@@ -35,7 +35,7 @@ export default function ObsIntroScreen() {
     };
 
     if (isPreview) {
-      router.push({ pathname: '/obs/scripture', params: nextParams });
+      router.push({ pathname: '/obs/content/scripture', params: nextParams });
       return;
     }
 
@@ -43,9 +43,9 @@ export default function ObsIntroScreen() {
     setIsStarting(true);
     try {
       const reviewId = await startObsReview(contentId);
-      router.push({ pathname: '/obs/scripture', params: { ...nextParams, reviewId: String(reviewId) } });
+      router.push({ pathname: '/obs/content/scripture', params: { ...nextParams, reviewId: String(reviewId) } });
     } catch {
-      router.push({ pathname: '/obs/scripture', params: nextParams });
+      router.push({ pathname: '/obs/content/scripture', params: nextParams });
     } finally {
       setIsStarting(false);
     }

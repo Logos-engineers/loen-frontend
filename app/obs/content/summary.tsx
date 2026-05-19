@@ -442,7 +442,7 @@ export default function ObsSummaryScreen() {
     }
 
     router.push({
-      pathname: '/obs/finish',
+      pathname: '/obs/content/finish',
       params: {
         contentId: contentId ? String(contentId) : undefined,
         reviewId: reviewId ? String(reviewId) : undefined,

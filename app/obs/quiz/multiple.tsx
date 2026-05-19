@@ -60,7 +60,7 @@ export default function MultipleChoiceQuizScreen() {
   const handleNextQuiz = () => {
     setModalType('none');
     router.push({
-      pathname: '/obs/q3',
+      pathname: '/obs/quiz/essay',
       params: {
         contentId: String(contentId ?? ''),
         reviewId: String(reviewId),

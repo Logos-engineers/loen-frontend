@@ -237,7 +237,7 @@ export default function ObsScreen() {
           <ObsCard
             item={item}
             onPressView={() => router.push({
-              pathname: '/obs/intro',
+              pathname: '/obs/content/intro',
               params: {
                 contentId: String(item.id),
                 title: item.title,
@@ -246,7 +246,7 @@ export default function ObsScreen() {
               },
             })}
             onPressReview={() => router.push({
-              pathname: '/review/intro',
+              pathname: '/obs/quiz/intro',
               params: {
                 contentId: String(item.id),
                 title: item.title,

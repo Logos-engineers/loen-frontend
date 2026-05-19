@@ -50,7 +50,7 @@ export default function OXQuizScreen() {
 
   const handleNextQuiz = () => {
     setIsModalVisible(false);
-    router.push({ pathname: '/review/multiple', params: { contentId: String(contentId ?? ''), reviewId, ...(isPreview ? { preview: 'true' } : {}) } });
+    router.push({ pathname: '/obs/quiz/multiple', params: { contentId: String(contentId ?? ''), reviewId, ...(isPreview ? { preview: 'true' } : {}) } });
   };
 
   return (
