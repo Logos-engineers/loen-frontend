@@ -1,11 +1,12 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
+import { QuizProgress } from '@/components/obs/quiz-progress';
 import { completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
 
 const BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9395 3.93934C12.5252 3.35355 13.4748 3.35355 14.0606 3.93934C14.6463 4.52513 14.6463 5.47465 14.0606 6.06043L8.1211 11.9999L14.0606 17.9393C14.6463 18.5251 14.6463 19.4746 14.0606 20.0604C13.4748 20.6462 12.5252 20.6462 11.9395 20.0604L4.93946 13.0604C4.35368 12.4746 4.35368 11.5251 4.93946 10.9393L11.9395 3.93934Z" fill="#0D1C2D" fill-opacity="0.8"/></svg>`;
@@ -50,7 +51,7 @@ export default function ObsQ3Screen() {
     if (!isPreview && reviewId > 0) {
       try { await completeObsReview(reviewId); } catch { /* ignore */ }
     }
-    router.push('/obs/finish');
+    router.replace('/obs/complete');
   };
 
   return (
@@ -74,13 +75,7 @@ export default function ObsQ3Screen() {
               <View style={styles.cardTitleRow}>
                 <Text style={styles.obsTitle}>{params.title ?? 'OBS'}</Text>
               </View>
-              <View style={styles.progressRow}>
-                <Image
-                  source={require('@/assets/icons/obs/obs_quiz_progress.png')}
-                  style={styles.progressImage}
-                  resizeMode="contain"
-                />
-              </View>
+              <QuizProgress currentStep={3} />
             </View>
           </View>
 

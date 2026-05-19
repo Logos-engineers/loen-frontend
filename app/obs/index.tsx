@@ -6,9 +6,10 @@
  * - 달력 아이콘 → DateTimePicker
  * - 배경: #F2F4F7 (background/fill/elevated)
  */
+import { ObsCard } from '@/components/obs/obs-card';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { ObsContent, formatKoreanDate, useObsContents } from '@/hooks/useObs';
-import { router, useRouter } from 'expo-router';
+import { formatKoreanDate, useObsContents } from '@/hooks/useObs';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -64,63 +65,6 @@ function isChoseongOnly(str: string): boolean {
 }
 
 type FilterType = 'latest' | 'oldest' | 'scrap';
-
-// ─── OBS 카드 ──────────────────────────────────────────────────────────────────
-function ObsCard({ item, isLatest }: { item: ObsContent; isLatest: boolean }) {
-  const isDone = item.reviewStatus === 'DONE';
-  return (
-    <View style={styles.cardWrapper}>
-      <View style={styles.card}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.cardHeaderLeft}>
-            <Text style={styles.cardDate}>{formatKoreanDate(item.publishedDate)}</Text>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardVerse}>{item.biblePassage}</Text>
-          </View>
-          {isDone && (
-            <View style={styles.cardHeaderRight}>
-              <View style={styles.reviewTag}>
-                <Text style={styles.reviewTagText}>복습 완료</Text>
-              </View>
-            </View>
-          )}
-        </View>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.ctaButton, styles.obsViewButton]}
-            activeOpacity={0.8}
-            onPress={() => router.push({
-              pathname: '/obs/intro',
-              params: {
-                contentId: String(item.id),
-                title: item.title,
-                verse: item.biblePassage,
-                weekLabel: item.weekLabel,
-              },
-            })}
-          >
-            <Text style={styles.obsViewButtonText}>OBS 보기</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ctaButton, isLatest ? styles.btnSolid : styles.btnOutline]}
-            activeOpacity={0.8}
-            onPress={() => router.push({
-              pathname: '/review/intro',
-              params: {
-                contentId: String(item.id),
-                title: item.title,
-                verse: item.biblePassage,
-                date: formatKoreanDate(item.publishedDate),
-              },
-            })}
-          >
-            <Text style={isLatest ? styles.btnSolidText : styles.btnOutlineText}>복습하기</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 export default function ObsScreen() {
@@ -289,7 +233,29 @@ export default function ObsScreen() {
       <FlatList
         data={filteredList}
         keyExtractor={item => String(item.id)}
-        renderItem={({ item, index }) => <ObsCard item={item} isLatest={index === 0 && activeFilter !== 'oldest'} />}
+        renderItem={({ item }) => (
+          <ObsCard
+            item={item}
+            onPressView={() => router.push({
+              pathname: '/obs/intro',
+              params: {
+                contentId: String(item.id),
+                title: item.title,
+                verse: item.biblePassage,
+                weekLabel: item.weekLabel,
+              },
+            })}
+            onPressReview={() => router.push({
+              pathname: '/review/intro',
+              params: {
+                contentId: String(item.id),
+                title: item.title,
+                verse: item.biblePassage,
+                date: formatKoreanDate(item.publishedDate),
+              },
+            })}
+          />
+        )}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
@@ -515,109 +481,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 
-  // 카드
-  cardWrapper: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  cardHeaderLeft: {
-    flex: 1,
-    gap: 4,
-  },
-  cardHeaderRight: {
-    paddingLeft: 12,
-    alignItems: 'flex-start',
-  },
-  reviewTag: {
-    backgroundColor: 'rgba(13,28,45,0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reviewTagText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(13,28,45,0.8)',
-    lineHeight: 18,
-  },
-  cardDate: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: 'rgba(13,28,45,0.5)',
-    lineHeight: 21,
-  },
-  cardTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: 'rgba(13,28,45,0.8)',
-    lineHeight: 28,
-  },
-  cardVerse: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: 'rgba(13,28,45,0.5)',
-    lineHeight: 21,
-  },
-  buttonContainer: {
-    paddingTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  ctaButton: {
-    flex: 1,
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 0,
-  },
-  obsViewButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  obsViewButtonText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: colors.primary,
-  },
-  btnSolid: {
-    backgroundColor: colors.primary,
-  },
-  btnSolidText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: '#FAFAFA',
-  },
-  btnOutline: {
-    backgroundColor: 'rgba(101,97,255,0.2)',
-  },
-  btnOutlineText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: colors.primary,
-  },
 
   // 빈 화면
   emptyBox: {

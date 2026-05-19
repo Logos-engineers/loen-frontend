@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/utils/apiClient';
+import { normalizeObsSections, type ObsContentDetail } from '@/utils/obs-normalize';
 
 export type ObsContent = {
   id: number;
@@ -60,6 +61,14 @@ export async function fetchObsQuizzes(obsId: number): Promise<ObsQuiz[]> {
   return apiClient<ObsQuiz[]>(`/obs/contents/${obsId}/quizzes`);
 }
 
+export async function fetchObsContent(obsId: number): Promise<ObsContentDetail> {
+  const data = await apiClient<Omit<ObsContentDetail, 'sections'> & { sections?: unknown }>(`/obs/contents/${obsId}`);
+  return {
+    ...data,
+    sections: normalizeObsSections(data.sections),
+  };
+}
+
 export async function startObsReview(obsId: number): Promise<number> {
   const data = await apiClient<{ id?: number; reviewId?: number; obsContentId?: number; obsId?: number; status: string }>(
     `/obs/contents/${obsId}/reviews`,
@@ -70,6 +79,13 @@ export async function startObsReview(obsId: number): Promise<number> {
 
 export async function completeObsReview(reviewId: number): Promise<void> {
   await apiClient<null>(`/obs/reviews/${reviewId}/complete`, { method: 'PATCH' });
+}
+
+export async function saveObsSummaryAnswers(reviewId: number, answers: Record<string, string>): Promise<void> {
+  await apiClient<null>(`/obs/reviews/${reviewId}/summary-answers`, {
+    method: 'PATCH',
+    body: JSON.stringify({ answers }),
+  });
 }
 
 export function formatKoreanDate(dateStr: string): string {

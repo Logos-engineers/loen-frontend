@@ -7,6 +7,7 @@ import { SvgXml } from 'react-native-svg';
 
 // tokens
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
+import { QuizProgress } from '@/components/obs/quiz-progress';
 
 import OMarkIcon from '@/assets/icons/O mark.svg';
 import XMarkIcon from '@/assets/icons/X mark.svg';
@@ -15,15 +16,8 @@ import HumanXMarkIcon from '@/assets/icons/humanXmark.svg';
 import WhiteOMarkIcon from '@/assets/icons/whiteO mark.svg';
 import WhiteXMarkIcon from '@/assets/icons/whiteX mark.svg';
 
-const PROGRESS_RING_SVG = `<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="43.3333" height="43.3333" rx="21.6667" fill="#0D1C2D" fill-opacity="0.5"/><path d="M21.6667 12.9665C26.4644 12.9667 30.3677 16.8686 30.3669 21.6667C30.3658 26.4643 26.4636 30.3666 21.6667 30.3669C16.8704 30.3669 12.9675 26.4644 12.9665 21.6667C12.9665 16.8695 16.8695 12.9665 21.6667 12.9665ZM21.6667 15.3669C18.3022 15.3669 15.5437 18.0192 15.3747 21.3424L15.3669 21.6715C15.3706 25.1432 18.1963 27.9665 21.6667 27.9665C25.031 27.9663 27.789 25.3139 27.9587 21.9899L27.9665 21.6667L27.9587 21.3424C27.7895 18.0193 25.0318 15.3671 21.6667 15.3669Z" fill="white"/></svg>`;
-const PROGRESS_2_ACTIVE_SVG = `<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="43.3333" height="43.3333" rx="21.6667" fill="#6561FF"/><path d="M16.6102 29.9497V28.1441L22.2751 22.434C24.0581 20.5608 24.9609 19.5226 24.9609 18.1007C24.9609 16.4983 23.6518 15.4601 21.9366 15.4601C20.131 15.4601 18.9574 16.6111 18.9574 18.349H16.6102C16.5876 15.3698 18.8671 13.3837 21.9817 13.3837C25.1414 13.3837 27.3081 15.3698 27.3307 18.033C27.3081 19.8611 26.4504 21.3056 23.381 24.3299L20.0633 27.6927V27.8281H27.6015V29.9497H16.6102Z" fill="white"/></svg>`;
-const PROGRESS_3_INACTIVE_SVG = `<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="43.3333" height="43.3333" rx="21.6667" fill="#0D1C2D" fill-opacity="0.08"/><path d="M22.5006 30.0625C19.1152 30.0625 16.7003 28.2344 16.61 25.5712H19.1378C19.2281 27.0156 20.6499 27.9184 22.4781 27.9184C24.4416 27.9184 25.886 26.8351 25.886 25.2552C25.886 23.6528 24.5319 22.4792 22.2072 22.4792H20.8079V20.4479H22.2072C24.0579 20.4479 25.3669 19.4097 25.3669 17.8524C25.3669 16.3628 24.261 15.3472 22.5232 15.3472C20.8756 15.3472 19.4312 16.25 19.3635 17.7396H16.9711C17.0388 15.0764 19.4989 13.2708 22.5458 13.2708C25.7506 13.2708 27.7819 15.3021 27.7593 17.717C27.7819 19.5677 26.6308 20.9219 24.8704 21.3507V21.4635C27.1048 21.7795 28.3913 23.2691 28.3913 25.3455C28.3913 28.0764 25.886 30.0625 22.5006 30.0625Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
-
 // Navigation SVGs
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
-
-// Progress Indicator SVG Components
-const ID_LINE_INACTIVE = `<svg width="100%" height="2" preserveAspectRatio="none" viewBox="0 0 100 2" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 1H100" stroke="#0D1C2D" stroke-opacity="0.08" stroke-width="2"/></svg>`;
 
 export default function OXQuizScreen() {
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string }>();
@@ -58,32 +52,6 @@ export default function OXQuizScreen() {
     router.push({ pathname: '/review/multiple', params: { contentId: String(contentId ?? ''), reviewId } });
   };
 
-  // Calculate generic active progress item
-  const renderProgressIndicator = (step: number, isActive: boolean) => {
-    let xml = "";
-    if (step === 1) xml = PROGRESS_RING_SVG;
-    else if (step === 2) xml = PROGRESS_2_ACTIVE_SVG;
-    else xml = PROGRESS_3_INACTIVE_SVG;
-
-    if (isActive) {
-      return (
-        <View style={styles.progressItemActiveContainer}>
-          <View style={styles.progressItemInner}>
-            <SvgXml xml={xml} width={43.33} height={43.33} />
-          </View>
-        </View>
-      );
-    } else {
-      return (
-        <View style={styles.progressItemInactiveContainer}>
-          <View style={styles.progressItemInner}>
-             <SvgXml xml={xml} width={43.33} height={43.33} />
-          </View>
-        </View>
-      );
-    }
-  };
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -106,17 +74,7 @@ export default function OXQuizScreen() {
             </View>
 
             {/* Progress Indicator */}
-          <View style={styles.progressRow}>
-            {renderProgressIndicator(1, true)}
-            <View style={styles.progressLine}>
-              <SvgXml xml={ID_LINE_INACTIVE} width="100%" height={2} />
-            </View>
-            {renderProgressIndicator(2, false)}
-            <View style={styles.progressLine}>
-              <SvgXml xml={ID_LINE_INACTIVE} width="100%" height={2} />
-            </View>
-            {renderProgressIndicator(3, false)}
-          </View>
+          <QuizProgress currentStep={1} />
             
           </View>
 

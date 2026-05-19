@@ -1,6 +1,6 @@
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   Modal,
@@ -28,9 +28,17 @@ const EMOTIONS = [
 ];
 
 export default function ObsFinishScreen() {
+  const params = useLocalSearchParams<{ flow?: string }>();
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [goalText, setGoalText] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const isViewFlow = params.flow === 'view';
+
+  useEffect(() => {
+    if (!isViewFlow) {
+      router.replace('/obs/complete');
+    }
+  }, [isViewFlow]);
 
   const toggleEmotion = (emotion: string) => {
     if (selectedEmotions.includes(emotion)) {
@@ -39,6 +47,14 @@ export default function ObsFinishScreen() {
       setSelectedEmotions(prev => [...prev, emotion]);
     }
   };
+
+  if (!isViewFlow) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+      </>
+    );
+  }
 
   return (
     <>
