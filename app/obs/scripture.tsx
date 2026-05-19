@@ -15,42 +15,10 @@ import { colors, fontWeight } from '@/constants/tokens';
 
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
-const SCRIPTURE_REFERENCE = '히브리서 9:15-21';
-
-const SCRIPTURE_VERSES = [
-  {
-    number: 15,
-    text: '성막을 세운 날에 구름이 성막 곧 증거의 성막을 덮었고 저녁이 되면 성막 위에 불 모양 같은 것이 나타나서 아침까지 이르렀으되',
-  },
-  {
-    number: 16,
-    text: '항상 그러하여 낮에는 구름이 그것을 덮었고 밤이면 불 모양이 있었는데',
-  },
-  {
-    number: 17,
-    text: '구름이 성막에서 떠오르는 때에는 이스라엘 자손이 곧 행진하였고 구름이 머무는 곳에 이스라엘 자손이 진을 쳤으니',
-  },
-  {
-    number: 18,
-    text: '이스라엘 자손이 여호와의 명령을 따라 행진하였고 여호와의 명령을 따라 진을 쳤으며 구름이 성막 위에 머무는 동안에는 그들이 진영에 머물렀고',
-  },
-  {
-    number: 19,
-    text: '구름이 성막 위에 머무는 날이 오랠 때에는 이스라엘 자손이 여호와의 명령을 지켜 행진하지 아니하였으며',
-  },
-  {
-    number: 20,
-    text: '혹시 구름이 성막 위에 머무는 날이 적을 때에도 그들이 다만 여호와의 명령을 따라 진영에 머물고 여호와의 명령을 따라 행진하였으며',
-  },
-  {
-    number: 21,
-    text: '항상 그러하여 낮에는 구름이 그것을 덮었고 밤이면 불 모양이 있었는데',
-  },
-];
-
 export default function ObsScriptureScreen() {
   const params = useLocalSearchParams<{ verse?: string }>();
-  const reference = params.verse || SCRIPTURE_REFERENCE;
+  const reference = params.verse || '성경말씀 데이터가 없습니다';
+  const scriptureVerses: { number: number; text: string }[] = [];
 
   return (
     <>
@@ -81,7 +49,7 @@ export default function ObsScriptureScreen() {
 
           <View style={styles.bodyWrapper}>
             <View style={styles.bodyCard}>
-              {SCRIPTURE_VERSES.map(verse => (
+              {scriptureVerses.length > 0 ? scriptureVerses.map(verse => (
                 <View key={verse.number} style={styles.verseRow}>
                   <View style={styles.verseNumberWrapper}>
                     <View style={styles.verseNumberBox}>
@@ -92,7 +60,9 @@ export default function ObsScriptureScreen() {
                     <Text style={styles.verseText}>{verse.text}</Text>
                   </View>
                 </View>
-              ))}
+              )) : (
+                <Text style={styles.emptyText}>본문 데이터 API가 필요합니다</Text>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -216,6 +186,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     fontWeight: fontWeight.medium,
+  },
+  emptyText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    lineHeight: 26,
+    padding: 16,
+    textAlign: 'center',
   },
   bottomCta: {
     position: 'absolute',

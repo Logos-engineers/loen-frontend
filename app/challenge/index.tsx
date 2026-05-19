@@ -3,9 +3,13 @@ import ChevronDownSmIcon from '@/assets/icons/chevron-down-sm.svg';
 import ChevronRightSmIcon from '@/assets/icons/chevron-right-sm.svg';
 import SearchIcon from '@/assets/icons/search.svg';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { BIBLE_BOOKS as BIBLE_BOOK_META } from '@/constants/BibleMeta';
+import { useChallenge, type ChallengeItem as ApiChallenge } from '@/hooks/useChallenge';
+import { useFocusEffect } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ImageSourcePropType,
   ScrollView,
@@ -22,7 +26,7 @@ const BIBLE_IMAGE = require('@/assets/images/challenge-bible.png');
 const FAITH_IMAGE = require('@/assets/images/challenge-faith.png');
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
-interface ChallengeItem {
+interface ChallengeCardItem {
   id: string;
   tags: string[];
   period: string;
@@ -31,44 +35,37 @@ interface ChallengeItem {
   image: ImageSourcePropType;
 }
 
-// ─── 목 데이터 ─────────────────────────────────────────────────────────────────
-const CHALLENGES: ChallengeItem[] = [
-  {
-    id: '1',
-    tags: ['성경 챌린지', '81명 참여중'],
-    period: '26.01.28 ~ 26.02.28',
-    title: '박채연의 성경 챌린지 1',
-    desc: '요한복음, 시편 · 총 173장',
-    image: BIBLE_IMAGE,
-  },
-  {
-    id: '2',
-    tags: ['성경 챌린지', '23명 참여중'],
-    period: '26.01.28 ~ 26.02.28',
-    title: '애굽 탈출하자!',
-    desc: '출애굽기 · 40장',
-    image: BIBLE_IMAGE,
-  },
-  {
-    id: '3',
-    tags: ['성경 챌린지', '18명 참여중'],
-    period: '26.01.01 ~ 26.01.08',
-    title: '박채연의 성경 챌린지2',
-    desc: '창세기 · 총 50장',
-    image: BIBLE_IMAGE,
-  },
-  {
-    id: '4',
-    tags: ['신앙 챌린지', '10명 참여중', '내가 만든 챌린지'],
-    period: '26.01.01 ~ 26.01.08',
-    title: '일주일 새벽예배 챌린지',
-    desc: '수요예배, 금요예배 전참',
-    image: FAITH_IMAGE,
-  },
-];
+// ─── API → 카드 매핑 ──────────────────────────────────────────────────────────
+function toDateStr(iso: string) {
+  return iso.replace(/-/g, '.').slice(2); // "2026-01-28" → "26.01.28"
+}
+
+function toCardItem(item: ApiChallenge): ChallengeCardItem {
+  const tags = [
+    item.type === 'BIBLE' ? '성경 챌린지' : '신앙 챌린지',
+    `${item.participantCount}명 참여중`,
+    item.isOwner ? '내가 만든 챌린지' : null,
+  ].filter(Boolean) as string[];
+
+  const bookNames = (item.bibleBooks ?? []).map(
+    code => BIBLE_BOOK_META.find(b => b.code === code)?.korName ?? code
+  );
+  const desc = bookNames.length > 0
+    ? bookNames.slice(0, 2).join(', ') + (bookNames.length > 2 ? ` 외 ${bookNames.length - 2}권` : '')
+    : '';
+
+  return {
+    id: String(item.id),
+    tags,
+    period: `${toDateStr(item.startDate)} ~ ${toDateStr(item.endDate)}`,
+    title: item.name,
+    desc,
+    image: item.type === 'BIBLE' ? BIBLE_IMAGE : FAITH_IMAGE,
+  };
+}
 
 // ─── ChallengeListCard ─────────────────────────────────────────────────────────
-function ChallengeListCard({ item }: { item: ChallengeItem }) {
+function ChallengeListCard({ item }: { item: ChallengeCardItem }) {
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8}>
       {/* Tags row */}
@@ -99,6 +96,14 @@ export default function ChallengeListScreen() {
   const router = useRouter();
   const [searchText, setSearchText] = useState('');
   const [showActiveOnly, setShowActiveOnly] = useState(false);
+
+  const { challenges, isLoading, error, fetchChallenges } = useChallenge();
+
+  useFocusEffect(useCallback(() => {
+    fetchChallenges(searchText || undefined, showActiveOnly);
+  }, [fetchChallenges, searchText, showActiveOnly]));
+
+  const displayedItems = useMemo(() => challenges.map(toCardItem), [challenges]);
 
   return (
     <>
@@ -157,9 +162,15 @@ export default function ChallengeListScreen() {
 
         {/* Challenge Card List */}
         <View style={styles.listContainer}>
-          {CHALLENGES.map((item) => (
-            <ChallengeListCard key={item.id} item={item} />
-          ))}
+          {isLoading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          ) : error ? (
+            <Text style={{ textAlign: 'center', color: colors.text.secondary, padding: spacing.xl }}>{error}</Text>
+          ) : (
+            displayedItems.map((item) => (
+              <ChallengeListCard key={item.id} item={item} />
+            ))
+          )}
         </View>
       </ScrollView>
       </SafeAreaView>

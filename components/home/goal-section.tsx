@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
+import { useBibleHistory } from '@/hooks/useBibleHistory';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -16,23 +17,21 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-interface Goal {
-  id: number;
-  text: string;
-}
-
-const GOALS: Goal[] = [
-  { id: 1, text: '매일 기도하기' },
-  { id: 2, text: '일주일에 한 번 연락하기' },
-];
-
 export function GoalSection() {
   const [isOpen, setIsOpen] = useState(false);
+  const { goal, isLoading } = useBibleHistory();
 
   const toggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsOpen(prev => !prev);
   };
+
+  const goals = goal
+    ? [
+        `${goal.bookName} ${goal.chaptersPerDay}장씩 읽기`,
+        `이번 주 ${goal.weeklyTarget}장 읽기`,
+      ]
+    : [];
 
   return (
     <View style={styles.wrapper}>
@@ -52,15 +51,18 @@ export function GoalSection() {
 
         {isOpen && (
           <View style={styles.listContainer}>
-            {GOALS.map(goal => (
-              // Figma: 구분선 없음 (borderTop 제거)
-              <View key={goal.id} style={styles.goalRow}>
+            {isLoading ? (
+              <Text style={styles.emptyText}>목표를 불러오는 중입니다</Text>
+            ) : goals.length > 0 ? goals.map((goalText, index) => (
+              <View key={goalText} style={styles.goalRow}>
                 <View style={styles.numberBadge}>
-                  <Text style={styles.numberText}>{goal.id}</Text>
+                  <Text style={styles.numberText}>{index + 1}</Text>
                 </View>
-                <Text style={styles.goalText}>{goal.text}</Text>
+                <Text style={styles.goalText}>{goalText}</Text>
               </View>
-            ))}
+            )) : (
+              <Text style={styles.emptyText}>이번 주 목표가 없습니다</Text>
+            )}
           </View>
         )}
       </Card>
@@ -122,5 +124,9 @@ const styles = StyleSheet.create({
   goalText: {
     fontSize: fontSize.base,
     color: colors.text.primary,
+  },
+  emptyText: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
   },
 });

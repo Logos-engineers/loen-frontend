@@ -1,6 +1,7 @@
-import { Stack, router } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
@@ -21,29 +22,40 @@ const ID_LINE_COMPLETED = `<svg width="100%" height="2" preserveAspectRatio="non
 const ID_LINE_INACTIVE = `<svg width="100%" height="2" preserveAspectRatio="none" viewBox="0 0 100 2" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 1H100" stroke="#0D1C2D" stroke-opacity="0.08" stroke-width="2"/></svg>`;
 
 export default function MultipleChoiceQuizScreen() {
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string }>();
+  const contentId = params.contentId ? Number(params.contentId) : null;
+  const reviewId = params.reviewId ? Number(params.reviewId) : 0;
+
+  const [quiz, setQuiz] = useState<ObsQuiz | null>(null);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(!!contentId);
   const [inputText, setInputText] = useState('');
-  
-  // States: 'idle', 'incorrect', 'correct'
   const [quizState, setQuizState] = useState<'idle' | 'incorrect'>('idle');
   const [modalType, setModalType] = useState<'none' | 'correct' | 'showAnswer' | 'quit'>('none');
   const inputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const CORRECT_ANSWER = '쓴뿌리';
+  useEffect(() => {
+    if (!contentId) return;
+    fetchObsQuizzes(contentId)
+      .then((quizzes) => {
+        const shortQuiz = quizzes.find((q) => q.questionType === 'SHORT');
+        if (shortQuiz) setQuiz(shortQuiz);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingQuiz(false));
+  }, [contentId]);
+
+  const CORRECT_ANSWER = quiz?.correctAnswer ?? '';
 
   const handleInputChange = (text: string) => {
-    // Only allow 3 characters max
-    const filteredText = text.replace(/[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z]/g, '').slice(0, 3);
-    setInputText(filteredText);
-    setQuizState('idle'); // Reset state on typing
+    setInputText(text);
+    setQuizState('idle');
   };
 
-  const handleBoxPress = () => {
-    inputRef.current?.focus();
-  };
+  const handleBoxPress = () => { inputRef.current?.focus(); };
 
   const handleSubmit = () => {
-    if (inputText === CORRECT_ANSWER) {
+    if (inputText.trim() === CORRECT_ANSWER) {
       setModalType('correct');
     } else {
       setQuizState('incorrect');
@@ -58,35 +70,12 @@ export default function MultipleChoiceQuizScreen() {
 
   const handleNextQuiz = () => {
     setModalType('none');
-    router.push('/obs/q3');
-  };
-
-  // 3 Boxes rendering
-  const renderInputBoxes = () => {
-    const isError = quizState === 'incorrect';
-    
-    return [0, 1, 2].map((idx) => {
-      const char = inputText[idx] || '';
-      const isFocused = inputText.length === idx || (inputText.length === 3 && idx === 2);
-      
-      return (
-        <View
-          key={idx}
-          style={[
-            styles.optionBox,
-            char && { backgroundColor: 'rgba(101, 97, 255, 0.1)' }, // Entered char state
-            isError && { backgroundColor: 'rgba(255, 84, 73, 0.1)', borderColor: 'rgba(255, 84, 73, 0.2)', borderWidth: 1 } // Error state
-          ]}
-        >
-          <Text style={[
-            styles.optionBoxText,
-            char && { color: colors.primary },
-            isError && { color: '#FF5449' }
-          ]}>
-            {char}
-          </Text>
-        </View>
-      );
+    router.push({
+      pathname: '/obs/q3',
+      params: {
+        contentId: String(contentId ?? ''),
+        reviewId: String(reviewId),
+      },
     });
   };
 
@@ -146,7 +135,7 @@ export default function MultipleChoiceQuizScreen() {
               
               {/* Header: Title */}
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>시들어버린 박넝쿨의 역사</Text>
+                <Text style={styles.cardTitle}>{quiz?.questionText ? '단답형 퀴즈' : 'OBS'}</Text>
               </View>
 
               {/* Progress Indicator */}
@@ -172,36 +161,32 @@ export default function MultipleChoiceQuizScreen() {
                 </View>
               </View>
               
+              {isLoadingQuiz ? (
+                <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
+              ) : (
               <View style={styles.questionRow}>
                 <Text style={styles.questionQ}>Q.</Text>
                 <Text style={styles.questionText}>
-                  하나님의 은혜를 가로막고 회개의 은총까지 놓치게 만드는 내면의 문제는 무엇인가요?
+                  {quiz?.questionText ?? '퀴즈 데이터가 없습니다'}
                 </Text>
               </View>
+              )}
 
-              {/* Input Area with perfectly mapped native hitboxes */}
-              <View style={{ position: 'relative' }}>
-                <TouchableOpacity 
-                  activeOpacity={1} 
-                  onPress={handleBoxPress} 
-                  style={styles.optionsContainer}
-                >
-                  {renderInputBoxes()}
-                </TouchableOpacity>
-                
-                {/* Hidden TextInput seamlessly tracks dimensions of custom boxes */}
+              {/* Text Input */}
+              <TouchableOpacity activeOpacity={1} onPress={handleBoxPress} style={styles.inputContainer}>
                 <TextInput
                   ref={inputRef}
-                  style={styles.hiddenInput}
+                  style={[styles.answerInput, quizState === 'incorrect' && styles.answerInputError]}
                   value={inputText}
-                  caretHidden={true}
                   onChangeText={handleInputChange}
-                  maxLength={3}
-                  autoFocus={false} 
+                  placeholder="답을 입력하세요"
+                  placeholderTextColor="rgba(13,28,45,0.3)"
                   autoCorrect={false}
                   spellCheck={false}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
                 />
-              </View>
+              </TouchableOpacity>
 
               {/* Incorrect Feedback Message */}
               {quizState === 'incorrect' && (
@@ -238,11 +223,11 @@ export default function MultipleChoiceQuizScreen() {
               <TouchableOpacity 
                 style={[
                   styles.ctaButton,
-                  { backgroundColor: inputText.length === 3 ? colors.primary : 'rgba(101, 97, 255, 0.4)' }
+                  { backgroundColor: inputText.trim().length > 0 ? colors.primary : 'rgba(101, 97, 255, 0.4)' }
                 ]} 
                 activeOpacity={0.8}
                 onPress={handleSubmit}
-                disabled={inputText.length < 3}
+                disabled={inputText.trim().length === 0}
               >
                 <Text style={[
                   styles.ctaButtonText,
@@ -277,7 +262,7 @@ export default function MultipleChoiceQuizScreen() {
                   <View style={styles.modalTextWrapper}>
                     <Text style={styles.modalTitle}>정답이에요!</Text>
                     <Text style={styles.modalDesc}>
-                      하나님의 은혜를 지속적으로 경험하기 위해 쓴 뿌리를 발견하고 뽑아내는 기도가 필요해요.
+                      {quiz?.explanation || '해설 데이터가 없습니다'}
                     </Text>
                   </View>
                   <View style={styles.modalBtnWrapper}>
@@ -291,9 +276,9 @@ export default function MultipleChoiceQuizScreen() {
               {modalType === 'showAnswer' && (
                 <>
                   <View style={[styles.modalTextWrapper, { paddingTop: 32 }]}>
-                    <Text style={[styles.modalTitle, { marginBottom: 8 }]}>정답은 '쓴뿌리' 에요!</Text>
+                    <Text style={[styles.modalTitle, { marginBottom: 8 }]}>정답은 {CORRECT_ANSWER || '데이터 없음'} 이에요!</Text>
                     <Text style={styles.modalDesc}>
-                      하나님의 은혜를 지속적으로 경험하기 위해 쓴 뿌리를 발견하고 뽑아내는 기도가 필요해요.
+                      {quiz?.explanation || '해설 데이터가 없습니다'}
                     </Text>
                   </View>
                   <View style={styles.modalBtnWrapper}>
@@ -456,32 +441,24 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     lineHeight: 28,
   },
-  optionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16, // spacing between boxes
+  inputContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  optionBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    backgroundColor: 'rgba(101, 97, 255, 0.1)', // Always light purple box color
-    alignItems: 'center',
-    justifyContent: 'center',
+  answerInput: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(101, 97, 255, 0.3)',
+    borderRadius: radius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: 'rgba(13, 28, 45, 0.8)',
+    backgroundColor: 'rgba(101, 97, 255, 0.05)',
   },
-  optionBoxText: {
-    fontSize: 28, // Increase font size for typed characters
-    fontWeight: fontWeight.bold,
-    color: 'rgba(13, 28, 45, 0.8)', 
-  },
-  hiddenInput: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    color: 'transparent',
-    backgroundColor: 'transparent',
+  answerInputError: {
+    borderColor: 'rgba(255, 84, 73, 0.5)',
+    backgroundColor: 'rgba(255, 84, 73, 0.05)',
   },
   feedbackWrapper: {
     alignItems: 'center',

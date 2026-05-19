@@ -1,13 +1,12 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { ChallengeItem, useChallenge } from '@/hooks/useChallenge';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import * as Notifications from 'expo-notifications';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,33 +17,10 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type BibleChallengeData = {
-  challengeName: string;
-  selectedBooks: string[];
-  totalChapters: number;
-  startDate: string;
-  endDate: string;
-  alarms: any[];
-  visibility: 'public' | 'oikos' | 'link';
-};
-
-type DummyChallenge = {
-  id: string;
-  badges: string[];
-  icon: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  dateRange: string;
-  title: string;
-  subtitle: string;
-  isPinned: boolean;
-  isAlarmOn: boolean;
-  isCompleted?: boolean;
-  category: 'faith' | 'bible';
-};
-
 export default function ChallengeListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { challenges, isLoading, error, fetchChallenges, togglePin } = useChallenge();
   
   const [searchText, setSearchText] = useState('');
   const [showOnlyActive, setShowOnlyActive] = useState(false);
@@ -52,44 +28,12 @@ export default function ChallengeListScreen() {
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [sortFilter, setSortFilter] = useState<'latest' | 'oldest'>('latest');
   const [isSortModalVisible, setSortModalVisible] = useState(false);
-  
-  const [myChallenge, setMyChallenge] = useState<BibleChallengeData | null>(null);
-  const [myChallengePinned, setMyChallengePinned] = useState(false);
-  const [myChallengeAlarmOn, setMyChallengeAlarmOn] = useState(true);
 
-  const [participatingList, setParticipatingList] = useState<DummyChallenge[]>([
-    {
-      id: 'p1', badges: ['신앙 챌린지', '8명 참여중'], icon: 'sunny', iconBg: '#FFB800',
-      dateRange: '26.01.01 ~ 26.01.08', title: '로그인 1+1', subtitle: '매일 태신자를 위해 기도하기',
-      isPinned: false, isAlarmOn: true, category: 'faith'
-    },
-    {
-      id: 'p2', badges: ['성경 챌린지', '종료된 챌린지'], icon: 'book', iconBg: '#007AFF',
-      dateRange: '26.01.28 ~ 26.02.28', title: '성경 1독 챌린지', subtitle: '구약 전체, 신약 전체 · 총 1189장',
-      isPinned: false, isAlarmOn: false, isCompleted: true, category: 'bible'
-    }
-  ]);
-
-  const [recommendedList, setRecommendedList] = useState<DummyChallenge[]>([
-    {
-      id: 'r1', badges: ['신앙 챌린지', '36명 참여중'], icon: 'heart', iconBg: '#FF3B30',
-      dateRange: '26.03.01 ~ 26.04.15', title: '사순절 묵상 챌린지', subtitle: '예수님의 고난 묵상하기',
-      isPinned: false, isAlarmOn: true, category: 'faith'
-    }
-  ]);
-
-  useFocusEffect(
-    useCallback(() => {
-      AsyncStorage.getItem('LOEN_BIBLE_CHALLENGE_CREATED_v1').then(data => {
-        if (data) {
-          setMyChallenge(JSON.parse(data));
-        }
-      });
-    }, [])
-  );
+  useEffect(() => {
+    fetchChallenges(searchText.trim() || undefined, showOnlyActive);
+  }, [fetchChallenges, searchText, showOnlyActive]);
 
   const handleBack = () => router.back();
-  const handleEditMyChallenge = () => router.push('/challenge/edit');
 
   const formatShortDate = (isoStr: string) => {
     const d = new Date(isoStr);
@@ -99,41 +43,27 @@ export default function ChallengeListScreen() {
     return `${yy}.${mm}.${dd}`;
   };
 
-  const getMyChallengeSubtitle = () => {
-    if (!myChallenge) return '';
-    const books = myChallenge.selectedBooks;
-    if (books.length === 0) return '';
-    const text = books.length === 1 ? books[0] : `${books[0]} 외 ${books.length - 1}권`;
-    return `${text} · 총 ${myChallenge.totalChapters}장`;
+  const getChallengeSubtitle = (item: ChallengeItem) => {
+    if (item.type === 'BIBLE') {
+      return item.bibleBooks && item.bibleBooks.length > 0
+        ? item.bibleBooks.join(', ')
+        : '읽기 범위 정보 없음';
+    }
+    return '챌린지 목표 정보 없음';
   };
 
   const handleShare = (id: string) => {
     console.log(`[Share] 공유하기 모달 열기: ${id}`);
   };
 
-  const toggleMyChallengeAlarm = async () => {
-    // 뼈대: 실제 알림 스케줄링/취소 로직 연동 포인트
-    if (myChallengeAlarmOn) {
-      console.log('내가 만든 챌린지: 알림 끄기 (cancelScheduledNotificationAsync)');
-    } else {
-      console.log('내가 만든 챌린지: 알림 켜기 (scheduleNotificationAsync)');
-    }
-    setMyChallengeAlarmOn(prev => !prev);
-  };
-
   const renderLeftActions = (
     onShare: () => void,
-    onToggleAlarm: () => void,
     onTogglePin: () => void,
-    isAlarmOn: boolean,
     isPinned: boolean
   ) => (
     <View style={styles.actionContainer}>
       <TouchableOpacity style={styles.actionButton} onPress={onShare}>
         <Ionicons name="share-social" size={24} color={colors.text.primary} />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.actionButton} onPress={onToggleAlarm}>
-        <Ionicons name={isAlarmOn ? "notifications" : "notifications-off"} size={24} color={colors.text.primary} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.actionButton} onPress={onTogglePin}>
         <Ionicons name={isPinned ? "pin" : "pin-outline"} size={24} color={colors.text.primary} />
@@ -141,33 +71,31 @@ export default function ChallengeListScreen() {
     </View>
   );
 
-  const renderDummyCard = (item: DummyChallenge, setList: React.Dispatch<React.SetStateAction<DummyChallenge[]>>) => {
+  const renderChallengeCard = (item: ChallengeItem) => {
     if (showOnlyActive && item.isCompleted) return null;
-
-    const onToggleAlarm = () => setList(prev => prev.map(c => c.id === item.id ? { ...c, isAlarmOn: !c.isAlarmOn } : c));
-    const onTogglePin = () => setList(prev => prev.map(c => c.id === item.id ? { ...c, isPinned: !c.isPinned } : c));
 
     return (
       <Swipeable
         key={item.id}
-        renderLeftActions={() => renderLeftActions(() => handleShare(item.id), onToggleAlarm, onTogglePin, item.isAlarmOn, item.isPinned)}
+        renderLeftActions={() => renderLeftActions(() => handleShare(item.id), () => togglePin(item.id), item.isPinned)}
         containerStyle={{ marginBottom: spacing.md }}
       >
         <TouchableOpacity style={[styles.challengeCard, { marginBottom: 0 }]} activeOpacity={0.7}>
           <View style={styles.badgeRow}>
-            {item.badges.map((badge, idx) => (
-              <View key={idx} style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>
-            ))}
-            {item.isPinned && <View style={styles.badge}><Text style={styles.badgeText}>고정됨 📌</Text></View>}
+            <View style={styles.badge}><Text style={styles.badgeText}>{item.type === 'BIBLE' ? '성경 챌린지' : '신앙 챌린지'}</Text></View>
+            <View style={styles.badge}><Text style={styles.badgeText}>{item.participantCount}명 참여중</Text></View>
+            {item.isOwner && <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>}
+            {item.isCompleted && <View style={styles.badge}><Text style={styles.badgeText}>종료된 챌린지</Text></View>}
+            {item.isPinned && <View style={styles.badge}><Text style={styles.badgeText}>고정됨</Text></View>}
           </View>
           <View style={styles.cardContent}>
-            <View style={[styles.cardIconWrapper, { backgroundColor: item.iconBg }]}>
-              <Ionicons name={item.icon} size={24} color={colors.white} />
+            <View style={[styles.cardIconWrapper, { backgroundColor: item.type === 'BIBLE' ? '#007AFF' : '#FFB800' }]}>
+              <Ionicons name={item.type === 'BIBLE' ? 'book' : 'sunny'} size={24} color={colors.white} />
             </View>
             <View style={styles.cardTextContainer}>
-              <Text style={styles.cardDate}>{item.dateRange}</Text>
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-              <Text style={styles.cardSubtitle} numberOfLines={1}>{item.subtitle}</Text>
+              <Text style={styles.cardDate}>{formatShortDate(item.startDate)} ~ {formatShortDate(item.endDate)}</Text>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+              <Text style={styles.cardSubtitle} numberOfLines={1}>{getChallengeSubtitle(item)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.border} />
           </View>
@@ -189,24 +117,24 @@ export default function ChallengeListScreen() {
     }
   };
 
-  const sortData = (list: DummyChallenge[]) => {
+  const sortData = (list: ChallengeItem[]) => {
     return [...list].sort((a, b) => {
       if (b.isPinned !== a.isPinned) {
         return Number(b.isPinned) - Number(a.isPinned);
       }
-      const timeA = parseDateToMs(a.dateRange);
-      const timeB = parseDateToMs(b.dateRange);
+      const timeA = parseDateToMs(a.startDate);
+      const timeB = parseDateToMs(b.startDate);
       return sortFilter === 'latest' ? timeB - timeA : timeA - timeB;
     });
   };
 
-  const filteredParticipating = participatingList.filter(item => categoryFilter === 'all' || item.category === categoryFilter);
-  const sortedParticipating = sortData(filteredParticipating);
-  
-  const filteredRecommended = recommendedList.filter(item => categoryFilter === 'all' || item.category === categoryFilter);
-  const sortedRecommended = sortData(filteredRecommended);
-
-  const isMyChallengeMatch = categoryFilter === 'all' || categoryFilter === 'faith';
+  const filteredChallenges = useMemo(() => challenges.filter(item => {
+    if (categoryFilter === 'bible') return item.type === 'BIBLE';
+    if (categoryFilter === 'faith') return item.type === 'FAITH';
+    return true;
+  }), [categoryFilter, challenges]);
+  const myChallenges = sortData(filteredChallenges.filter(item => item.isOwner));
+  const participatingChallenges = sortData(filteredChallenges.filter(item => !item.isOwner));
 
   const getCategoryLabel = () => {
     if (categoryFilter === 'all') return '전체 챌린지';
@@ -272,38 +200,16 @@ export default function ChallengeListScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitleNoMargin}>내가 만든 챌린지</Text>
-            {myChallenge && isMyChallengeMatch && (
-              <TouchableOpacity onPress={handleEditMyChallenge} style={styles.editBtn}>
-                <Text style={styles.editBtnText}>수정하기</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
-          {myChallenge && isMyChallengeMatch ? (
-            <Swipeable
-              renderLeftActions={() => renderLeftActions(() => handleShare('my'), toggleMyChallengeAlarm, () => setMyChallengePinned(!myChallengePinned), myChallengeAlarmOn, myChallengePinned)}
-              containerStyle={{ marginBottom: spacing.md }}
-            >
-              <TouchableOpacity style={[styles.challengeCard, { marginBottom: 0 }]} activeOpacity={0.7} onPress={handleEditMyChallenge}>
-                <View style={styles.badgeRow}>
-                  <View style={styles.badge}><Text style={styles.badgeText}>신앙 챌린지 📌</Text></View>
-                  <View style={styles.badge}><Text style={styles.badgeText}>1명 참여중</Text></View>
-                  <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>
-                  {myChallengePinned && <View style={styles.badge}><Text style={styles.badgeText}>고정됨 📌</Text></View>}
-                </View>
-                <View style={styles.cardContent}>
-                  <View style={[styles.cardIconWrapper, { backgroundColor: '#FFB800' }]}>
-                    <Ionicons name="book" size={24} color={colors.white} />
-                  </View>
-                  <View style={styles.cardTextContainer}>
-                    <Text style={styles.cardDate}>{formatShortDate(myChallenge.startDate)} ~ {formatShortDate(myChallenge.endDate)}</Text>
-                    <Text style={styles.cardTitle} numberOfLines={1}>{myChallenge.challengeName}</Text>
-                    <Text style={styles.cardSubtitle} numberOfLines={1}>{getMyChallengeSubtitle()}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.border} />
-                </View>
-              </TouchableOpacity>
-            </Swipeable>
+          {isLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : error ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>챌린지를 불러오지 못했습니다</Text>
+            </View>
+          ) : myChallenges.length > 0 ? (
+            myChallenges.map(renderChallengeCard)
           ) : (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>해당하는 내가 만든 챌린지가 없어요</Text>
@@ -314,13 +220,19 @@ export default function ChallengeListScreen() {
         {/* B. 참여 중인 챌린지 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>참여 중인 챌린지</Text>
-          {sortedParticipating.map(item => renderDummyCard(item, setParticipatingList))}
+          {participatingChallenges.length > 0 ? participatingChallenges.map(renderChallengeCard) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>참여 중인 챌린지가 없어요</Text>
+            </View>
+          )}
         </View>
 
         {/* C. 추천 챌린지 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>추천 챌린지</Text>
-          {sortedRecommended.map(item => renderDummyCard(item, setRecommendedList))}
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>추천 챌린지 API가 필요합니다</Text>
+          </View>
         </View>
 
       </ScrollView>

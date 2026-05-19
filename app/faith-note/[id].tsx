@@ -1,7 +1,6 @@
 import { FaithNoteCard, FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { faithNoteStore } from '@/utils/faith-note-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -26,43 +25,6 @@ interface CommentItem {
   timeAgo: string;
   text: string;
 }
-
-const MOCK_COMMENTS: Record<string, CommentItem[]> = {
-  'thanks-4': [
-    {
-      id: 'c1',
-      author: { handle: 'Tabo1234', name: '이윤재', initial: '이' },
-      timeAgo: '방금',
-      text: '화이팅!! 오늘도 감사한 하루 되세요 ☀️',
-    },
-  ],
-  'thanks-5': [
-    {
-      id: 'c1',
-      author: { handle: 'Tabo1234', name: '이은재', initial: '이' },
-      timeAgo: '방금',
-      text: '👍 응원합니다!',
-    },
-    {
-      id: 'c2',
-      author: { handle: 'yonipark', name: '박채연', initial: '박' },
-      timeAgo: '1분',
-      text: '화이팅!! 오늘도 감사한 하루 되세요',
-    },
-  ],
-};
-
-// ─── 기본 fallback 노트 ────────────────────────────────────────────────────────
-const FALLBACK_NOTE: FaithNoteItem = {
-  id: 'thanks-1',
-  tab: 'THANKS',
-  author: { handle: 'potatolov_er', name: '남현서', hasAvatar: false, initial: '남' },
-  timeAgo: '38분',
-  content: ['오늘도 숨 쉴 수 있음에 감사', '맛있는 점심식사 감사', '일 할 수 있어서 감사^^'],
-  likeCount: 0,
-  commentCount: 0,
-  isLiked: false,
-};
 
 // ─── CommentRow ───────────────────────────────────────────────────────────────
 
@@ -96,13 +58,8 @@ function CommentRow({ item }: { item: CommentItem }) {
 export default function FaithNoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // 스토어에서 노트 찾기
-  const storeNotes = faithNoteStore.getNotes();
-  const initialNote = storeNotes.find((n) => n.id === id) ?? FALLBACK_NOTE;
-
-  // 로컬 노트 상태 (이 화면 안에서 좋아요 토글)
-  const [note, setNote] = useState<FaithNoteItem>(initialNote);
-  const [comments, setComments] = useState<CommentItem[]>(MOCK_COMMENTS[id ?? ''] ?? []);
+  const [note, setNote] = useState<FaithNoteItem | null>(null);
+  const [comments, setComments] = useState<CommentItem[]>([]);
 
   // 댓글 입력 상태
   const [commentText, setCommentText] = useState('');
@@ -114,14 +71,14 @@ export default function FaithNoteDetailScreen() {
   const inputRef = useRef<TextInput>(null);
   const hasText = commentText.trim().length > 0;
 
-  // 좋아요 토글 (로컬 + 스토어)
-  const handleLikeToggle = (noteId: string) => {
-    faithNoteStore.toggleLike(noteId);
-    setNote((prev) => ({
-      ...prev,
-      isLiked: !prev.isLiked,
-      likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1,
-    }));
+  const handleLikeToggle = (_noteId: string) => {
+    setNote((prev) => prev
+      ? {
+          ...prev,
+          isLiked: !prev.isLiked,
+          likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1,
+        }
+      : prev);
   };
 
   // 댓글 등록
@@ -156,11 +113,19 @@ export default function FaithNoteDetailScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* 원글 카드 — isDetailScreen=true로 댓글 버튼 재진입 방지 */}
-          <FaithNoteCard
-            item={note}
-            onLikeToggle={handleLikeToggle}
-            isDetailScreen
-          />
+          {note ? (
+            <FaithNoteCard
+              item={note}
+              onLikeToggle={handleLikeToggle}
+              isDetailScreen
+            />
+          ) : (
+            <View style={styles.emptyComment}>
+              <Text style={styles.emptyCommentText}>
+                {id ? '노트 상세 API가 필요합니다' : '노트를 찾을 수 없습니다'}
+              </Text>
+            </View>
+          )}
 
           {/* ── 댓글 목록 */}
           {comments.length === 0 ? (

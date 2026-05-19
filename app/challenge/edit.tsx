@@ -1,11 +1,12 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import * as Notifications from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -13,12 +14,12 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
+  Switch
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -270,12 +271,7 @@ export default function ChallengeEditScreen() {
       try {
         const id = await Notifications.scheduleNotificationAsync({
           content: { title: '성경 읽기 알림', body: '오늘 성경 읽을 시간이에요!' },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday: expoWeekday,
-            hour,
-            minute,
-          },
+          trigger: { type: SchedulableTriggerInputTypes.WEEKLY, hour, minute, weekday: expoWeekday },
         });
         notificationIds.push(id);
       } catch (error) {
@@ -458,8 +454,8 @@ export default function ChallengeEditScreen() {
           </View>
 
           <TouchableOpacity style={styles.settingCard} activeOpacity={0.7} onPress={isManageMode ? undefined : openAlarmSheet} disabled={isManageMode}>
-            <Text style={[styles.settingTitle, isManageMode && { color: colors.text.secondary }]}>알람 추가하기</Text>
-            <Ionicons name="add" size={24} color={isManageMode ? colors.text.secondary : colors.text.secondary} />
+            <Text style={[styles.settingTitle, isManageMode && { color: colors.text.dim }]}>알람 추가하기</Text>
+            <Ionicons name="add" size={24} color={isManageMode ? colors.text.dim : colors.text.secondary} />
           </TouchableOpacity>
 
           {alarms.map(alarm => (
@@ -486,8 +482,8 @@ export default function ChallengeEditScreen() {
 
           <View style={styles.settingCard}>
             <View style={styles.settingTitleWrapper}>
-              <Text style={[styles.settingTitle, isManageMode && { color: colors.text.secondary }]}>맞춤형 독려 알림</Text>
-              <Ionicons name="help-circle" size={18} color={isManageMode ? colors.text.secondary : colors.text.secondary} style={styles.helpIcon} />
+              <Text style={[styles.settingTitle, isManageMode && { color: colors.text.dim }]}>맞춤형 독려 알림</Text>
+              <Ionicons name="help-circle" size={18} color={isManageMode ? colors.text.dim : colors.text.secondary} style={styles.helpIcon} />
             </View>
             <Switch
               value={encouragementNotificationEnabled}

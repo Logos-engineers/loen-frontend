@@ -7,11 +7,13 @@ import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { FaithNoteTab, FaithNoteTabBar } from '@/components/faith-note/faith-note-tab-bar';
 import { FaithNoteWeekSelector } from '@/components/faith-note/faith-note-week-selector';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import { faithNoteStore, getTodayKey } from '@/utils/faith-note-store';
+import { getTodayKey } from '@/utils/faith-note-store';
+import { useFaithNotes } from '@/hooks/useFaithNotes';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -49,39 +51,29 @@ const TODAY_KEY = getTodayKey();
 export default function FaithNoteListScreen() {
   const router = useRouter();
 
-  // 노트 목록 — 포커스 시마다 스토어에서 최신 읽기
-  const [notes, setNotes] = useState<FaithNoteItem[]>(() => faithNoteStore.getNotes());
-  useFocusEffect(
-    useCallback(() => {
-      setNotes([...faithNoteStore.getNotes()]);
-    }, []),
-  );
-
-  // ── 상태
-  const [selectedDates, setSelectedDates] = useState<string[]>([]);  // 기본: 빈 배열 (미선택)
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [selectedTab, setSelectedTab] = useState<FaithNoteTab>('THANKS');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownBtnRef = useRef<View>(null);
 
-  // ── 요일 다중 토글
+  const { notes, isLoading, error, toggleLike, refetch } = useFaithNotes(selectedTab);
+
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+
   const handleToggleDate = (key: string) => {
     setSelectedDates((prev) =>
       prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key],
     );
   };
 
-  // ── 좋아요 토글
   const handleLikeToggle = useCallback((id: string) => {
-    faithNoteStore.toggleLike(id);
-    setNotes([...faithNoteStore.getNotes()]);
-  }, []);
+    toggleLike(id, selectedTab);
+  }, [toggleLike, selectedTab]);
 
-  // ── 노트 필터링 (탭 + 선택 요일)
   const filteredNotes = useMemo(() => {
-    const byTab = notes.filter((n) => n.tab === selectedTab);
-    if (selectedDates.length === 0) return byTab;
-    return byTab.filter((n) => !n.dayKey || selectedDates.includes(n.dayKey));
-  }, [notes, selectedTab, selectedDates]);
+    if (selectedDates.length === 0) return notes;
+    return notes.filter((n) => !n.dayKey || selectedDates.includes(n.dayKey));
+  }, [notes, selectedDates]);
 
   // ── 드롭다운 옵션 선택
   const handleDropdownSelect = (tab: FaithNoteTab) => {
@@ -109,24 +101,30 @@ export default function FaithNoteListScreen() {
       <FaithNoteTabBar selectedTab={selectedTab} onSelectTab={setSelectedTab} />
 
       {/* 피드 리스트 */}
-      <FlatList
-        data={filteredNotes}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <FaithNoteCard
-            item={item}
-            onLikeToggle={handleLikeToggle}
-          />
-        )}
-        contentContainerStyle={[
-          styles.listContent,
-          filteredNotes.length === 0 && styles.listContentEmpty,
-        ]}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <FaithNoteEmpty tabLabel={TAB_LABELS[selectedTab]} />
-        }
-      />
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      ) : error ? (
+        <Text style={{ textAlign: 'center', color: colors.text.secondary, padding: spacing.xl, flex: 1 }}>{error}</Text>
+      ) : (
+        <FlatList
+          data={filteredNotes}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <FaithNoteCard
+              item={item}
+              onLikeToggle={handleLikeToggle}
+            />
+          )}
+          contentContainerStyle={[
+            styles.listContent,
+            filteredNotes.length === 0 && styles.listContentEmpty,
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <FaithNoteEmpty tabLabel={TAB_LABELS[selectedTab]} />
+          }
+        />
+      )}
 
       {/* ── 드롭다운 오버레이 ── */}
       {showDropdown && (

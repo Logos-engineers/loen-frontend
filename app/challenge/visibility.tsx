@@ -1,20 +1,22 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import * as Notifications from '@/utils/notifications';
+import { BIBLE_BOOKS as BIBLE_BOOK_META } from '@/constants/BibleMeta';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
+  Switch,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -63,20 +65,34 @@ export default function ChallengeVisibilityScreen() {
   };
 
   const handleComplete = async () => {
-    const challengeData = {
-      challengeName: params.challengeName,
-      selectedBooks: params.selectedBooks ? JSON.parse(params.selectedBooks as string) : [],
-      totalChapters: Number(params.totalChapters || 0),
-      startDate: params.startDate,
-      endDate: params.endDate,
-      alarms,
-      visibility,
-    };
+    const selectedBooks: string[] = params.selectedBooks ? JSON.parse(params.selectedBooks as string) : [];
+    const totalChapters = Number(params.totalChapters || 0);
+
+    const toIsoDate = (iso: string) => new Date(iso).toISOString().split('T')[0];
 
     try {
-      await AsyncStorage.setItem('LOEN_BIBLE_CHALLENGE_CREATED_v1', JSON.stringify(challengeData));
-    } catch (error) {
-      console.warn('챌린지 저장 실패:', error);
+      const bookCodes = selectedBooks.map(
+        name => BIBLE_BOOK_META.find(b => b.korName === name)?.code ?? name
+      );
+      const notifTimes = alarms.filter(a => a.enabled).map(
+        a => `${String(a.hour).padStart(2, '0')}:${String(a.minute).padStart(2, '0')}`
+      );
+      await apiClient('/challenges/bible', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: params.challengeName as string,
+          bibleBooks: bookCodes,
+          targetType: 'PERIOD',
+          targetValue: totalChapters,
+          startDate: params.startDate ? toIsoDate(params.startDate as string) : '',
+          endDate: params.endDate ? toIsoDate(params.endDate as string) : '',
+          visibility: visibility === 'public' ? 'PUBLIC' : 'PRIVATE',
+          notificationEnabled: alarms.some(a => a.enabled),
+          notificationTimes: notifTimes,
+        }),
+      });
+    } catch (e) {
+      console.warn('[ChallengeVisibility] API 저장 실패:', e);
     }
 
     router.push('/challenge/complete');
@@ -127,10 +143,10 @@ export default function ChallengeVisibilityScreen() {
             body: '오늘 성경 읽을 시간이에요!',
           },
           trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday: expoWeekday,
+            type: SchedulableTriggerInputTypes.WEEKLY,
             hour,
             minute,
+            weekday: expoWeekday,
           },
         });
         notificationIds.push(id);
@@ -314,8 +330,8 @@ export default function ChallengeVisibilityScreen() {
           onPress={isManageMode ? undefined : openAlarmSheet}
           disabled={isManageMode}
         >
-          <Text style={[styles.settingTitle, isManageMode && { color: colors.text.secondary }]}>알람 추가하기</Text>
-          <Ionicons name="add" size={24} color={isManageMode ? colors.text.secondary : colors.text.secondary} />
+          <Text style={[styles.settingTitle, isManageMode && { color: colors.text.dim }]}>알람 추가하기</Text>
+          <Ionicons name="add" size={24} color={isManageMode ? colors.text.dim : colors.text.secondary} />
         </TouchableOpacity>
 
         {/* 알람 리스트 */}
@@ -347,8 +363,8 @@ export default function ChallengeVisibilityScreen() {
 
         <View style={[styles.settingCard, { marginTop: spacing.md }]}>
           <View style={styles.settingTitleWrapper}>
-            <Text style={[styles.settingTitle, isManageMode && { color: colors.text.secondary }]}>맞춤형 독려 알림</Text>
-            <Ionicons name="help-circle" size={18} color={isManageMode ? colors.text.secondary : colors.text.secondary} style={styles.helpIcon} />
+            <Text style={[styles.settingTitle, isManageMode && { color: colors.text.dim }]}>맞춤형 독려 알림</Text>
+            <Ionicons name="help-circle" size={18} color={isManageMode ? colors.text.dim : colors.text.secondary} style={styles.helpIcon} />
           </View>
           <Switch
             value={encouragementNotificationEnabled}
