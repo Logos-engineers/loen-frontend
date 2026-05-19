@@ -371,15 +371,17 @@ const styles = StyleSheet.create({
   inputField: {
     backgroundColor: colors.border,
     borderRadius: 12,
-    padding: 20,
-    minHeight: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 88,
+    justifyContent: 'center',
   },
   textInput: {
-    fontSize: 18,
-    lineHeight: 18 * 1.4,
-    fontWeight: fontWeight.semibold,
+    fontSize: 15,
+    lineHeight: 15 * 1.6,
+    fontWeight: fontWeight.medium,
     color: colors.text.primary,
-    textAlignVertical: 'top',
+    textAlignVertical: 'center',
   },
   bottomCta: {
     backgroundColor: colors.background.base,
