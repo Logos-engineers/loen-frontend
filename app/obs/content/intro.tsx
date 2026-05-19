@@ -117,6 +117,7 @@ export default function ObsIntroScreen() {
 const styles = StyleSheet.create({
   background: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
   },
   safe: {
     flex: 1,
@@ -173,12 +174,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   skipButton: {
-    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
     alignSelf: 'center',
   },
   skipButtonText: {
