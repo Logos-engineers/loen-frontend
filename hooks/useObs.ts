@@ -88,6 +88,20 @@ export async function saveObsSummaryAnswers(reviewId: number, answers: Record<st
   });
 }
 
+export async function saveObsEmotions(reviewId: number, emotions: string[]): Promise<void> {
+  await apiClient<null>(`/obs/reviews/${reviewId}/emotions`, {
+    method: 'PATCH',
+    body: JSON.stringify({ emotions }),
+  });
+}
+
+export async function saveObsApplication(reviewId: number, applicationAnswer: string): Promise<void> {
+  await apiClient<null>(`/obs/reviews/${reviewId}/application`, {
+    method: 'PATCH',
+    body: JSON.stringify({ applicationAnswer }),
+  });
+}
+
 export function formatKoreanDate(dateStr: string): string {
   const parts = dateStr.split('-').map(Number);
   if (parts.length < 3) return dateStr;

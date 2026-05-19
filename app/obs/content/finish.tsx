@@ -1,7 +1,7 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState, useCallback } from 'react';
-import { fetchObsContent } from '@/hooks/useObs';
+import React, { useEffect, useState } from 'react';
+import { fetchObsContent, saveObsEmotions, saveObsApplication, completeObsReview } from '@/hooks/useObs';
 import {
   Image,
   Modal,
@@ -28,15 +28,35 @@ const EMOTIONS = [
   '나를 돌아보게 돼요',
 ];
 
+const EMOTION_TO_TAG: Record<string, string> = {
+  '마음이 편해졌어요': 'PEACE',
+  '궁금증이 생겨요': 'WONDER',
+  '하나님께 감사해요': 'GRATITUDE',
+  '의지가 커졌어요': 'HOPE',
+  '마음이 흔들려요': 'CHALLENGE',
+  '나를 돌아보게 돼요': 'REPENTANCE',
+};
+
+const TAG_TO_EMOTION: Record<string, string> = {
+  PEACE: '마음이 편해졌어요',
+  WONDER: '궁금증이 생겨요',
+  GRATITUDE: '하나님께 감사해요',
+  HOPE: '의지가 커졌어요',
+  CHALLENGE: '마음이 흔들려요',
+  REPENTANCE: '나를 돌아보게 돼요',
+};
+
 export default function ObsFinishScreen() {
-  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string }>();
+  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string; reviewId?: string }>();
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [goalText, setGoalText] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [applicationText, setApplicationText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const isViewFlow = params.flow === 'view';
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
+  const [reviewId, setReviewId] = useState<number | null>(params.reviewId ? Number(params.reviewId) : null);
 
   useEffect(() => {
     if (!isViewFlow) {
@@ -48,10 +68,18 @@ export default function ObsFinishScreen() {
     if (!contentId) return;
     fetchObsContent(contentId)
       .then((data) => {
+        if (data.reviewId) setReviewId(data.reviewId);
         const appSection = data.sections.find((s) => s.type === 'application');
         if (appSection?.type === 'application' && appSection.items.length > 0) {
           const texts = appSection.items.map((item) => item.text).filter(Boolean).join('\n');
           setApplicationText(texts);
+        }
+        if (data.emotions && data.emotions.length > 0) {
+          const restored = data.emotions.map((tag) => TAG_TO_EMOTION[tag]).filter(Boolean);
+          if (restored.length > 0) setSelectedEmotions(restored);
+        }
+        if (data.applicationAnswer) {
+          setGoalText(data.applicationAnswer);
         }
       })
       .catch(() => {});
@@ -215,12 +243,24 @@ export default function ObsFinishScreen() {
                 <TouchableOpacity
                   style={[styles.modalBtn, styles.modalBtnPrimary]}
                   activeOpacity={0.85}
-                  onPress={() => {
+                  disabled={isSaving}
+                  onPress={async () => {
+                    if (!isPreview && reviewId) {
+                      setIsSaving(true);
+                      try {
+                        const tags = selectedEmotions.map((e) => EMOTION_TO_TAG[e]).filter(Boolean);
+                        if (tags.length > 0) await saveObsEmotions(reviewId, tags);
+                        if (goalText.trim()) await saveObsApplication(reviewId, goalText.trim());
+                        await completeObsReview(reviewId);
+                      } catch { /* 저장 실패 시 흐름 유지 */ } finally {
+                        setIsSaving(false);
+                      }
+                    }
                     setShowModal(false);
                     router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
                   }}
                 >
-                  <Text style={styles.modalBtnPrimaryText}>완료하기</Text>
+                  <Text style={styles.modalBtnPrimaryText}>{isSaving ? '저장 중...' : '완료하기'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
