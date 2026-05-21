@@ -246,7 +246,13 @@ export default function BibleChallengeScreen() {
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-            <SheetOption label="챌린지 수정하기" onPress={() => setMenuVisible(false)} />
+            <SheetOption
+              label="챌린지 수정하기"
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/challenge/edit');
+              }}
+            />
             <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
             <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
           </View>

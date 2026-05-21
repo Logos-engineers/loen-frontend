@@ -1,6 +1,5 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
@@ -11,6 +10,8 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   ScrollView,
   StyleSheet,
@@ -58,6 +59,41 @@ type ChallengeAlarm = {
 };
 
 type DurationTab = 'duration' | 'daily' | 'end';
+type TimePeriod = 'AM' | 'PM';
+
+const INITIAL_START_DATE = new Date(2025, 11, 7);
+const INITIAL_END_DATE = new Date(2025, 11, 31);
+const DATE_PICKER_MONTHS = Array.from({ length: 12 }, (_, index) => index);
+const DATE_WHEEL_ITEM_HEIGHT = 44;
+const TIME_PICKER_HOURS = Array.from({ length: 12 }, (_, index) => index + 1);
+const TIME_PICKER_MINUTES = Array.from({ length: 60 }, (_, index) => index);
+const TIME_PICKER_PERIODS = ['AM', 'PM'] as const;
+const INITIAL_ALARMS: ChallengeAlarm[] = [
+  {
+    id: 'default-morning',
+    hour: 9,
+    minute: 0,
+    weekdays: [2, 4, 5],
+    notificationIds: [],
+    enabled: true,
+  },
+  {
+    id: 'default-night',
+    hour: 22,
+    minute: 0,
+    weekdays: [0, 1, 2, 3, 4, 5, 6],
+    notificationIds: [],
+    enabled: true,
+  },
+  {
+    id: 'default-noon',
+    hour: 12,
+    minute: 0,
+    weekdays: [2],
+    notificationIds: [],
+    enabled: false,
+  },
+];
 
 function formatSelectedBooks(selected: string[]) {
   if (!selected || selected.length === 0) return '';
@@ -81,6 +117,286 @@ function formatDateUntil(date: Date) {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일까지`;
 }
 
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function toDateOnly(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getClampedDate(year: number, month: number, day: number, minimumDate?: Date) {
+  const next = new Date(year, month, Math.min(day, getDaysInMonth(year, month)));
+  if (minimumDate && next.getTime() < toDateOnly(minimumDate).getTime()) {
+    return toDateOnly(minimumDate);
+  }
+  return next;
+}
+
+function getYearOptions(value: Date, minimumDate?: Date) {
+  const currentYear = new Date().getFullYear();
+  const firstYear = Math.min(value.getFullYear(), minimumDate?.getFullYear() ?? currentYear - 1, currentYear - 1);
+  const lastYear = Math.max(value.getFullYear(), currentYear + 4);
+  return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
+}
+
+function getWheelOffset(index: number) {
+  return { x: 0, y: Math.max(0, index * DATE_WHEEL_ITEM_HEIGHT) };
+}
+
+function getScrollIndex(event: NativeSyntheticEvent<NativeScrollEvent>, maxIndex: number) {
+  return Math.max(0, Math.min(maxIndex, Math.round(event.nativeEvent.contentOffset.y / DATE_WHEEL_ITEM_HEIGHT)));
+}
+
+type DateWheelPickerProps = {
+  value: Date;
+  onChange: (date: Date) => void;
+  minimumDate?: Date;
+};
+
+function DateWheelPicker({ value, onChange, minimumDate }: DateWheelPickerProps) {
+  const selectedYear = value.getFullYear();
+  const selectedMonth = value.getMonth();
+  const selectedDay = value.getDate();
+  const days = Array.from({ length: getDaysInMonth(selectedYear, selectedMonth) }, (_, index) => index + 1);
+  const years = getYearOptions(value, minimumDate);
+  const minDate = minimumDate ? toDateOnly(minimumDate) : undefined;
+
+  const updateDate = (year: number, month: number, day: number) => {
+    onChange(getClampedDate(year, month, day, minDate));
+  };
+
+  const handleMonthScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    updateDate(selectedYear, DATE_PICKER_MONTHS[getScrollIndex(event, DATE_PICKER_MONTHS.length - 1)], selectedDay);
+  };
+
+  const handleDayScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    updateDate(selectedYear, selectedMonth, days[getScrollIndex(event, days.length - 1)]);
+  };
+
+  const handleYearScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    updateDate(years[getScrollIndex(event, years.length - 1)], selectedMonth, selectedDay);
+  };
+
+  const isMonthDisabled = (month: number) => (
+    !!minDate && selectedYear === minDate.getFullYear() && month < minDate.getMonth()
+  );
+  const isDayDisabled = (day: number) => (
+    !!minDate
+    && selectedYear === minDate.getFullYear()
+    && selectedMonth === minDate.getMonth()
+    && day < minDate.getDate()
+  );
+  const isYearDisabled = (year: number) => !!minDate && year < minDate.getFullYear();
+
+  return (
+    <View style={styles.dateWheel}>
+      <ScrollView
+        style={[styles.wheelColumn, styles.dateWheelMonthColumn]}
+        contentContainerStyle={styles.dateWheelColumnContent}
+        contentOffset={getWheelOffset(selectedMonth)}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={handleMonthScrollEnd}
+        onScrollEndDrag={handleMonthScrollEnd}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DATE_WHEEL_ITEM_HEIGHT}
+      >
+        {DATE_PICKER_MONTHS.map(month => {
+          const isSelected = month === selectedMonth;
+          const isDisabled = isMonthDisabled(month);
+          return (
+            <TouchableOpacity
+              key={month}
+              style={styles.dateWheelItem}
+              activeOpacity={0.7}
+              disabled={isDisabled}
+              onPress={() => updateDate(selectedYear, month, selectedDay)}
+            >
+              <Text style={[styles.dateWheelText, isSelected && styles.dateWheelTextSelected, isDisabled && styles.dateWheelTextDisabled]}>
+                {month + 1}월
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <ScrollView
+        style={[styles.wheelColumn, styles.dateWheelDayColumn]}
+        contentContainerStyle={styles.dateWheelColumnContent}
+        contentOffset={getWheelOffset(selectedDay - 1)}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={handleDayScrollEnd}
+        onScrollEndDrag={handleDayScrollEnd}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DATE_WHEEL_ITEM_HEIGHT}
+      >
+        {days.map(day => {
+          const isSelected = day === selectedDay;
+          const isDisabled = isDayDisabled(day);
+          return (
+            <TouchableOpacity
+              key={day}
+              style={styles.dateWheelItem}
+              activeOpacity={0.7}
+              disabled={isDisabled}
+              onPress={() => updateDate(selectedYear, selectedMonth, day)}
+            >
+              <Text style={[styles.dateWheelText, isSelected && styles.dateWheelTextSelected, isDisabled && styles.dateWheelTextDisabled]}>
+                {day}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <ScrollView
+        style={[styles.wheelColumn, styles.dateWheelYearColumn]}
+        contentContainerStyle={styles.dateWheelColumnContent}
+        contentOffset={getWheelOffset(Math.max(0, years.indexOf(selectedYear)))}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={handleYearScrollEnd}
+        onScrollEndDrag={handleYearScrollEnd}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DATE_WHEEL_ITEM_HEIGHT}
+      >
+        {years.map(year => {
+          const isSelected = year === selectedYear;
+          const isDisabled = isYearDisabled(year);
+          return (
+            <TouchableOpacity
+              key={year}
+              style={styles.dateWheelItem}
+              activeOpacity={0.7}
+              disabled={isDisabled}
+              onPress={() => updateDate(year, selectedMonth, selectedDay)}
+            >
+              <Text style={[styles.dateWheelText, isSelected && styles.dateWheelTextSelected, isDisabled && styles.dateWheelTextDisabled]}>
+                {year}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function getTimeParts(date: Date) {
+  const hour = date.getHours();
+  return {
+    hour12: hour % 12 || 12,
+    minute: date.getMinutes(),
+    period: (hour >= 12 ? 'PM' : 'AM') as TimePeriod,
+  };
+}
+
+function getDateWithTime(value: Date, hour12: number, minute: number, period: TimePeriod) {
+  const next = new Date(value);
+  const hour = period === 'PM' ? (hour12 % 12) + 12 : hour12 % 12;
+  next.setHours(hour, minute, 0, 0);
+  return next;
+}
+
+type TimeWheelPickerProps = {
+  value: Date;
+  onChange: (date: Date) => void;
+};
+
+function TimeWheelPicker({ value, onChange }: TimeWheelPickerProps) {
+  const { hour12, minute, period } = getTimeParts(value);
+
+  const updateTime = (nextHour: number, nextMinute: number, nextPeriod: TimePeriod) => {
+    onChange(getDateWithTime(value, nextHour, nextMinute, nextPeriod));
+  };
+
+  const handleHourScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    updateTime(TIME_PICKER_HOURS[getScrollIndex(event, TIME_PICKER_HOURS.length - 1)], minute, period);
+  };
+
+  const handleMinuteScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    updateTime(hour12, TIME_PICKER_MINUTES[getScrollIndex(event, TIME_PICKER_MINUTES.length - 1)], period);
+  };
+
+  const handlePeriodScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    updateTime(hour12, minute, TIME_PICKER_PERIODS[getScrollIndex(event, TIME_PICKER_PERIODS.length - 1)]);
+  };
+
+  return (
+    <View style={styles.timeWheel}>
+      <ScrollView
+        style={[styles.wheelColumn, styles.timeWheelNumberColumn]}
+        contentContainerStyle={styles.dateWheelColumnContent}
+        contentOffset={getWheelOffset(hour12 - 1)}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={handleHourScrollEnd}
+        onScrollEndDrag={handleHourScrollEnd}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DATE_WHEEL_ITEM_HEIGHT}
+      >
+        {TIME_PICKER_HOURS.map(hour => {
+          const isSelected = hour === hour12;
+          return (
+            <TouchableOpacity key={hour} style={styles.dateWheelItem} activeOpacity={0.7} onPress={() => updateTime(hour, minute, period)}>
+              <Text style={[styles.dateWheelText, isSelected && styles.dateWheelTextSelected]}>{hour}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <Text style={styles.timeWheelColon}>:</Text>
+      <ScrollView
+        style={[styles.wheelColumn, styles.timeWheelNumberColumn]}
+        contentContainerStyle={styles.dateWheelColumnContent}
+        contentOffset={getWheelOffset(minute)}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={handleMinuteScrollEnd}
+        onScrollEndDrag={handleMinuteScrollEnd}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DATE_WHEEL_ITEM_HEIGHT}
+      >
+        {TIME_PICKER_MINUTES.map(nextMinute => {
+          const isSelected = nextMinute === minute;
+          return (
+            <TouchableOpacity key={nextMinute} style={styles.dateWheelItem} activeOpacity={0.7} onPress={() => updateTime(hour12, nextMinute, period)}>
+              <Text style={[styles.dateWheelText, isSelected && styles.dateWheelTextSelected]}>
+                {nextMinute.toString().padStart(2, '0')}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <ScrollView
+        style={[styles.wheelColumn, styles.timeWheelPeriodColumn]}
+        contentContainerStyle={styles.dateWheelColumnContent}
+        contentOffset={getWheelOffset(TIME_PICKER_PERIODS.indexOf(period))}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={handlePeriodScrollEnd}
+        onScrollEndDrag={handlePeriodScrollEnd}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={DATE_WHEEL_ITEM_HEIGHT}
+      >
+        {TIME_PICKER_PERIODS.map(nextPeriod => {
+          const isSelected = nextPeriod === period;
+          return (
+            <TouchableOpacity key={nextPeriod} style={styles.dateWheelItem} activeOpacity={0.7} onPress={() => updateTime(hour12, minute, nextPeriod)}>
+              <Text style={[styles.dateWheelText, isSelected && styles.dateWheelTextSelected]}>{nextPeriod}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function ChallengeEditScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -88,25 +404,25 @@ export default function ChallengeEditScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   // A. 기본 정보 폼 상태
-  const [challengeName, setChallengeName] = useState('');
+  const [challengeName, setChallengeName] = useState('애굽 탈출하기');
   const [isFocused, setIsFocused] = useState(false);
   
   const [isBibleSheetOpen, setIsBibleSheetOpen] = useState(false);
-  const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
+  const [selectedBooks, setSelectedBooks] = useState<string[]>(['출애굽기']);
   const [tempSelectedBooks, setTempSelectedBooks] = useState<string[]>([]);
 
   const [isDateSheetOpen, setIsDateSheetOpen] = useState(false);
-  const [startDate, setStartDate] = useState<Date>(new Date());
-  const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
+  const [startDate, setStartDate] = useState<Date>(INITIAL_START_DATE);
+  const [tempStartDate, setTempStartDate] = useState<Date>(INITIAL_START_DATE);
 
   const [isDurationSheetOpen, setIsDurationSheetOpen] = useState(false);
   const [durationDays, setDurationDays] = useState(7);
   const [dailyChapters, setDailyChapters] = useState(3);
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(INITIAL_END_DATE);
   const [activeTab, setActiveTab] = useState<DurationTab>('end'); // 수정 모드는 이미 정해져 있으므로 보통 end
   const [tempDurationDays, setTempDurationDays] = useState(7);
   const [tempDailyChapters, setTempDailyChapters] = useState(3);
-  const [tempEndDate, setTempEndDate] = useState<Date>(new Date());
+  const [tempEndDate, setTempEndDate] = useState<Date>(INITIAL_END_DATE);
   const [tempActiveTab, setTempActiveTab] = useState<DurationTab>('end');
 
   // B. 공개범위 상태
@@ -114,7 +430,7 @@ export default function ChallengeEditScreen() {
   
   // C. 알람 설정 상태
   const [encouragementNotificationEnabled, setEncouragementNotificationEnabled] = useState(false);
-  const [alarms, setAlarms] = useState<ChallengeAlarm[]>([]);
+  const [alarms, setAlarms] = useState<ChallengeAlarm[]>(INITIAL_ALARMS);
   const [isAlarmSheetOpen, setIsAlarmSheetOpen] = useState(false);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [selectedTime, setSelectedTime] = useState<Date>(new Date());
@@ -348,11 +664,9 @@ export default function ChallengeEditScreen() {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerSide} />
         <Text style={styles.headerTitle}>챌린지 내용 수정하기</Text>
-        <View style={styles.headerRightSpace} />
+        <View style={styles.headerSide} />
       </View>
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -401,47 +715,7 @@ export default function ChallengeEditScreen() {
             </View>
           </View>
 
-          {/* B. 공개범위 섹션 */}
-          <View pointerEvents={isManageMode ? 'none' : 'auto'} style={{ opacity: isManageMode ? 0.3 : 1 }}>
-            <View style={styles.sectionHeaderMargin}>
-              <Text style={styles.sectionTitle}>공개범위</Text>
-            </View>
-
-            <TouchableOpacity style={styles.optionCard} activeOpacity={0.7} onPress={() => setVisibility('public')}>
-              <View style={styles.optionIconWrapper}>
-                <Ionicons name="people" size={24} color={colors.text.primary} />
-              </View>
-              <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>전체 공개</Text>
-                <Text style={styles.optionDescription} numberOfLines={1}>로고스 청년 모두에게 공개되며,...</Text>
-              </View>
-              <Ionicons name="checkmark-circle" size={24} color={visibility === 'public' ? colors.primary : colors.border} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionCard} activeOpacity={0.7} onPress={() => setVisibility('oikos')}>
-              <View style={styles.optionIconWrapper}>
-                <Ionicons name="person" size={24} color={colors.text.primary} />
-              </View>
-              <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>오이코스 공개</Text>
-                <Text style={styles.optionDescription} numberOfLines={1}>오이코스원에게만 공개되며,...</Text>
-              </View>
-              <Ionicons name="checkmark-circle" size={24} color={visibility === 'oikos' ? colors.primary : colors.border} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionCard} activeOpacity={0.7} onPress={() => setVisibility('link')}>
-              <View style={styles.optionIconWrapper}>
-                <Ionicons name="link" size={24} color={colors.text.primary} />
-              </View>
-              <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>링크로 공개</Text>
-                <Text style={styles.optionDescription} numberOfLines={1}>공유한 링크를 전달 받은 사람만...</Text>
-              </View>
-              <Ionicons name="checkmark-circle" size={24} color={visibility === 'link' ? colors.primary : colors.border} />
-            </TouchableOpacity>
-          </View>
-
-          {/* C. 알람 설정 섹션 */}
+          {/* B. 알람 설정 섹션 */}
           <View style={styles.sectionHeaderMargin}>
             <View style={styles.flexRowBetween}>
               <Text style={styles.sectionTitle}>알람 설정</Text>
@@ -493,6 +767,46 @@ export default function ChallengeEditScreen() {
               ios_backgroundColor={colors.border}
               disabled={isManageMode}
             />
+          </View>
+
+          {/* C. 공개범위 섹션 */}
+          <View pointerEvents={isManageMode ? 'none' : 'auto'} style={{ opacity: isManageMode ? 0.3 : 1 }}>
+            <View style={styles.sectionHeaderMargin}>
+              <Text style={styles.sectionTitle}>챌린지 공개</Text>
+            </View>
+
+            <TouchableOpacity style={styles.optionCard} activeOpacity={0.7} onPress={() => setVisibility('public')}>
+              <View style={styles.optionIconWrapper}>
+                <Ionicons name="people" size={24} color={colors.text.primary} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>전체 공개</Text>
+                <Text style={styles.optionDescription} numberOfLines={1}>로고스 청년 모두에게 공개되며,...</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={24} color={visibility === 'public' ? colors.primary : colors.border} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.optionCard} activeOpacity={0.7} onPress={() => setVisibility('oikos')}>
+              <View style={styles.optionIconWrapper}>
+                <Ionicons name="person" size={24} color={colors.text.primary} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>오이코스 공개</Text>
+                <Text style={styles.optionDescription} numberOfLines={1}>오이코스원에게만 공개되며,...</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={24} color={visibility === 'oikos' ? colors.primary : colors.border} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.optionCard} activeOpacity={0.7} onPress={() => setVisibility('link')}>
+              <View style={styles.optionIconWrapper}>
+                <Ionicons name="link" size={24} color={colors.text.primary} />
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={styles.optionTitle}>링크로 공개</Text>
+                <Text style={styles.optionDescription} numberOfLines={1}>챌린지 생성 완료 후 공유한 링크를 받은...</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={24} color={visibility === 'link' ? colors.primary : colors.border} />
+            </TouchableOpacity>
           </View>
 
           <View style={{ height: 40 }} />
@@ -567,17 +881,7 @@ export default function ChallengeEditScreen() {
           <TouchableWithoutFeedback onPress={closeDateSheet}><View style={styles.modalBackground} /></TouchableWithoutFeedback>
           <View style={[styles.bottomSheet, { maxHeight: 'auto' }]}>
             <View style={styles.sheetHandleWrapper}><View style={styles.sheetHandle} /></View>
-            <View style={styles.datePickerContainer}>
-              <DateTimePicker
-                value={tempStartDate}
-                mode="date"
-                display="spinner"
-                locale="ko-KR"
-                onChange={(_, date) => { if (date) setTempStartDate(date); }}
-                style={styles.datePicker}
-                textColor={colors.text.primary}
-              />
-            </View>
+            <DateWheelPicker value={tempStartDate} onChange={setTempStartDate} />
             <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
               <TouchableOpacity style={styles.completeBtn} onPress={handleCompleteDateSelection}>
                 <Text style={styles.completeBtnText}>완료</Text>
@@ -627,9 +931,7 @@ export default function ChallengeEditScreen() {
                 </View>
               )}
               {tempActiveTab === 'end' && (
-                <View style={styles.datePickerContainer}>
-                  <DateTimePicker value={tempEndDate} mode="date" display="spinner" locale="ko-KR" onChange={(_, date) => { if (date) setTempEndDate(date); }} style={styles.datePicker} textColor={colors.text.primary} minimumDate={startDate} />
-                </View>
+                <DateWheelPicker value={tempEndDate} onChange={setTempEndDate} minimumDate={startDate} />
               )}
             </View>
             <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
@@ -651,9 +953,7 @@ export default function ChallengeEditScreen() {
           <TouchableWithoutFeedback onPress={closeAlarmSheet}><View style={styles.modalBackground} /></TouchableWithoutFeedback>
           <View style={[styles.bottomSheet, { maxHeight: 'auto', paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
             <View style={styles.sheetHandleWrapper}><View style={styles.sheetHandle} /></View>
-            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
-              <DateTimePicker value={selectedTime} mode="time" display="spinner" locale="en-US" onChange={(_, date) => { if (date) setSelectedTime(date); }} style={{ width: '100%', height: 180 }} textColor={colors.text.primary} />
-            </View>
+            <TimeWheelPicker value={selectedTime} onChange={setSelectedTime} />
             <View style={{ paddingHorizontal: spacing.xl, marginBottom: spacing.xxl }}>
               <View style={styles.flexRowBetween}>
                 <Text style={{ fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: spacing.md }}>요일 선택</Text>
@@ -697,50 +997,49 @@ export default function ChallengeEditScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.base },
   flex: { flex: 1 },
-  header: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md },
-  backButton: { width: 32, alignItems: 'flex-start' },
-  headerTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
-  headerRightSpace: { width: 32 },
-  content: { paddingHorizontal: spacing.md, paddingTop: spacing.xl },
+  header: { height: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerSide: { width: 100 },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: fontSize.heading, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  content: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   flexRowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
   // 섹션
-  card: { backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.xl, marginBottom: spacing.xl, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  section: { marginBottom: spacing.xxl },
-  sectionLast: { marginBottom: 0 },
-  label: { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: fontWeight.medium },
-  subLabel: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: spacing.sm },
+  card: { backgroundColor: colors.background.elevated, borderRadius: radius.lg, marginBottom: spacing.lg, overflow: 'hidden' },
+  section: { padding: spacing.md },
+  sectionLast: { padding: spacing.md },
+  label: { fontSize: fontSize.md, color: colors.text.secondary, fontWeight: fontWeight.semibold },
+  subLabel: { fontSize: fontSize.base, color: colors.text.secondary, marginTop: spacing.sm, fontWeight: fontWeight.medium },
   inputBorder: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: spacing.sm, marginTop: spacing.xs },
-  inputBorderActive: { borderBottomColor: colors.primary },
-  inputText: { fontSize: fontSize.lg, color: colors.text.primary, fontWeight: fontWeight.medium },
-  input: { flex: 1, fontSize: fontSize.lg, color: colors.text.primary, fontWeight: fontWeight.medium, padding: 0 },
+  inputBorderActive: { borderBottomColor: colors.text.dim },
+  inputText: { fontSize: fontSize.xl, lineHeight: 33, color: colors.text.primary, fontWeight: fontWeight.semibold },
+  input: { flex: 1, fontSize: fontSize.xl, lineHeight: 33, color: colors.text.primary, fontWeight: fontWeight.semibold, padding: 0 },
   
-  sectionHeaderMargin: { marginBottom: spacing.md, paddingHorizontal: spacing.xs },
+  sectionHeaderMargin: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
   
   // 공개범위
-  optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
   optionIconWrapper: { marginRight: spacing.md },
   optionTextContainer: { flex: 1, marginRight: spacing.sm },
   optionTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: 4 },
   optionDescription: { fontSize: fontSize.xs, color: colors.text.secondary },
 
   // 알람 설정
-  manageBadge: { backgroundColor: '#F0F0F5', paddingVertical: 6, paddingHorizontal: 12, borderRadius: radius.full },
+  manageBadge: { backgroundColor: colors.border, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.xs },
   manageBadgeText: { fontSize: fontSize.xs, color: colors.text.secondary, fontWeight: fontWeight.semibold },
-  settingCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  settingCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
   settingTitleWrapper: { flexDirection: 'row', alignItems: 'center' },
   settingTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
   helpIcon: { marginLeft: 6 },
-  alarmRowCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  alarmRowCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
   alarmRowLeft: { flex: 1 },
-  alarmTimeText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: 4 },
+  alarmTimeText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: 4 },
   alarmWeekdayText: { fontSize: fontSize.xs, color: colors.text.secondary },
 
   // 하단 버튼
-  footer: { paddingHorizontal: spacing.md, paddingBottom: spacing.lg, paddingTop: spacing.sm },
+  footer: { backgroundColor: colors.background.elevated, paddingHorizontal: spacing.md, paddingBottom: spacing.lg, paddingTop: spacing.sm },
   buttonRow: { flexDirection: 'row', gap: spacing.sm },
-  btn: { flex: 1, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  btn: { flex: 1, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   btnCancelBg: { backgroundColor: colors.primaryLight },
   btnActiveBg: { backgroundColor: colors.primary },
   btnDisabledBg: { backgroundColor: 'rgba(101,97,255,0.3)' },
@@ -763,8 +1062,20 @@ const styles = StyleSheet.create({
   completeBtnText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.bold },
   
   // 날짜/기간 픽커 모달
-  datePickerContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, alignItems: 'center' },
-  datePicker: { width: '100%', height: 200 },
+  dateWheel: { height: DATE_WHEEL_ITEM_HEIGHT * 3, flexDirection: 'row', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  timeWheel: { height: DATE_WHEEL_ITEM_HEIGHT * 3, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, marginBottom: spacing.xl },
+  wheelColumn: { height: DATE_WHEEL_ITEM_HEIGHT * 3 },
+  dateWheelMonthColumn: { width: 78 },
+  dateWheelDayColumn: { width: 70 },
+  dateWheelYearColumn: { width: 92 },
+  timeWheelNumberColumn: { width: 72 },
+  timeWheelPeriodColumn: { width: 78 },
+  dateWheelColumnContent: { paddingVertical: DATE_WHEEL_ITEM_HEIGHT },
+  dateWheelItem: { height: DATE_WHEEL_ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
+  dateWheelText: { fontSize: fontSize.base, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  dateWheelTextSelected: { color: colors.text.primary, fontWeight: fontWeight.semibold },
+  dateWheelTextDisabled: { color: colors.text.dim },
+  timeWheelColon: { width: 10, height: DATE_WHEEL_ITEM_HEIGHT * 3, lineHeight: DATE_WHEEL_ITEM_HEIGHT * 3, textAlign: 'center', fontSize: fontSize.base, color: colors.text.secondary, fontWeight: fontWeight.medium },
   durationTabRow: { flexDirection: 'row', paddingHorizontal: spacing.xl, gap: spacing.sm, marginBottom: spacing.xl },
   durationTab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: radius.full, backgroundColor: colors.background.base },
   durationTabActive: { backgroundColor: colors.primaryLight },
