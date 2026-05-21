@@ -36,6 +36,28 @@ interface ChallengeCardItem {
   image: ImageSourcePropType;
 }
 
+// ─── 테스트 데이터 ─────────────────────────────────────────────────────────────
+const TEST_CHALLENGE_CARDS: ChallengeCardItem[] = [
+  {
+    id: 'test-faith-1',
+    type: 'FAITH',
+    tags: ['신앙 챌린지', '8명 참여중', '내가 만든 챌린지'],
+    period: '26.01.01 ~ 26.12.31',
+    title: '매일 감사 고백하기',
+    desc: '하루 한 가지 감사 기록하기',
+    image: FAITH_IMAGE,
+  },
+  {
+    id: 'test-bible-1',
+    type: 'BIBLE',
+    tags: ['성경 챌린지', '10명 참여중', '내가 만든 챌린지'],
+    period: '26.01.01 ~ 26.12.31',
+    title: '출애굽기 완독하기',
+    desc: '출애굽기 1:1 ~ 40:38',
+    image: BIBLE_IMAGE,
+  },
+];
+
 // ─── API → 카드 매핑 ──────────────────────────────────────────────────────────
 function toDateStr(iso: string) {
   return iso.replace(/-/g, '.').slice(2); // "2026-01-28" → "26.01.28"
@@ -105,7 +127,22 @@ export default function ChallengeListScreen() {
     fetchChallenges(searchText || undefined, showActiveOnly);
   }, [fetchChallenges, searchText, showActiveOnly]));
 
-  const displayedItems = useMemo(() => challenges.map(toCardItem), [challenges]);
+  const displayedItems = useMemo(() => {
+    const apiItems = challenges.map(toCardItem);
+    const normalizedSearchText = searchText.trim().toLowerCase();
+    const testItems = TEST_CHALLENGE_CARDS.filter((testItem) => {
+      const hasSameTypeFromApi = apiItems.some(item => item.type === testItem.type);
+      const matchesSearch = !normalizedSearchText || [
+        testItem.title,
+        testItem.desc,
+        ...testItem.tags,
+      ].some(value => value.toLowerCase().includes(normalizedSearchText));
+
+      return !hasSameTypeFromApi && matchesSearch;
+    });
+
+    return [...apiItems, ...testItems];
+  }, [challenges, searchText]);
 
   return (
     <>
@@ -166,7 +203,7 @@ export default function ChallengeListScreen() {
         <View style={styles.listContainer}>
           {isLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
-          ) : error ? (
+          ) : error && displayedItems.length === 0 ? (
             <Text style={{ textAlign: 'center', color: colors.text.secondary, padding: spacing.xl }}>{error}</Text>
           ) : (
             displayedItems.map((item) => (

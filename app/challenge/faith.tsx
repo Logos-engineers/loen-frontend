@@ -2,6 +2,7 @@ import { ChallengeCalendar } from '@/components/challenge/ChallengeCalendar';
 import { MyCertificationCard, OtherCertificationCard } from '@/components/challenge/CertificationFeedCard';
 import { ChallengeGoalCard } from '@/components/challenge/ChallengeGoalCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
+import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
 import { useChallengeDetail, useChallengeCertifications } from '@/hooks/useChallenge';
 import { formatShortDate } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,17 +20,89 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// ─── 테스트 데이터 ──────────────────────────────────────────────────────────────
+
+const TEST_DETAIL: ChallengeDetail = {
+  challengeId: 'test-faith-1',
+  type: 'FAITH',
+  name: '매일 감사 고백하기',
+  goal: '하루 한 가지 감사 기록하기',
+  startDate: '2026-01-01',
+  endDate: '2026-12-31',
+  dDay: 225,
+  verificationMethod: 'MEDITATION',
+  visibility: 'PUBLIC',
+  participantCount: 8,
+  isJoined: true,
+  isCreator: true,
+  isPinned: false,
+  notificationEnabled: true,
+  myProgress: {
+    completedDays: 4,
+    lastCertifiedDate: '2026-05-20',
+    weeklyCalendar: {
+      '2026-05-17': true,
+      '2026-05-18': true,
+      '2026-05-20': true,
+    },
+    allCertifiedDates: [
+      '2026-05-09', '2026-05-13', '2026-05-17', '2026-05-18', '2026-05-20',
+    ],
+  },
+};
+
+const TEST_FEED: CertificationFeedResponse = {
+  myCertification: {
+    certId: 'test-faith-cert-1',
+    date: '2026-05-20',
+    meditationText: '오늘 감사한 일을 돌아보며 하나님이 주신 하루를 기록했습니다.',
+    photoUrl: null,
+    isPrivate: false,
+    likeCount: 4,
+    isLikedByMe: false,
+    commentCount: 1,
+  },
+  otherCertifications: [
+    {
+      certId: 'test-faith-cert-2',
+      writerName: '박서준',
+      writerProfileImage: null,
+      date: '2026-05-19',
+      meditationText: '작은 감사도 놓치지 않으려고 적어봤습니다.',
+      photoUrl: null,
+      likeCount: 6,
+      isLikedByMe: true,
+      commentCount: 2,
+    },
+    {
+      certId: 'test-faith-cert-3',
+      writerName: '최하은',
+      writerProfileImage: null,
+      date: '2026-05-18',
+      meditationText: '오늘도 감사로 하루를 마무리했습니다.',
+      photoUrl: null,
+      likeCount: 2,
+      isLikedByMe: false,
+      commentCount: 0,
+    },
+  ],
+};
+
 export default function FaithChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { detail, isLoading, error } = useChallengeDetail(id ?? null);
-  const { feed } = useChallengeCertifications(id ?? null);
+  const isTestChallenge = !id || id.startsWith('test-');
+  const challengeId = isTestChallenge ? null : id;
+  const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
+  const { feed: apiFeed } = useChallengeCertifications(challengeId);
   const [menuVisible, setMenuVisible] = useState(false);
 
+  const detail = isTestChallenge ? TEST_DETAIL : apiDetail;
+  const feed = isTestChallenge ? TEST_FEED : apiFeed;
   const certifiedDates = detail?.myProgress?.allCertifiedDates ?? [];
 
-  if (isLoading) {
+  if (isLoading && !isTestChallenge) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ActivityIndicator style={styles.loader} color={colors.primary} />
@@ -37,7 +110,7 @@ export default function FaithChallengeScreen() {
     );
   }
 
-  if (error || !detail) {
+  if ((error && !isTestChallenge) || !detail) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.errorBox}>

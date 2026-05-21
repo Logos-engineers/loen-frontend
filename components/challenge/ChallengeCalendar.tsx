@@ -6,6 +6,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Props {
   certifiedDates: string[];
+  defaultExpanded?: boolean;
 }
 
 const WEEK_DAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
@@ -64,9 +65,9 @@ function DateCircle({
   );
 }
 
-export function ChallengeCalendar({ certifiedDates }: Props) {
+export function ChallengeCalendar({ certifiedDates, defaultExpanded = false }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   const certified = useMemo(() => new Set(certifiedDates), [certifiedDates]);
   const todayStr = toDateString(new Date());

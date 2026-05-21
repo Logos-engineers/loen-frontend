@@ -24,7 +24,7 @@ export default function ChallengeListScreen() {
   
   const [searchText, setSearchText] = useState('');
   const [showOnlyActive, setShowOnlyActive] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'faith' | 'bible'>('faith');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'faith' | 'bible'>('all');
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [sortFilter, setSortFilter] = useState<'latest' | 'oldest'>('latest');
   const [isSortModalVisible, setSortModalVisible] = useState(false);

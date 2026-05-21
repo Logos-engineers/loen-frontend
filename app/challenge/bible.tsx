@@ -1,13 +1,12 @@
 import { ChallengeCalendar } from '@/components/challenge/ChallengeCalendar';
-import { MyCertificationCard, OtherCertificationCard } from '@/components/challenge/CertificationFeedCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
-import { useChallengeDetail, useChallengeCertifications } from '@/hooks/useChallenge';
-import { formatShortDate } from '@/utils/date';
+import type { ChallengeDetail } from '@/hooks/useChallenge';
+import { useChallengeDetail } from '@/hooks/useChallenge';
+import { formatShortDate, toDateString } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -21,8 +20,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // ─── 테스트 데이터 ──────────────────────────────────────────────────────────────
 
-const MOCK_DETAIL: ChallengeDetail = {
-  challengeId: 'mock-bible-1',
+const TEST_DETAIL: ChallengeDetail = {
+  challengeId: 'test-bible-1',
   type: 'BIBLE',
   name: '출애굽기 완독하기',
   goal: null,
@@ -51,42 +50,54 @@ const MOCK_DETAIL: ChallengeDetail = {
   },
 };
 
-const MOCK_FEED: CertificationFeedResponse = {
-  myCertification: {
-    certId: 'mock-cert-1',
-    date: '2026-05-20',
-    meditationText: '오늘은 출애굽기 1장부터 10장까지 읽었습니다. 말씀을 통해 큰 은혜를 받았습니다.',
-    photoUrl: null,
-    isPrivate: false,
-    likeCount: 3,
-    isLikedByMe: false,
-    commentCount: 2,
-  },
-  otherCertifications: [
-    {
-      certId: 'mock-cert-2',
-      writerName: '김민준',
-      writerProfileImage: null,
-      date: '2026-05-19',
-      meditationText: '말씀을 통해 큰 은혜를 받았습니다.',
-      photoUrl: null,
-      likeCount: 5,
-      isLikedByMe: true,
-      commentCount: 1,
-    },
-    {
-      certId: 'mock-cert-3',
-      writerName: '이수진',
-      writerProfileImage: null,
-      date: '2026-05-18',
-      meditationText: null,
-      photoUrl: null,
-      likeCount: 2,
-      isLikedByMe: false,
-      commentCount: 0,
-    },
-  ],
+type WeeklyProgressItem = {
+  id: string;
+  name: string;
+  subtitle: string;
+  completedDates: string[];
+  isMe?: boolean;
 };
+
+const TEST_WEEKLY_PROGRESS: WeeklyProgressItem[] = [
+  {
+    id: 'test-bible-progress-me',
+    name: '나',
+    subtitle: '내 달성 현황',
+    completedDates: ['2026-05-18', '2026-05-19', '2026-05-20'],
+    isMe: true,
+  },
+  {
+    id: 'test-bible-progress-1',
+    name: '김민준',
+    subtitle: '말씀 읽기',
+    completedDates: ['2026-05-17', '2026-05-18', '2026-05-20'],
+  },
+  {
+    id: 'test-bible-progress-2',
+    name: '이수진',
+    subtitle: '출애굽기 읽기',
+    completedDates: ['2026-05-17', '2026-05-18', '2026-05-19', '2026-05-20'],
+  },
+];
+
+const WEEK_DAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
+const TODAY_COLOR = '#F75D42';
+
+function buildWeekDates(baseDate: Date) {
+  const start = new Date(baseDate);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      week: WEEK_DAYS[index],
+      day: date.getDate(),
+      dateString: toDateString(date),
+    };
+  });
+}
 
 // ─── 메인 화면 ──────────────────────────────────────────────────────────────────
 
@@ -94,16 +105,30 @@ export default function BibleChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { detail: apiDetail, isLoading, error } = useChallengeDetail(id ?? null);
-  const { feed: apiFeed } = useChallengeCertifications(id ?? null);
+  const isTestChallenge = !id || id.startsWith('test-');
+  const challengeId = isTestChallenge ? null : id;
+  const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
   const [menuVisible, setMenuVisible] = useState(false);
 
-  const detail = apiDetail ?? MOCK_DETAIL;
-  const feed = apiFeed ?? MOCK_FEED;
-  const certifiedDates = detail.myProgress?.allCertifiedDates ?? [];
+  const detail = isTestChallenge ? TEST_DETAIL : apiDetail ?? TEST_DETAIL;
+  const certifiedDates = useMemo(
+    () => detail.myProgress?.allCertifiedDates ?? [],
+    [detail.myProgress],
+  );
   const bibleRange = detail.bibleBooks?.join(', ') ?? '';
+  const weeklyProgressItems = useMemo<WeeklyProgressItem[]>(() => {
+    if (isTestChallenge) return TEST_WEEKLY_PROGRESS;
 
-  if (isLoading && id) {
+    return [{
+      id: `${detail.challengeId}-me`,
+      name: '나',
+      subtitle: '내 달성 현황',
+      completedDates: certifiedDates,
+      isMe: true,
+    }];
+  }, [certifiedDates, detail.challengeId, isTestChallenge]);
+
+  if (isLoading && !isTestChallenge) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ActivityIndicator style={styles.loader} color={colors.primary} />
@@ -111,7 +136,7 @@ export default function BibleChallengeScreen() {
     );
   }
 
-  if (error) {
+  if (error && !isTestChallenge) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.errorBox}>
@@ -183,23 +208,18 @@ export default function BibleChallengeScreen() {
         <Text style={styles.sectionTitle}>챌린지 인증</Text>
 
         <View style={styles.section}>
-          <ChallengeCalendar certifiedDates={certifiedDates} />
+          <ChallengeCalendar certifiedDates={certifiedDates} defaultExpanded />
         </View>
 
-        {feed.myCertification ? (
-          <View style={styles.section}>
-            <MyCertificationCard item={feed.myCertification} />
-          </View>
-        ) : null}
-        {feed.otherCertifications.map(item => (
-          <View key={item.certId} style={styles.section}>
-            <OtherCertificationCard item={item} />
+        {weeklyProgressItems.map(item => (
+          <View key={item.id} style={styles.section}>
+            <WeeklyProgressCard item={item} />
           </View>
         ))}
-        {!feed.myCertification && feed.otherCertifications.length === 0 ? (
+        {weeklyProgressItems.length === 0 ? (
           <View style={styles.section}>
             <View style={styles.feedPlaceholder}>
-              <Text style={styles.placeholderText}>아직 인증이 없습니다</Text>
+              <Text style={styles.placeholderText}>아직 달성 현황이 없습니다</Text>
             </View>
           </View>
         ) : null}
@@ -255,6 +275,59 @@ function SheetOption({ label, onPress, last }: { label: string; onPress: () => v
     >
       <Text style={sheetStyles.optionText}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+function WeeklyProgressCard({ item }: { item: WeeklyProgressItem }) {
+  const weekDates = useMemo(() => buildWeekDates(new Date()), []);
+  const completed = useMemo(() => new Set(item.completedDates), [item.completedDates]);
+  const today = toDateString(new Date());
+
+  return (
+    <View style={styles.weeklyCard}>
+      <View style={styles.progressHeader}>
+        <View style={[styles.progressAvatar, item.isMe && styles.progressAvatarMe]}>
+          {item.isMe ? (
+            <Ionicons name="person" size={spacing.md} color={colors.white} />
+          ) : (
+            <Text style={styles.progressAvatarText}>{item.name.charAt(0)}</Text>
+          )}
+        </View>
+        <View style={styles.progressMeta}>
+          <Text style={styles.progressName}>{item.name}</Text>
+          <Text style={styles.progressSubtitle}>{item.subtitle}</Text>
+        </View>
+        <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.secondary} />
+      </View>
+
+      <View style={styles.weekStatusGrid}>
+        {weekDates.map(date => {
+          const isCompleted = completed.has(date.dateString);
+          const isToday = date.dateString === today;
+
+          return (
+            <View key={date.dateString} style={styles.weekStatusCell}>
+              <Text style={styles.weekStatusLabel}>{date.week}</Text>
+              <View
+                style={[
+                  styles.weekStatusCircle,
+                  isCompleted && styles.weekStatusCircleCompleted,
+                  isToday && !isCompleted && styles.weekStatusCircleToday,
+                ]}
+              >
+                {isCompleted ? (
+                  <Ionicons name="checkmark" size={spacing.md} color={colors.white} />
+                ) : (
+                  <Text style={[styles.weekStatusDay, isToday && styles.weekStatusDayToday]}>
+                    {date.day}
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -367,6 +440,91 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
+  },
+
+  // 참여자별 주간 달성 현황
+  weeklyCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    paddingBottom: spacing.md,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.card.offset,
+    shadowOpacity: shadow.card.opacity,
+    shadowRadius: shadow.card.radius,
+    elevation: shadow.card.elevation,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  progressAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressAvatarMe: {
+    backgroundColor: colors.primary,
+  },
+  progressAvatarText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+  progressMeta: {
+    flex: 1,
+  },
+  progressName: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  progressSubtitle: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  weekStatusGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+  },
+  weekStatusCell: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.nano,
+  },
+  weekStatusLabel: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  weekStatusCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekStatusCircleCompleted: {
+    backgroundColor: colors.primary,
+  },
+  weekStatusCircleToday: {
+    backgroundColor: TODAY_COLOR,
+  },
+  weekStatusDay: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  weekStatusDayToday: {
+    color: colors.white,
   },
 
   feedPlaceholder: {
