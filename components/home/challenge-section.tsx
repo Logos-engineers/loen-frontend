@@ -16,7 +16,7 @@ export function ChallengeSection() {
 
   return (
     <View>
-      <SectionHeader title="챌린지" />
+      <SectionHeader title="챌린지" showArrow onPress={() => router.push('/challenge')} />
 
       <View style={styles.wrapper}>
         <Card style={styles.card}>

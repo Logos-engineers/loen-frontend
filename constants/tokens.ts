@@ -91,8 +91,11 @@ export const shadow = {
 } as const;
 
 export const spacing = {
+  nano: 2,    // 2px  — chip 내부 gap 등 최소 간격
   xs: 4,
   sm: 8,
+  smd: 10,    // 10px — Figma 기본 gap (sm↔smmd 사이)
+  smmd: 12,   // 12px — 3×4 grid (sm↔md 사이)
   md: 16,
   lg: 20,
   xl: 24,
@@ -109,13 +112,15 @@ export const radius = {
 } as const;
 
 export const fontSize = {
-  micro: 10,   // 10px — 극소 숫자 (장 번호 원형 내부)
-  xs: 11,      // 11px — 배너 날짜, 통계 라벨
-  sm: 12,      // 12px — Caption_12
-  md: 14,      // 14px — Body2_14
-  base: 16,    // 16px — Title3_16
-  display: 17, // 17px — 통계 수치 강조 숫자 (xs~base 사이 중간값)
-  lg: 20,      // 20px — Title1_20_B
+  micro: 10,    // 10px — 극소 숫자 (장 번호 원형 내부)
+  xs: 11,       // 11px — 배너 날짜, 통계 라벨
+  sm: 12,       // 12px — Caption_12_SB
+  md: 14,       // 14px — Body2_14
+  base: 16,     // 16px — Title3_16_SB
+  display: 17,  // 17px — 통계 수치 강조 숫자
+  heading: 18,  // 18px — Title2_18_SB (네비게이션/화면 헤더 제목)
+  lg: 20,       // 20px — Title1_20_B
+  title: 24,    // 24px — 상세 화면 페이지 메인 타이틀
   xl: 22,
   xxl: 28,
 } as const;

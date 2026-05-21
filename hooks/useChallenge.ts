@@ -1,6 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/utils/apiClient';
 
+export type ChallengeProgress = {
+  completedDays: number;
+  lastCertifiedDate: string | null;
+  weeklyCalendar: Record<string, boolean>;
+  allCertifiedDates: string[];
+};
+
+export type ChallengeDetail = {
+  challengeId: string;
+  type: 'FAITH' | 'BIBLE';
+  name: string;
+  goal: string | null;
+  startDate: string;
+  endDate: string;
+  dDay: number;
+  verificationMethod: 'ATTENDANCE' | 'MEDITATION' | 'PHOTO' | 'BIBLE_READ';
+  visibility: 'PUBLIC' | 'OIKOS' | 'LINK';
+  participantCount: number;
+  isJoined: boolean;
+  isCreator: boolean;
+  isPinned: boolean;
+  notificationEnabled: boolean;
+  myProgress: ChallengeProgress | null;
+};
+
 export type ChallengeItem = {
   id: string;
   name: string;
@@ -107,4 +132,163 @@ export function useChallenge() {
   }, [challenges]);
 
   return { challenges, isLoading, error, fetchChallenges, createBibleChallenge, togglePin };
+}
+
+export function useChallengeDetail(id: string | null) {
+  const [detail, setDetail] = useState<ChallengeDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await apiClient<ChallengeDetail>(`/challenges/${id}`);
+      setDetail(result);
+    } catch (e: any) {
+      setError(e?.message ?? '챌린지 정보를 불러오지 못했습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { detail, isLoading, error, refetch: fetch };
+}
+
+export type MyCertificationItem = {
+  certId: string;
+  date: string;
+  meditationText: string | null;
+  photoUrl: string | null;
+  isPrivate: boolean;
+  likeCount: number;
+  isLikedByMe: boolean;
+  commentCount: number;
+};
+
+export type OtherCertificationItem = {
+  certId: string;
+  writerName: string;
+  writerProfileImage: string | null;
+  date: string;
+  meditationText: string | null;
+  photoUrl: string | null;
+  likeCount: number;
+  isLikedByMe: boolean;
+  commentCount: number;
+};
+
+export type CommentItem = {
+  commentId: string;
+  userId: string;
+  writerName: string;
+  writerProfileImage: string | null;
+  content: string;
+  createdAt: string;
+  isMine: boolean;
+};
+
+export type CertificationFeedResponse = {
+  myCertification: MyCertificationItem | null;
+  otherCertifications: OtherCertificationItem[];
+};
+
+export function useChallengeCertifications(challengeId: string | null) {
+  const [feed, setFeed] = useState<CertificationFeedResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (!challengeId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await apiClient<CertificationFeedResponse>(`/challenges/${challengeId}/certifications`);
+      setFeed(result);
+    } catch (e: any) {
+      setError(e?.message ?? '인증 피드를 불러오지 못했습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [challengeId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { feed, isLoading, error, refetch: fetch };
+}
+
+export function useCertificationLike(certificationId: string, initialLiked: boolean, initialCount: number) {
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialCount);
+  const [isPending, setIsPending] = useState(false);
+
+  const toggle = useCallback(async () => {
+    if (isPending) return;
+    setIsPending(true);
+    const prevLiked = liked;
+    const prevCount = likeCount;
+    setLiked(!liked);
+    setLikeCount(c => liked ? c - 1 : c + 1);
+    try {
+      const result = await apiClient<{ isLiked: boolean; likeCount: number }>(
+        `/challenges/certifications/${certificationId}/like`,
+        { method: 'POST' },
+      );
+      setLiked(result.isLiked);
+      setLikeCount(result.likeCount);
+    } catch {
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+    } finally {
+      setIsPending(false);
+    }
+  }, [certificationId, liked, likeCount, isPending]);
+
+  return { liked, likeCount, toggle };
+}
+
+export function useCertificationComments(certificationId: string) {
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await apiClient<{ comments: CommentItem[]; totalCount: number }>(
+        `/challenges/certifications/${certificationId}/comments`,
+      );
+      setComments(result.comments);
+    } catch {
+      // silent
+    } finally {
+      setIsLoading(false);
+    }
+  }, [certificationId]);
+
+  const createComment = useCallback(async (content: string): Promise<CommentItem | null> => {
+    try {
+      const created = await apiClient<CommentItem>(
+        `/challenges/certifications/${certificationId}/comments`,
+        { method: 'POST', body: JSON.stringify({ content }) },
+      );
+      setComments(prev => [...prev, created]);
+      return created;
+    } catch {
+      return null;
+    }
+  }, [certificationId]);
+
+  const deleteComment = useCallback(async (commentId: string) => {
+    try {
+      await apiClient(`/challenges/certifications/comments/${commentId}`, { method: 'DELETE' });
+      setComments(prev => prev.filter(c => c.commentId !== commentId));
+    } catch {
+      // silent
+    }
+  }, []);
+
+  return { comments, isLoading, fetch, createComment, deleteComment };
 }

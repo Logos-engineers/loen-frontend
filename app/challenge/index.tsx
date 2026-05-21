@@ -2,7 +2,7 @@ import BackIcon from '@/assets/icons/back.svg';
 import ChevronDownSmIcon from '@/assets/icons/chevron-down-sm.svg';
 import ChevronRightSmIcon from '@/assets/icons/chevron-right-sm.svg';
 import SearchIcon from '@/assets/icons/search.svg';
-import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { BIBLE_BOOKS as BIBLE_BOOK_META } from '@/constants/BibleMeta';
 import { useChallenge, type ChallengeItem as ApiChallenge } from '@/hooks/useChallenge';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,6 +28,7 @@ const FAITH_IMAGE = require('@/assets/images/challenge-faith.png');
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 interface ChallengeCardItem {
   id: string;
+  type: 'FAITH' | 'BIBLE';
   tags: string[];
   period: string;
   title: string;
@@ -56,6 +57,7 @@ function toCardItem(item: ApiChallenge): ChallengeCardItem {
 
   return {
     id: String(item.id),
+    type: item.type,
     tags,
     period: `${toDateStr(item.startDate)} ~ ${toDateStr(item.endDate)}`,
     title: item.name,
@@ -65,9 +67,9 @@ function toCardItem(item: ApiChallenge): ChallengeCardItem {
 }
 
 // ─── ChallengeListCard ─────────────────────────────────────────────────────────
-function ChallengeListCard({ item }: { item: ChallengeCardItem }) {
+function ChallengeListCard({ item, onPress }: { item: ChallengeCardItem; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       {/* Tags row */}
       <View style={styles.cardTagRow}>
         {item.tags.map((tag, index) => (
@@ -163,12 +165,20 @@ export default function ChallengeListScreen() {
         {/* Challenge Card List */}
         <View style={styles.listContainer}>
           {isLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
           ) : error ? (
             <Text style={{ textAlign: 'center', color: colors.text.secondary, padding: spacing.xl }}>{error}</Text>
           ) : (
             displayedItems.map((item) => (
-              <ChallengeListCard key={item.id} item={item} />
+              <View key={item.id} style={styles.cardWrapper}>
+                <ChallengeListCard
+                  item={item}
+                  onPress={() => {
+                    const route = item.type === 'BIBLE' ? '/challenge/bible' : '/challenge/faith';
+                    router.push(`${route}?id=${item.id}`);
+                  }}
+                />
+              </View>
             ))
           )}
         </View>
@@ -180,59 +190,60 @@ export default function ChallengeListScreen() {
 
 // ─── 스타일 ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  // layout_LLMYZY — 전체 화면
   safe: {
     flex: 1,
     backgroundColor: colors.background.base,
-    paddingTop: 44, // Match OBS screen top safe spacing since we removed edges=['top']
+    paddingTop: 44, // iOS status bar height (system constant)
   },
 
-  // Header
+  // layout_J42PIH — navigation bar: height 46, row, center
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 46,
     backgroundColor: colors.background.base,
-    // explicitly match OBS screen where paddingHorizontal is 0 and backBtn has paddingLeft
   },
+  // layout_HXTP7S — left: width 100, padding 0 8 0 16
   backBtn: {
     width: 100,
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
-    flexShrink: 0,
+    gap: spacing.sm,
   },
+  // Title/Title2_18_SB — fontSize 18, semibold, center
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: fontSize.heading,
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,
   },
+  // layout_NSPMUN — right: width 100 (타이틀 중앙 정렬 밸런스)
   headerRight: {
-    width: 100, // balance the 100px backBtn so the title is perfectly centered
+    width: 100,
   },
 
   // Scroll
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: spacing.xxl },
 
-  // Search
+  // layout_4TRKMX — search bar: padding 16 all sides, gap 8
   searchWrapper: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    padding: spacing.md,
   },
+  // layout_8O31IB — input field: padding 8, gap 8, borderRadius 8, bg trans/gray/a5
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.border,
     borderRadius: radius.xs,
-    height: 42,
-    paddingHorizontal: spacing.sm + 3, // ~11px
+    padding: spacing.sm,
     gap: spacing.sm,
   },
+  // Title/Title3_16_SB — fontSize 16, semibold
   searchInput: {
     flex: 1,
     fontSize: fontSize.base,
@@ -241,27 +252,29 @@ const styles = StyleSheet.create({
     padding: 0,
   },
 
-  // Filter
+  // layout_J0M293 — filter row: padding 8 16, gap 8, row, center
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   filterLeft: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  // layout_QCKHSD — chip: padding 4 8, gap 2, borderRadius 8, bg trans/gray/a5
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.border,
     borderRadius: radius.xs,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    gap: 2,
+    paddingVertical: spacing.xs,
+    gap: spacing.nano,
   },
+  // Caption/Caption_12_SB — fontSize 12, semibold
   filterChipText: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
@@ -270,16 +283,16 @@ const styles = StyleSheet.create({
   filterChipActive: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary, // The purple background color seen in screenshot
+    backgroundColor: colors.primary,
     borderRadius: radius.xs,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    gap: 2,
+    paddingVertical: spacing.xs,
+    gap: spacing.nano,
   },
   filterToggleTextActive: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
-    color: '#FFFFFF',
+    color: colors.white,
   },
   filterToggleText: {
     fontSize: fontSize.sm,
@@ -287,57 +300,67 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
 
-  // List
-  listContainer: {
+  // 카드 목록 컨테이너
+  listContainer: {},
+  // layout_JXADQJ — 카드 래퍼: padding 8 16
+  cardWrapper: {
     paddingHorizontal: spacing.md,
-    gap: 12,
+    paddingVertical: spacing.sm,
   },
 
-  // Card
+  // layout_YIA4CJ — 카드: column, borderRadius 16, bg #FFFFFF, width fills wrapper
   card: {
     backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
-    paddingTop: spacing.md + 4, // ~20px
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.card.offset,
+    shadowOpacity: shadow.card.opacity,
+    shadowRadius: shadow.card.radius,
+    elevation: shadow.card.elevation,
   },
+  // layout_U5PGUR — 태그 행: padding 16 12 8 16, gap 10, row, center
   cardTagRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: spacing.sm + 4, // ~12px
     flexWrap: 'wrap',
+    paddingTop: spacing.md,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.smmd,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
   },
+  // layout_QCKHSD — chip: padding 4 8, gap 2, borderRadius 8, bg trans/gray/a5
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.border,
     borderRadius: radius.xs,
-    paddingHorizontal: 6,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    gap: spacing.nano,
   },
+  // Caption/Caption_12_SB
   chipText: {
-    fontSize: 11,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,
   },
+  // layout_XV7ULH — 아이템 행: padding 6 16 16, row, center
   cardItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm + 2, // ~10px
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   challengeImage: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: radius.xs,
   },
   textCol: {
     flex: 1,
-    gap: 2,
+    gap: spacing.xs,
   },
   periodText: {
     fontSize: fontSize.sm,
