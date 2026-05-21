@@ -24,6 +24,7 @@ export type ChallengeDetail = {
   isPinned: boolean;
   notificationEnabled: boolean;
   myProgress: ChallengeProgress | null;
+  bibleBooks?: string[];
 };
 
 export type ChallengeItem = {
