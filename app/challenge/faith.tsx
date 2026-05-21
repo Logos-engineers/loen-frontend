@@ -216,10 +216,9 @@ export default function FaithChallengeScreen() {
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-            <View style={styles.sheetHandle} />
             <SheetOption label="챌린지 수정하기" onPress={() => setMenuVisible(false)} />
             <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
-            <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} last />
+            <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
           </View>
         </TouchableOpacity>
       </Modal>
@@ -237,13 +236,24 @@ function TagChip({ label }: { label: string }) {
   );
 }
 
-function SheetOption({ label, onPress, last }: { label: string; onPress: () => void; last?: boolean }) {
+function SheetOption({
+  label,
+  onPress,
+  destructive,
+}: {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}) {
   return (
     <TouchableOpacity
-      style={[sheetStyles.option, last && sheetStyles.optionLast]}
+      style={sheetStyles.option}
       onPress={onPress}
+      activeOpacity={0.7}
     >
-      <Text style={sheetStyles.optionText}>{label}</Text>
+      <Text style={[sheetStyles.optionText, destructive && sheetStyles.optionTextDestructive]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -353,19 +363,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.background.base,
+    backgroundColor: colors.background.elevated,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    paddingBottom: spacing.xxl,
-  },
-  sheetHandle: {
-    width: spacing.xxl + spacing.sm,
-    height: spacing.xs,
-    backgroundColor: colors.border,
-    borderRadius: radius.full,
-    alignSelf: 'center',
-    marginTop: spacing.smmd,
-    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
   },
 });
 
@@ -385,17 +386,15 @@ const chipStyles = StyleSheet.create({
 
 const sheetStyles = StyleSheet.create({
   option: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  optionLast: {
-    borderBottomWidth: 0,
+    padding: spacing.md,
   },
   optionText: {
     fontSize: fontSize.base,
     color: colors.text.primary,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 26,
+  },
+  optionTextDestructive: {
+    color: colors.reaction.red,
   },
 });
