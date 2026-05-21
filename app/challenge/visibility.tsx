@@ -77,6 +77,12 @@ export default function ChallengeVisibilityScreen() {
       const notifTimes = alarms.filter(a => a.enabled).map(
         a => `${String(a.hour).padStart(2, '0')}:${String(a.minute).padStart(2, '0')}`
       );
+      const visibilityMap = {
+        public: 'PUBLIC',
+        oikos: 'OIKOS',
+        link: 'LINK',
+      } as const;
+
       await apiClient('/challenges/bible', {
         method: 'POST',
         body: JSON.stringify({
@@ -86,7 +92,7 @@ export default function ChallengeVisibilityScreen() {
           targetValue: totalChapters,
           startDate: params.startDate ? toIsoDate(params.startDate as string) : '',
           endDate: params.endDate ? toIsoDate(params.endDate as string) : '',
-          visibility: visibility === 'public' ? 'PUBLIC' : 'PRIVATE',
+          visibility: visibilityMap[visibility],
           notificationEnabled: alarms.some(a => a.enabled),
           notificationTimes: notifTimes,
         }),

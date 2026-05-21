@@ -68,7 +68,7 @@ export type CreateBibleChallengePayload = {
   targetValue: number;
   startDate: string;
   endDate: string;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: 'PUBLIC' | 'OIKOS' | 'LINK';
   notificationEnabled: boolean;
   notificationTimes: string[];
 };
