@@ -221,6 +221,42 @@ export function useChallengeCertifications(challengeId: string | null) {
   return { feed, isLoading, error, refetch: fetch };
 }
 
+export type RecommendedChallengeItem = {
+  challengeId: string;
+  type: 'FAITH' | 'BIBLE';
+  name: string;
+  goal: string | null;
+  startDate: string;
+  endDate: string;
+  dDay: number;
+  verificationMethod: string;
+  visibility: string;
+  participantCount: number;
+  isJoined: boolean;
+  creatorName: string;
+};
+
+export function useRecommendedChallenges() {
+  const [items, setItems] = useState<RecommendedChallengeItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await apiClient<RecommendedChallengeItem[]>('/challenges/recommended');
+      setItems(result);
+    } catch {
+      // silent
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { items, isLoading };
+}
+
 export function useCertificationLike(certificationId: string, initialLiked: boolean, initialCount: number) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialCount);

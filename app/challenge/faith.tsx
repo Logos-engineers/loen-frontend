@@ -2,8 +2,8 @@ import { ChallengeCalendar } from '@/components/challenge/ChallengeCalendar';
 import { MyCertificationCard, OtherCertificationCard } from '@/components/challenge/CertificationFeedCard';
 import { ChallengeGoalCard } from '@/components/challenge/ChallengeGoalCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
-import { useChallengeDetail, useChallengeCertifications } from '@/hooks/useChallenge';
+import type { CertificationFeedResponse, ChallengeDetail, RecommendedChallengeItem } from '@/hooks/useChallenge';
+import { useChallengeDetail, useChallengeCertifications, useRecommendedChallenges } from '@/hooks/useChallenge';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient, BASE_URL } from '@/utils/apiClient';
 import { formatShortDate } from '@/utils/date';
@@ -107,6 +107,7 @@ export default function FaithChallengeScreen() {
   const challengeId = isTestChallenge ? null : id;
   const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
   const { feed: apiFeed, refetch: refetchFeed } = useChallengeCertifications(challengeId);
+  const { items: recommendedItems } = useRecommendedChallenges();
   const [menuVisible, setMenuVisible] = useState(false);
   const [certText, setCertText] = useState('');
   const [certSubmitting, setCertSubmitting] = useState(false);
@@ -275,11 +276,22 @@ export default function FaithChallengeScreen() {
 
         {/* 추천 챌린지 섹션 */}
         <Text style={styles.sectionTitle}>추천 챌린지</Text>
-        <View style={styles.section}>
-          <View style={styles.feedPlaceholder}>
-            <Text style={styles.placeholderText}>추천 챌린지 준비 중입니다</Text>
+        {recommendedItems.length > 0 ? (
+          recommendedItems.map(item => (
+            <View key={item.challengeId} style={styles.section}>
+              <RecommendedChallengeCard
+                item={item}
+                onPress={() => router.push(`/challenge/faith?id=${item.challengeId}`)}
+              />
+            </View>
+          ))
+        ) : (
+          <View style={styles.section}>
+            <View style={styles.feedPlaceholder}>
+              <Text style={styles.placeholderText}>추천 챌린지가 없습니다</Text>
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* 하단 인증 바 — Figma layout_G34ZD3, layout_48FMB9 */}
@@ -373,6 +385,36 @@ function TagChip({ label }: { label: string }) {
     <View style={chipStyles.chip}>
       <Text style={chipStyles.text}>{label}</Text>
     </View>
+  );
+}
+
+function RecommendedChallengeCard({
+  item,
+  onPress,
+}: {
+  item: RecommendedChallengeItem;
+  onPress: () => void;
+}) {
+  const typeLabel = item.type === 'FAITH' ? '신앙' : '성경';
+  const dDayLabel = item.dDay >= 0 ? `D-${item.dDay}` : '종료';
+
+  return (
+    <TouchableOpacity style={recStyles.card} onPress={onPress} activeOpacity={0.8}>
+      <View style={recStyles.top}>
+        <View style={recStyles.badge}>
+          <Text style={recStyles.badgeText}>{typeLabel}</Text>
+        </View>
+        <Text style={recStyles.dDay}>{dDayLabel}</Text>
+      </View>
+      <Text style={recStyles.name} numberOfLines={1}>{item.name}</Text>
+      {item.goal ? (
+        <Text style={recStyles.goal} numberOfLines={2}>{item.goal}</Text>
+      ) : null}
+      <View style={recStyles.bottom}>
+        <Text style={recStyles.meta}>{item.participantCount}명 참여중</Text>
+        <Text style={recStyles.creator}>{item.creatorName}</Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -596,6 +638,65 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
+  },
+});
+
+const recStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.card.offset,
+    shadowOpacity: shadow.card.opacity,
+    shadowRadius: shadow.card.radius,
+    elevation: shadow.card.elevation,
+    gap: spacing.xs,
+  },
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  badge: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+  dDay: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  name: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+  },
+  goal: {
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  bottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  meta: {
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
+  },
+  creator: {
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
   },
 });
 
