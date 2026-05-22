@@ -27,7 +27,6 @@ export default function ChallengeVisibilityScreen() {
   const insets = useSafeAreaInsets();
 
   const [visibility, setVisibility] = useState<'public' | 'oikos' | 'link'>('public');
-  const [encouragementEnabled, setEncouragementEnabled] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
 
   // 알람 (AlarmSection controlled state)
@@ -159,8 +158,6 @@ export default function ChallengeVisibilityScreen() {
           onManageModeChange={setIsManageMode}
           selectedForDelete={selectedForDelete}
           onSelectedForDeleteChange={setSelectedForDelete}
-          encouragementEnabled={encouragementEnabled}
-          onEncouragementChange={setEncouragementEnabled}
         />
 
         <View style={{ height: 80 }} />

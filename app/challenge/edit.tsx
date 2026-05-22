@@ -24,7 +24,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -72,7 +71,6 @@ export default function ChallengeEditScreen() {
 
   // 알람 (AlarmSection controlled state)
   const [alarms, setAlarms] = useState<ChallengeAlarm[]>(INITIAL_ALARMS);
-  const [encouragementEnabled, setEncouragementEnabled] = useState(false);
   const [isManageMode, setIsManageMode] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<string[]>([]);
 
@@ -249,8 +247,6 @@ export default function ChallengeEditScreen() {
             onManageModeChange={setIsManageMode}
             selectedForDelete={selectedForDelete}
             onSelectedForDeleteChange={setSelectedForDelete}
-            encouragementEnabled={encouragementEnabled}
-            onEncouragementChange={setEncouragementEnabled}
           />
 
           {/* C. 공개 범위 */}
@@ -358,8 +354,9 @@ export default function ChallengeEditScreen() {
           <TouchableWithoutFeedback onPress={() => setIsDateSheetOpen(false)}>
             <View style={styles.modalBackground} />
           </TouchableWithoutFeedback>
-          <View style={[styles.bottomSheet, { maxHeight: 'auto' }]}>
+          <View style={styles.bottomSheet}>
             <View style={styles.handleWrapper}><View style={styles.sheetHandle} /></View>
+            <Text style={styles.dateSheetTitle}>시작일 설정</Text>
             <DateWheelPicker value={tempStartDate} onChange={setTempStartDate} />
             <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
               <TouchableOpacity style={styles.completeBtn} onPress={handleCompleteDateSelection}>
@@ -461,6 +458,7 @@ const styles = StyleSheet.create({
   bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 },
   bookText: { fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
   bookTextSelected: { color: colors.primary, fontWeight: fontWeight.bold },
+  dateSheetTitle: { fontSize: 20, fontWeight: fontWeight.bold, color: colors.text.primary, paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
   sheetFooter: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   completeBtn: { height: 52, backgroundColor: colors.primary, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   completeBtnDisabled: { backgroundColor: 'rgba(101,97,255,0.3)' },

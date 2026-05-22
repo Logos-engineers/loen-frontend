@@ -1,4 +1,5 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import DateWheelPicker from '@/components/challenge/DateWheelPicker';
 import DurationBottomSheet from '@/components/challenge/DurationBottomSheet';
 import {
   BIBLE_BOOK_NAMES,
@@ -9,7 +10,6 @@ import {
   formatSelectedBooks,
 } from '@/components/challenge/challengeTypes';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
@@ -274,19 +274,10 @@ export default function ChallengeCreateScreen() {
           <TouchableWithoutFeedback onPress={() => setIsDateSheetOpen(false)}>
             <View style={styles.modalBackground} />
           </TouchableWithoutFeedback>
-          <View style={[styles.bottomSheet, { maxHeight: 'auto' }]}>
+          <View style={styles.bottomSheet}>
             <View style={styles.handleWrapper}><View style={styles.sheetHandle} /></View>
-            <View style={styles.datePickerContainer}>
-              <DateTimePicker
-                value={tempStartDate}
-                mode="date"
-                display="spinner"
-                locale="ko-KR"
-                onChange={(_, date) => { if (date) setTempStartDate(date); }}
-                style={styles.datePicker}
-                textColor={colors.text.primary}
-              />
-            </View>
+            <Text style={styles.dateSheetTitle}>시작일 설정</Text>
+            <DateWheelPicker value={tempStartDate} onChange={setTempStartDate} />
             <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
               <TouchableOpacity style={styles.completeBtn} activeOpacity={0.8} onPress={handleCompleteDateSelection}>
                 <Text style={styles.completeBtnText}>완료</Text>
@@ -377,8 +368,7 @@ const styles = StyleSheet.create({
   completeBtn: { height: 52, backgroundColor: colors.primary, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   completeBtnDisabled: { backgroundColor: 'rgba(101,97,255,0.3)' },
   completeBtnText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.bold },
-  datePickerContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, alignItems: 'center' },
-  datePicker: { width: '100%', height: 200 },
+  dateSheetTitle: { fontSize: 20, fontWeight: fontWeight.bold, color: colors.text.primary, paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
 
   modalOverlayCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
   exitModalCard: { width: '80%', backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center' },

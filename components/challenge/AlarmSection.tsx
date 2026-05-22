@@ -27,8 +27,6 @@ type Props = {
   onManageModeChange: (active: boolean) => void;
   selectedForDelete: string[];
   onSelectedForDeleteChange: (ids: string[]) => void;
-  encouragementEnabled: boolean;
-  onEncouragementChange: (enabled: boolean) => void;
 };
 
 export default function AlarmSection({
@@ -38,8 +36,6 @@ export default function AlarmSection({
   onManageModeChange,
   selectedForDelete,
   onSelectedForDeleteChange,
-  encouragementEnabled,
-  onEncouragementChange,
 }: Props) {
   const insets = useSafeAreaInsets();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -156,27 +152,6 @@ export default function AlarmSection({
           )}
         </View>
       ))}
-
-      {/* 맞춤형 독려 알림 */}
-      <View style={styles.card}>
-        <View style={styles.cardTitleRow}>
-          <Text style={[styles.cardTitle, isManageMode && styles.dimText]}>맞춤형 독려 알림</Text>
-          <Ionicons
-            name="help-circle"
-            size={18}
-            color={isManageMode ? colors.text.dim : colors.text.secondary}
-            style={{ marginLeft: 6 }}
-          />
-        </View>
-        <Switch
-          value={encouragementEnabled}
-          onValueChange={onEncouragementChange}
-          trackColor={{ false: colors.border, true: colors.primary }}
-          thumbColor={colors.white}
-          ios_backgroundColor={colors.border}
-          disabled={isManageMode}
-        />
-      </View>
 
       {/* 알람 추가 바텀시트 */}
       <Modal visible={isSheetOpen} transparent animationType="slide" onRequestClose={() => setIsSheetOpen(false)}>

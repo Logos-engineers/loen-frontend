@@ -4,6 +4,7 @@ import { ChallengeGoalCard } from '@/components/challenge/ChallengeGoalCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
 import { useChallengeDetail, useChallengeCertifications } from '@/hooks/useChallenge';
+import { apiClient } from '@/utils/apiClient';
 import { formatShortDate } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,10 +12,13 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -95,12 +99,33 @@ export default function FaithChallengeScreen() {
   const isTestChallenge = !id || id.startsWith('test-');
   const challengeId = isTestChallenge ? null : id;
   const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
-  const { feed: apiFeed } = useChallengeCertifications(challengeId);
+  const { feed: apiFeed, refetch: refetchFeed } = useChallengeCertifications(challengeId);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isCertOpen, setIsCertOpen] = useState(false);
+  const [certText, setCertText] = useState('');
+  const [certSubmitting, setCertSubmitting] = useState(false);
 
   const detail = isTestChallenge ? TEST_DETAIL : apiDetail;
   const feed = isTestChallenge ? TEST_FEED : apiFeed;
   const certifiedDates = detail?.myProgress?.allCertifiedDates ?? [];
+
+  const handleCertSubmit = async () => {
+    if (!certText.trim() || certSubmitting) return;
+    setCertSubmitting(true);
+    try {
+      await apiClient(`/challenges/${id}/certifications`, {
+        method: 'POST',
+        body: JSON.stringify({ meditationText: certText, isPrivate: false }),
+      });
+      setCertText('');
+      setIsCertOpen(false);
+      if (!isTestChallenge) refetchFeed();
+    } catch {
+      // silent
+    } finally {
+      setCertSubmitting(false);
+    }
+  };
 
   if (isLoading && !isTestChallenge) {
     return (
@@ -145,7 +170,7 @@ export default function FaithChallengeScreen() {
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, spacing.xxl) }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
       >
         {/* 챌린지 제목 + 날짜 — layout_YGLWZD: padding 16 16 8 */}
         <View style={styles.infoSection}>
@@ -202,6 +227,80 @@ export default function FaithChallengeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* 하단 인증 바 — Figma layout_G34ZD3, layout_48FMB9 */}
+      <View style={styles.bottomBar}>
+        <View style={[styles.bottomBarInner, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+          <View style={styles.bottomAvatar}>
+            <Ionicons name="person" size={16} color={colors.white} />
+          </View>
+          <TouchableOpacity style={styles.commentInput} activeOpacity={0.7}>
+            <Text style={styles.commentPlaceholder}>댓글을 입력해주세요</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.certBtn}
+            onPress={() => setIsCertOpen(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.certBtnText}>인증하기</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* 인증하기 바텀시트 */}
+      <Modal
+        visible={isCertOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setCertText(''); setIsCertOpen(false); }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.kvContainer}
+        >
+          <TouchableOpacity
+            style={styles.kvOverlay}
+            activeOpacity={1}
+            onPress={() => { setCertText(''); setIsCertOpen(false); }}
+          />
+          <View style={[styles.certSheet, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+            <View style={styles.certHandleWrapper}>
+              <View style={styles.certHandle} />
+            </View>
+            <Text style={styles.certSheetTitle}>인증하기</Text>
+            <View style={styles.certInputWrapper}>
+              <TextInput
+                style={styles.certTextInput}
+                placeholder="한 줄 묵상을 입력해주세요"
+                placeholderTextColor={colors.text.secondary}
+                value={certText}
+                onChangeText={setCertText}
+                multiline
+                maxLength={200}
+                autoFocus
+                textAlignVertical="top"
+              />
+            </View>
+            <View style={styles.certSheetFooter}>
+              <TouchableOpacity
+                style={styles.certCancelBtn}
+                onPress={() => { setCertText(''); setIsCertOpen(false); }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.certCancelBtnText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.certSubmitBtn, !certText.trim() && styles.certSubmitBtnDisabled]}
+                onPress={handleCertSubmit}
+                disabled={!certText.trim() || certSubmitting}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.certSubmitBtnText}>완료</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* 옵션 바텀시트 */}
       <Modal
@@ -373,6 +472,135 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingBottom: spacing.md,
+  },
+
+  // ─── 하단 인증 바 (Figma layout_G34ZD3 / layout_48FMB9) ──────────
+  bottomBar: {
+    backgroundColor: colors.white,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  bottomBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: spacing.md,
+    paddingLeft: spacing.smd,
+    paddingRight: spacing.md,
+    gap: spacing.sm,
+  },
+  bottomAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Figma: layout_6AFTYI — padding 8 16, trans/gray/a5 bg, radius 12
+  commentInput: {
+    flex: 1,
+    backgroundColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+    minHeight: 36,
+  },
+  commentPlaceholder: {
+    fontSize: fontSize.base,
+    color: colors.text.secondary,
+  },
+  // Figma: layout_I02N6M — padding 10 16, trans/primary/a5 bg, radius 12
+  certBtn: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.smd,
+  },
+  certBtnText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+
+  // ─── 인증하기 바텀시트 ────────────────────────────────────────────
+  kvContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  kvOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay.default,
+  },
+  certSheet: {
+    backgroundColor: colors.background.elevated,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.smmd,
+    paddingHorizontal: spacing.xl,
+  },
+  certHandleWrapper: {
+    alignItems: 'center',
+    paddingBottom: spacing.md,
+  },
+  certHandle: {
+    width: 48,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+  },
+  certSheetTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    paddingBottom: spacing.md,
+  },
+  certInputWrapper: {
+    backgroundColor: colors.border,
+    borderRadius: radius.md,
+    minHeight: 100,
+    marginBottom: spacing.xl,
+  },
+  certTextInput: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.text.primary,
+    padding: spacing.md,
+    minHeight: 100,
+  },
+  certSheetFooter: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  certCancelBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  certCancelBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+  certSubmitBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  certSubmitBtnDisabled: {
+    backgroundColor: 'rgba(101,97,255,0.3)',
+  },
+  certSubmitBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.white,
   },
 });
 
