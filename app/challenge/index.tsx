@@ -73,9 +73,11 @@ function toCardItem(item: ApiChallenge): ChallengeCardItem {
   const bookNames = (item.bibleBooks ?? []).map(
     code => BIBLE_BOOK_META.find(b => b.code === code)?.korName ?? code
   );
-  const desc = bookNames.length > 0
-    ? bookNames.slice(0, 2).join(', ') + (bookNames.length > 2 ? ` 외 ${bookNames.length - 2}권` : '')
-    : '';
+  const desc = item.type === 'FAITH'
+    ? (item.goal ?? '')
+    : bookNames.length > 0
+      ? bookNames.slice(0, 2).join(', ') + (bookNames.length > 2 ? ` 외 ${bookNames.length - 2}권` : '')
+      : '';
 
   return {
     id: String(item.id),
@@ -107,7 +109,7 @@ function ChallengeListCard({ item, onPress }: { item: ChallengeCardItem; onPress
         <View style={styles.textCol}>
           <Text style={styles.periodText}>{item.period}</Text>
           <Text style={styles.titleText} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.descText} numberOfLines={1}>{item.desc}</Text>
+          {item.desc ? <Text style={styles.descText} numberOfLines={1}>{item.desc}</Text> : null}
         </View>
         <ChevronRightSmIcon width={10} height={17} color={colors.text.dim} />
       </View>

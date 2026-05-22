@@ -31,6 +31,7 @@ export type ChallengeItem = {
   id: string;
   name: string;
   type: 'FAITH' | 'BIBLE';
+  goal?: string | null;
   startDate: string;
   endDate: string;
   participantCount: number;
@@ -51,6 +52,7 @@ type BackendChallengeItem = {
   id?: string;
   name: string;
   type: 'FAITH' | 'BIBLE';
+  goal?: string | null;
   startDate: string;
   endDate: string;
   participantCount: number;
@@ -78,6 +80,7 @@ function normalizeChallenge(item: BackendChallengeItem): ChallengeItem {
     id: item.id ?? item.challengeId,
     name: item.name,
     type: item.type,
+    goal: item.goal,
     startDate: item.startDate,
     endDate: item.endDate,
     participantCount: item.participantCount,
