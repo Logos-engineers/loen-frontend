@@ -1,9 +1,10 @@
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import type { MyCertificationItem, OtherCertificationItem } from '@/hooks/useChallenge';
 import { useCertificationLike } from '@/hooks/useChallenge';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { CommentBottomSheet } from './CommentBottomSheet';
 
@@ -129,45 +130,156 @@ function ReactionRow({
   );
 }
 
-export function MyCertificationCard({ item }: { item: MyCertificationItem }) {
+type MyCertificationCardProps = {
+  item: MyCertificationItem;
+  onDelete?: () => void;
+  onEditDone?: () => void;
+};
+
+export function MyCertificationCard({ item, onDelete, onEditDone }: MyCertificationCardProps) {
+  const [editVisible, setEditVisible] = useState(false);
+  const [editText, setEditText] = useState(item.meditationText ?? '');
+  const [editPrivate, setEditPrivate] = useState(item.isPrivate);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleDelete = () => {
+    Alert.alert(
+      '인증 삭제',
+      '삭제하면 좋아요, 댓글도 함께 삭제됩니다. 삭제할까요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient(`/challenges/certifications/${item.certId}`, { method: 'DELETE' });
+              onDelete?.();
+            } catch (err) {
+              Alert.alert('삭제 실패', (err as Error)?.message || '삭제에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleEditOpen = () => {
+    setEditText(item.meditationText ?? '');
+    setEditPrivate(item.isPrivate);
+    setEditVisible(true);
+  };
+
+  const handleEditSave = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await apiClient(`/challenges/certifications/${item.certId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ meditationText: editText.trim() || null, isPrivate: editPrivate }),
+      });
+      setEditVisible(false);
+      onEditDone?.();
+    } catch (err) {
+      Alert.alert('수정 실패', (err as Error)?.message || '수정에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <View style={styles.card}>
-      <View style={styles.rowItem}>
-        <ProfileAvatar isMe name="나" />
-        <View style={styles.metaCol}>
-          <View style={styles.nicknameRow}>
-            <Text style={styles.nickname}>나</Text>
-            <Text style={styles.time}>{formatRelativeDate(item.date)}</Text>
+    <>
+      <View style={styles.card}>
+        <View style={styles.rowItem}>
+          <ProfileAvatar isMe name="나" />
+          <View style={styles.metaCol}>
+            <View style={styles.nicknameRow}>
+              <Text style={styles.nickname}>나</Text>
+              <Text style={styles.time}>{formatRelativeDate(item.date)}</Text>
+            </View>
           </View>
+          <MeatballMenu
+            options={[
+              { label: '인증 수정', onPress: handleEditOpen },
+              { label: '인증 삭제', onPress: handleDelete, destructive: true },
+            ]}
+          />
         </View>
-        <MeatballMenu
-          options={[
-            { label: '인증 수정', onPress: () => {} },
-            { label: '인증 삭제', onPress: () => {}, destructive: true },
-          ]}
+
+        {item.meditationText ? (
+          <View style={styles.bodySection}>
+            {item.isPrivate ? (
+              <Ionicons name="lock-closed-outline" size={14} color={colors.text.secondary} />
+            ) : null}
+            <Text style={styles.bodyText}>{item.meditationText}</Text>
+          </View>
+        ) : null}
+
+        {item.photoUrl ? (
+          <Image source={{ uri: item.photoUrl }} style={styles.photo} resizeMode="cover" />
+        ) : null}
+
+        <ReactionRow
+          certificationId={item.certId}
+          initialLiked={item.isLikedByMe ?? false}
+          initialLikeCount={item.likeCount ?? 0}
+          initialCommentCount={item.commentCount ?? 0}
         />
       </View>
 
-      {item.meditationText ? (
-        <View style={styles.bodySection}>
-          {item.isPrivate ? (
-            <Ionicons name="lock-closed-outline" size={14} color={colors.text.secondary} />
-          ) : null}
-          <Text style={styles.bodyText}>{item.meditationText}</Text>
+      {/* 수정 모달 */}
+      <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
+        <View style={editStyles.overlay}>
+          <View style={editStyles.card}>
+            <Text style={editStyles.title}>인증 수정</Text>
+
+            <TextInput
+              style={editStyles.input}
+              placeholder="내용을 입력해주세요"
+              placeholderTextColor={colors.text.secondary}
+              value={editText}
+              onChangeText={setEditText}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={editStyles.privateRow}
+              onPress={() => setEditPrivate(p => !p)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={editPrivate ? 'lock-closed' : 'lock-open'}
+                size={16}
+                color={editPrivate ? colors.primary : colors.text.secondary}
+              />
+              <Text style={[editStyles.privateText, editPrivate && { color: colors.primary }]}>
+                나만 보기
+              </Text>
+            </TouchableOpacity>
+
+            <View style={editStyles.btnRow}>
+              <TouchableOpacity
+                style={[editStyles.btn, editStyles.btnCancel]}
+                onPress={() => setEditVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={editStyles.btnTextCancel}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[editStyles.btn, editStyles.btnSave]}
+                onPress={handleEditSave}
+                activeOpacity={0.8}
+                disabled={submitting}
+              >
+                <Text style={editStyles.btnTextSave}>{submitting ? '저장 중...' : '저장'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      ) : null}
-
-      {item.photoUrl ? (
-        <Image source={{ uri: item.photoUrl }} style={styles.photo} resizeMode="cover" />
-      ) : null}
-
-      <ReactionRow
-        certificationId={item.certId}
-        initialLiked={item.isLikedByMe ?? false}
-        initialLikeCount={item.likeCount ?? 0}
-        initialCommentCount={item.commentCount ?? 0}
-      />
-    </View>
+      </Modal>
+    </>
   );
 }
 
@@ -210,7 +322,6 @@ export function OtherCertificationCard({ item }: { item: OtherCertificationItem 
 }
 
 const styles = StyleSheet.create({
-  // ─── 카드 래퍼 ─────────────────────────────────────────────────────────────
   card: {
     backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
@@ -222,7 +333,6 @@ const styles = StyleSheet.create({
     elevation: shadow.card.elevation,
   },
 
-  // ─── 헤더 행 (layout_4SV5U8: padding 8 16) ────────────────────────────────
   rowItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -231,7 +341,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
-  // ─── 아바타 (32×32 원형) ──────────────────────────────────────────────────
   avatar: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
@@ -253,7 +362,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
-  // ─── 닉네임 + 시간 열 ──────────────────────────────────────────────────────
   metaCol: {
     flex: 1,
     justifyContent: 'center',
@@ -274,13 +382,11 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
 
-  // ─── 미트볼 버튼 ──────────────────────────────────────────────────────────
   meatballBtn: {
     paddingLeft: spacing.sm,
     paddingVertical: spacing.xs,
   },
 
-  // ─── 본문 (layout_5MVCCV: row, center + 8px top gap) ─────────────────────
   bodySection: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -296,13 +402,11 @@ const styles = StyleSheet.create({
     lineHeight: fontSize.md * 1.5,
   },
 
-  // ─── 사진 (full-width) ────────────────────────────────────────────────────
   photo: {
     width: '100%',
     height: PHOTO_HEIGHT,
   },
 
-  // ─── 리액션 행 (layout_QZSK3D: padding 8 16, gap 12) ─────────────────────
   reactionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -310,7 +414,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     gap: spacing.smmd,
   },
-  // icon tag (layout_AUAI36: padding 4 10, height 28, bg trans/gray/a5, radius ~9)
   reactionChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,7 +430,6 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
 
-  // ─── 미트볼 바텀시트 ──────────────────────────────────────────────────────
   overlay: {
     flex: 1,
     backgroundColor: colors.overlay.default,
@@ -364,5 +466,71 @@ const styles = StyleSheet.create({
   },
   sheetOptionDestructive: {
     color: colors.reaction.red,
+  },
+});
+
+const editStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+  },
+  title: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  input: {
+    backgroundColor: colors.background.base,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: fontSize.base,
+    color: colors.text.primary,
+    minHeight: 100,
+    marginBottom: spacing.sm,
+  },
+  privateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xl,
+    paddingVertical: spacing.xs,
+  },
+  privateText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  btn: {
+    flex: 1,
+    height: 48,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnCancel: { backgroundColor: colors.border },
+  btnSave: { backgroundColor: colors.primary },
+  btnTextCancel: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  btnTextSave: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.white,
   },
 });

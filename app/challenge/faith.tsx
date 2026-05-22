@@ -253,7 +253,11 @@ export default function FaithChallengeScreen() {
         {/* 인증 피드 — layout_1QJZ47: padding 8 16 */}
         {feed?.myCertification ? (
           <View style={styles.section}>
-            <MyCertificationCard item={feed.myCertification} />
+            <MyCertificationCard
+              item={feed.myCertification}
+              onDelete={() => { if (!isTestChallenge) refetchFeed(); }}
+              onEditDone={() => { if (!isTestChallenge) refetchFeed(); }}
+            />
           </View>
         ) : null}
         {(feed?.otherCertifications ?? []).map(item => (
