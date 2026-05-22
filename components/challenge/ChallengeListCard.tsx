@@ -1,3 +1,5 @@
+import BookIcon from '@/assets/icons/book.svg';
+import PrayIcon from '@/assets/icons/pray.svg';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import type { RecommendedChallengeItem } from '@/hooks/useChallenge';
 import { formatShortDate } from '@/utils/date';
@@ -29,13 +31,12 @@ export function ChallengeListCard({ item, onPress }: Props) {
 
       {/* 콘텐츠 행 — padding 6 16 16 */}
       <View style={styles.contentRow}>
-        {/* 아이콘 박스 — 32x32, borderRadius 10 */}
-        <View style={styles.iconBox}>
-          <Ionicons
-            name={item.type === 'FAITH' ? 'heart-outline' : 'book-outline'}
-            size={16}
-            color={colors.text.primary}
-          />
+        {/* 챌린지 타입 배지 — 32x32 */}
+        <View style={styles.badgeWrap}>
+          {item.type === 'FAITH'
+            ? <PrayIcon width={32} height={32} />
+            : <BookIcon width={32} height={32} />
+          }
         </View>
 
         {/* 텍스트 컬럼 */}
@@ -87,13 +88,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
   },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  badgeWrap: {
     marginRight: spacing.sm,
   },
   textCol: {
