@@ -5,7 +5,7 @@ import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constan
 import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
 import { useChallengeDetail, useChallengeCertifications } from '@/hooks/useChallenge';
 import { useAuthStore } from '@/store/auth-store';
-import { BASE_URL } from '@/utils/apiClient';
+import { apiClient, BASE_URL } from '@/utils/apiClient';
 import { formatShortDate } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -143,22 +143,27 @@ export default function FaithChallengeScreen() {
     if (!certText.trim() && !photoUri) return;
     setCertSubmitting(true);
     try {
-      const formData = new FormData();
-      if (certText.trim()) formData.append('meditationText', certText.trim());
-      formData.append('isPrivate', 'false');
       if (photoUri) {
+        const formData = new FormData();
+        if (certText.trim()) formData.append('meditationText', certText.trim());
+        formData.append('isPrivate', 'false');
         const filename = photoUri.split('/').pop() ?? 'photo.jpg';
         formData.append('photo', { uri: photoUri, name: filename, type: 'image/jpeg' } as any);
-      }
-      const token = useAuthStore.getState().accessToken;
-      const res = await fetch(`${BASE_URL}/challenges/${id}/certify`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `오류 ${res.status}`);
+        const token = useAuthStore.getState().accessToken;
+        const res = await fetch(`${BASE_URL}/challenges/${id}/certify`, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `오류 ${res.status}`);
+        }
+      } else {
+        await apiClient(`/challenges/${id}/certify`, {
+          method: 'POST',
+          body: JSON.stringify({ meditationText: certText.trim() || null, isPrivate: false }),
+        });
       }
       setCertText('');
       setPhotoUri(null);
