@@ -1,7 +1,8 @@
 import { ChallengeCalendar } from '@/components/challenge/ChallengeCalendar';
+import { ChallengeListCard } from '@/components/challenge/ChallengeListCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import type { ChallengeDetail } from '@/hooks/useChallenge';
-import { useChallengeDetail } from '@/hooks/useChallenge';
+import { useChallengeDetail, useRecommendedChallenges } from '@/hooks/useChallenge';
 import { formatShortDate, toDateString } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -108,6 +109,7 @@ export default function BibleChallengeScreen() {
   const isTestChallenge = !id || id.startsWith('test-');
   const challengeId = isTestChallenge ? null : id;
   const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
+  const { items: recommendedItems } = useRecommendedChallenges();
   const [menuVisible, setMenuVisible] = useState(false);
 
   const detail = isTestChallenge ? TEST_DETAIL : apiDetail ?? TEST_DETAIL;
@@ -226,11 +228,26 @@ export default function BibleChallengeScreen() {
 
         {/* 추천 챌린지 */}
         <Text style={styles.sectionTitle}>추천 챌린지</Text>
-        <View style={styles.section}>
-          <View style={styles.feedPlaceholder}>
-            <Text style={styles.placeholderText}>추천 챌린지 준비 중입니다</Text>
+        {recommendedItems.length > 0 ? (
+          recommendedItems.map(item => (
+            <View key={item.challengeId} style={styles.section}>
+              <ChallengeListCard
+                item={item}
+                onPress={() => router.push(
+                  item.type === 'FAITH'
+                    ? `/challenge/faith?id=${item.challengeId}`
+                    : `/challenge/bible?id=${item.challengeId}`
+                )}
+              />
+            </View>
+          ))
+        ) : (
+          <View style={styles.section}>
+            <View style={styles.feedPlaceholder}>
+              <Text style={styles.placeholderText}>추천 챌린지가 없습니다</Text>
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* 옵션 바텀시트 */}
