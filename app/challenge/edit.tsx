@@ -12,12 +12,16 @@ import {
   formatSelectedBooks,
   getTotalChapters,
 } from '@/components/challenge/challengeTypes';
+import { apiClient } from '@/utils/apiClient';
+import { useChallengeDetail } from '@/hooks/useChallenge';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -40,13 +44,39 @@ const INITIAL_ALARMS: ChallengeAlarm[] = [
 
 const STORAGE_KEY = 'LOEN_BIBLE_CHALLENGE_CREATED_v1';
 
+type VisibilityValue = 'public' | 'oikos' | 'link';
+type ChallengeEditType = 'FAITH' | 'BIBLE';
+
+const visibilityToState = (visibility?: string): VisibilityValue => {
+  if (visibility === 'OIKOS') return 'oikos';
+  if (visibility === 'LINK') return 'link';
+  return 'public';
+};
+
+const stateToVisibility = {
+  public: 'PUBLIC',
+  oikos: 'OIKOS',
+  link: 'LINK',
+} as const;
+
+function toDateInputValue(value: Date) {
+  return value.toISOString().split('T')[0];
+}
+
 export default function ChallengeEditScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ id?: string; type?: ChallengeEditType }>();
   const insets = useSafeAreaInsets();
-  const [isLoading, setIsLoading] = useState(true);
+  const rawChallengeId = typeof params.id === 'string' ? params.id : null;
+  const challengeId = rawChallengeId && !rawChallengeId.startsWith('test-') ? rawChallengeId : null;
+  const { detail, isLoading: isDetailLoading, error: detailError } = useChallengeDetail(challengeId);
+  const editType: ChallengeEditType = detail?.type ?? params.type ?? 'BIBLE';
+  const isFaithChallenge = editType === 'FAITH';
+  const [isHydrating, setIsHydrating] = useState(true);
 
   // 기본 정보
   const [challengeName, setChallengeName] = useState('애굽 탈출하기');
+  const [challengeGoal, setChallengeGoal] = useState('하루 한 가지 감사 기록하기');
   const [isFocused, setIsFocused] = useState(false);
 
   // 성경 선택
@@ -58,6 +88,8 @@ export default function ChallengeEditScreen() {
   const [isDateSheetOpen, setIsDateSheetOpen] = useState(false);
   const [startDate, setStartDate] = useState(new Date(2025, 11, 7));
   const [tempStartDate, setTempStartDate] = useState(new Date(2025, 11, 7));
+  const [isEndDateSheetOpen, setIsEndDateSheetOpen] = useState(false);
+  const [tempEndDate, setTempEndDate] = useState(new Date(2025, 11, 31));
 
   // 기간 설정
   const [isDurationSheetOpen, setIsDurationSheetOpen] = useState(false);
@@ -67,7 +99,7 @@ export default function ChallengeEditScreen() {
   const [activeTab, setActiveTab] = useState<DurationTab>('end');
 
   // 공개 범위
-  const [visibility, setVisibility] = useState<'public' | 'oikos' | 'link'>('public');
+  const [visibility, setVisibility] = useState<VisibilityValue>('public');
 
   // 알람 (AlarmSection controlled state)
   const [alarms, setAlarms] = useState<ChallengeAlarm[]>(INITIAL_ALARMS);
@@ -78,19 +110,47 @@ export default function ChallengeEditScreen() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (challengeId) return;
+
     AsyncStorage.getItem(STORAGE_KEY).then(data => {
       if (data) {
         const parsed = JSON.parse(data);
         if (parsed.challengeName) setChallengeName(parsed.challengeName);
+        if (parsed.challengeGoal) setChallengeGoal(parsed.challengeGoal);
         if (parsed.selectedBooks) setSelectedBooks(parsed.selectedBooks);
         if (parsed.startDate) setStartDate(new Date(parsed.startDate));
-        if (parsed.endDate) setEndDate(new Date(parsed.endDate));
+        if (parsed.endDate) {
+          setEndDate(new Date(parsed.endDate));
+          setTempEndDate(new Date(parsed.endDate));
+        }
         if (parsed.visibility) setVisibility(parsed.visibility);
         if (parsed.alarms) setAlarms(parsed.alarms);
       }
-      setIsLoading(false);
+      setIsHydrating(false);
     });
-  }, []);
+  }, [challengeId]);
+
+  useEffect(() => {
+    if (!challengeId) return;
+    if (!detail) {
+      if (!isDetailLoading) setIsHydrating(false);
+      return;
+    }
+
+    setChallengeName(detail.name);
+    setChallengeGoal(detail.goal ?? '');
+    setStartDate(new Date(detail.startDate));
+    setTempStartDate(new Date(detail.startDate));
+    setEndDate(new Date(detail.endDate));
+    setTempEndDate(new Date(detail.endDate));
+    setVisibility(visibilityToState(detail.visibility));
+    if (detail.bibleBooks?.length) setSelectedBooks(detail.bibleBooks);
+    setAlarms(prev => prev.map(alarm => ({
+      ...alarm,
+      enabled: detail.notificationEnabled ? alarm.enabled : false,
+    })));
+    setIsHydrating(false);
+  }, [challengeId, detail, isDetailLoading]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -98,10 +158,39 @@ export default function ChallengeEditScreen() {
   };
 
   const handleSave = async () => {
-    if (!challengeName.trim() || selectedBooks.length === 0) return;
+    if (!challengeName.trim() || (isFaithChallenge ? !challengeGoal.trim() : selectedBooks.length === 0)) return;
+
+    const enabledAlarms = alarms.filter(a => a.enabled);
+    const notificationTimes = enabledAlarms.map(
+      a => `${String(a.hour).padStart(2, '0')}:${String(a.minute).padStart(2, '0')}`
+    );
+
+    if (challengeId) {
+      try {
+        await apiClient(`/challenges/${challengeId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: challengeName.trim(),
+            goal: isFaithChallenge ? challengeGoal.trim() : null,
+            endDate: toDateInputValue(endDate),
+            visibility: stateToVisibility[visibility],
+            notificationEnabled: enabledAlarms.length > 0,
+            notificationTimes,
+          }),
+        });
+        router.replace(isFaithChallenge
+          ? `/challenge/faith?id=${challengeId}`
+          : `/challenge/bible?id=${challengeId}`);
+      } catch (err) {
+        Alert.alert('수정 실패', (err as Error)?.message || '챌린지 수정에 실패했습니다.');
+      }
+      return;
+    }
+
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
         challengeName,
+        challengeGoal,
         selectedBooks,
         totalChapters: getTotalChapters(selectedBooks),
         startDate: startDate.toISOString(),
@@ -112,7 +201,7 @@ export default function ChallengeEditScreen() {
     } catch {
       // 저장 실패 무시
     }
-    router.replace('/challenge/bible');
+    router.replace(isFaithChallenge ? '/challenge/faith' : '/challenge/bible');
   };
 
   // 알람 관리 모드
@@ -166,15 +255,48 @@ export default function ChallengeEditScreen() {
     setIsDateSheetOpen(false);
   };
 
+  const openEndDateSheet = () => {
+    Keyboard.dismiss();
+    setTempEndDate(new Date(endDate));
+    setIsEndDateSheetOpen(true);
+  };
+
+  const handleCompleteEndDateSelection = () => {
+    if (tempEndDate.getTime() < startDate.getTime()) {
+      setEndDate(new Date(startDate));
+      setTempEndDate(new Date(startDate));
+    } else {
+      setEndDate(new Date(tempEndDate));
+    }
+    setIsEndDateSheetOpen(false);
+  };
+
   const renderDurationSummary = () => {
     if (activeTab === 'duration') return `${durationDays}일 동안`;
     if (activeTab === 'daily') return `하루 ${dailyChapters}장씩`;
     return formatDateUntil(endDate);
   };
 
-  if (isLoading) return null;
+  if (detailError && challengeId && !detail) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{detailError}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const isDataValid = challengeName.trim().length > 0 && selectedBooks.length > 0;
+  if (isHydrating || (challengeId && !detail)) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  const isDataValid = challengeName.trim().length > 0
+    && (isFaithChallenge ? challengeGoal.trim().length > 0 : selectedBooks.length > 0);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -182,7 +304,9 @@ export default function ChallengeEditScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerSide} />
-        <Text style={styles.headerTitle}>챌린지 내용 수정하기</Text>
+        <Text style={styles.headerTitle}>
+          {isFaithChallenge ? '신앙 챌린지 수정하기' : '성경 챌린지 수정하기'}
+        </Text>
         <View style={styles.headerSide} />
       </View>
 
@@ -209,31 +333,53 @@ export default function ChallengeEditScreen() {
               </View>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.label}>어디를 읽을까요?</Text>
-              <TouchableOpacity style={[styles.inputBorder, styles.inputBorderActive]} activeOpacity={0.7} onPress={openBibleSheet}>
-                <Text style={styles.inputText}>{formatSelectedBooks(selectedBooks)}</Text>
-                <Ionicons name="chevron-down" size={20} color={colors.text.primary} />
-              </TouchableOpacity>
-              <Text style={styles.subLabel}>{selectedBooks.length}권, 총 {getTotalChapters(selectedBooks)}장이에요</Text>
-            </View>
+            {isFaithChallenge ? (
+              <View style={styles.section}>
+                <Text style={styles.label}>어떤 목표인지 적어주세요</Text>
+                <View style={styles.textAreaBorder}>
+                  <TextInput
+                    style={styles.textArea}
+                    value={challengeGoal}
+                    onChangeText={setChallengeGoal}
+                    placeholder="하루 한 가지 감사 기록하기"
+                    placeholderTextColor={colors.text.dim}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.section}>
+                <Text style={styles.label}>어디를 읽을까요?</Text>
+                <TouchableOpacity style={[styles.inputBorder, styles.inputBorderActive]} activeOpacity={0.7} onPress={openBibleSheet}>
+                  <Text style={styles.inputText}>{formatSelectedBooks(selectedBooks)}</Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.text.primary} />
+                </TouchableOpacity>
+                <Text style={styles.subLabel}>{selectedBooks.length}권, 총 {getTotalChapters(selectedBooks)}장이에요</Text>
+              </View>
+            )}
 
             <View style={styles.section}>
-              <Text style={styles.label}>언제부터 읽을까요?</Text>
-              <TouchableOpacity style={[styles.inputBorder, styles.inputBorderActive]} activeOpacity={0.7} onPress={openDateSheet}>
-                <Text style={styles.inputText}>{formatDateFrom(startDate)}</Text>
-                <Ionicons name="chevron-down" size={20} color={colors.text.primary} />
-              </TouchableOpacity>
+              <Text style={styles.label}>{isFaithChallenge ? '언제부터 시작했나요?' : '언제부터 읽을까요?'}</Text>
+              <View style={[styles.inputBorder, styles.readOnlyBorder]}>
+                <Text style={[styles.inputText, styles.readOnlyText]}>{formatDateFrom(startDate)}</Text>
+              </View>
+              <Text style={styles.subLabel}>시작일은 생성 후 변경할 수 없어요</Text>
             </View>
 
             <View style={styles.sectionLast}>
-              <Text style={styles.label}>읽을 기간을 정해주세요</Text>
+              <Text style={styles.label}>{isFaithChallenge ? '언제까지 진행할까요?' : '읽을 기간을 정해주세요'}</Text>
               <TouchableOpacity
                 style={[styles.inputBorder, styles.inputBorderActive]}
                 activeOpacity={0.7}
-                onPress={() => { Keyboard.dismiss(); setIsDurationSheetOpen(true); }}
+                onPress={() => {
+                  if (isFaithChallenge) openEndDateSheet();
+                  else { Keyboard.dismiss(); setIsDurationSheetOpen(true); }
+                }}
               >
-                <Text style={styles.inputText}>{renderDurationSummary()}</Text>
+                <Text style={styles.inputText}>
+                  {isFaithChallenge ? formatDateUntil(endDate) : renderDurationSummary()}
+                </Text>
                 <Ionicons name="chevron-down" size={20} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
@@ -367,6 +513,25 @@ export default function ChallengeEditScreen() {
         </View>
       </Modal>
 
+      {/* 종료일 선택 모달 */}
+      <Modal visible={isEndDateSheetOpen} transparent animationType="slide" onRequestClose={() => setIsEndDateSheetOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={() => setIsEndDateSheetOpen(false)}>
+            <View style={styles.modalBackground} />
+          </TouchableWithoutFeedback>
+          <View style={styles.bottomSheet}>
+            <View style={styles.handleWrapper}><View style={styles.sheetHandle} /></View>
+            <Text style={styles.dateSheetTitle}>종료일 설정</Text>
+            <DateWheelPicker value={tempEndDate} onChange={setTempEndDate} />
+            <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+              <TouchableOpacity style={styles.completeBtn} onPress={handleCompleteEndDateSelection}>
+                <Text style={styles.completeBtnText}>완료</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* 기간 설정 시트 */}
       <DurationBottomSheet
         visible={isDurationSheetOpen}
@@ -403,6 +568,8 @@ export default function ChallengeEditScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.base },
   flex: { flex: 1 },
+  errorBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  errorText: { fontSize: fontSize.base, color: colors.text.secondary, textAlign: 'center' },
   header: { height: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerSide: { width: 100 },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: fontSize.heading, fontWeight: fontWeight.semibold, color: colors.text.primary },
@@ -423,6 +590,25 @@ const styles = StyleSheet.create({
   inputBorderActive: { borderBottomColor: colors.text.dim },
   inputText: { fontSize: fontSize.xl, lineHeight: 33, color: colors.text.primary, fontWeight: fontWeight.semibold },
   input: { flex: 1, fontSize: fontSize.xl, lineHeight: 33, color: colors.text.primary, fontWeight: fontWeight.semibold, padding: 0 },
+  readOnlyBorder: { borderBottomColor: colors.border },
+  readOnlyText: { color: colors.text.secondary },
+  textAreaBorder: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background.base,
+  },
+  textArea: {
+    minHeight: 92,
+    fontSize: fontSize.base,
+    lineHeight: 24,
+    color: colors.text.primary,
+    fontWeight: fontWeight.medium,
+    padding: 0,
+  },
 
   // 공개 범위
   sectionHeaderMargin: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
