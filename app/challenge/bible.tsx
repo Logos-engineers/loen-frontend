@@ -210,7 +210,7 @@ export default function BibleChallengeScreen() {
         <Text style={styles.sectionTitle}>챌린지 인증</Text>
 
         <View style={styles.section}>
-          <ChallengeCalendar certifiedDates={certifiedDates} defaultExpanded />
+          <ChallengeCalendar certifiedDates={certifiedDates} />
         </View>
 
         {weeklyProgressItems.map(item => (
