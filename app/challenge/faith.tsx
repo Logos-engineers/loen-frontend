@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -110,6 +111,7 @@ export default function FaithChallengeScreen() {
   const [certText, setCertText] = useState('');
   const [certSubmitting, setCertSubmitting] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const detail = isTestChallenge ? TEST_DETAIL : apiDetail;
   const feed = isTestChallenge ? TEST_FEED : apiFeed;
@@ -131,8 +133,14 @@ export default function FaithChallengeScreen() {
     }
   };
 
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2500);
+  };
+
   const handleCertSubmit = async () => {
     if (certSubmitting) return;
+    if (!certText.trim() && !photoUri) return;
     setCertSubmitting(true);
     try {
       if (photoUri) {
@@ -142,11 +150,15 @@ export default function FaithChallengeScreen() {
         const filename = photoUri.split('/').pop() ?? 'photo.jpg';
         formData.append('photo', { uri: photoUri, name: filename, type: 'image/jpeg' } as any);
         const token = useAuthStore.getState().accessToken;
-        await fetch(`${BASE_URL}/challenges/${id}/certifications`, {
+        const res = await fetch(`${BASE_URL}/challenges/${id}/certifications`, {
           method: 'POST',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData,
         });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `오류 ${res.status}`);
+        }
       } else {
         await apiClient(`/challenges/${id}/certifications`, {
           method: 'POST',
@@ -156,8 +168,10 @@ export default function FaithChallengeScreen() {
       setCertText('');
       setPhotoUri(null);
       if (!isTestChallenge) refetchFeed();
-    } catch {
-      // silent
+      showToast('인증이 완료되었습니다!');
+    } catch (err) {
+      console.error('[handleCertSubmit]', err);
+      Alert.alert('인증 실패', (err as Error)?.message || '인증 등록에 실패했습니다.');
     } finally {
       setCertSubmitting(false);
     }
@@ -306,6 +320,18 @@ export default function FaithChallengeScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* 인증 완료 토스트 */}
+      {toastMsg && (
+        <View style={[styles.toastContainer, { bottom: insets.bottom + 90 }]}>
+          <View style={styles.toastContent}>
+            <View style={styles.toastIcon}>
+              <Ionicons name="checkmark" size={14} color={colors.white} />
+            </View>
+            <Text style={styles.toastText}>{toastMsg}</Text>
+          </View>
+        </View>
+      )}
 
       {/* 옵션 바텀시트 */}
       <Modal
@@ -536,6 +562,36 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: colors.primary,
+  },
+
+  toastContainer: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  toastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(40,40,50,0.95)',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 100,
+  },
+  toastIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  toastText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
   },
 });
 
