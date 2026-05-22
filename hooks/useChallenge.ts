@@ -57,10 +57,22 @@ type BackendChallengeItem = {
   endDate: string;
   participantCount: number;
   isPinned?: boolean;
+  pinned?: boolean;
   isCompleted?: boolean;
+  completed?: boolean;
   isOwner?: boolean;
   isCreator?: boolean;
+  creator?: boolean;
   bibleBooks?: string[];
+};
+
+type BackendChallengeDetail = Omit<ChallengeDetail, 'isJoined' | 'isCreator' | 'isPinned'> & {
+  isJoined?: boolean;
+  joined?: boolean;
+  isCreator?: boolean;
+  creator?: boolean;
+  isPinned?: boolean;
+  pinned?: boolean;
 };
 
 export type CreateBibleChallengePayload = {
@@ -84,10 +96,19 @@ function normalizeChallenge(item: BackendChallengeItem): ChallengeItem {
     startDate: item.startDate,
     endDate: item.endDate,
     participantCount: item.participantCount,
-    isPinned: item.isPinned ?? false,
-    isCompleted: item.isCompleted ?? false,
-    isOwner: item.isOwner ?? item.isCreator ?? false,
+    isPinned: item.isPinned ?? item.pinned ?? false,
+    isCompleted: item.isCompleted ?? item.completed ?? false,
+    isOwner: item.isOwner ?? item.isCreator ?? item.creator ?? false,
     bibleBooks: item.bibleBooks ?? [],
+  };
+}
+
+function normalizeChallengeDetail(item: BackendChallengeDetail): ChallengeDetail {
+  return {
+    ...item,
+    isJoined: item.isJoined ?? item.joined ?? false,
+    isCreator: item.isCreator ?? item.creator ?? false,
+    isPinned: item.isPinned ?? item.pinned ?? false,
   };
 }
 
@@ -148,8 +169,8 @@ export function useChallengeDetail(id: string | null) {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await apiClient<ChallengeDetail>(`/challenges/${id}`);
-      setDetail(result);
+      const result = await apiClient<BackendChallengeDetail>(`/challenges/${id}`);
+      setDetail(normalizeChallengeDetail(result));
     } catch (e: any) {
       setError(e?.message ?? '챌린지 정보를 불러오지 못했습니다');
     } finally {
