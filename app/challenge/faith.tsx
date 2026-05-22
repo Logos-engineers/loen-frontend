@@ -4,7 +4,7 @@ import { MyCertificationCard, OtherCertificationCard } from '@/components/challe
 import { ChallengeGoalCard } from '@/components/challenge/ChallengeGoalCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
-import { useChallengeDetail, useChallengeCertifications, useRecommendedChallenges } from '@/hooks/useChallenge';
+import { useChallengeDetail, useChallengeCertifications, useRecommendedChallenges, joinChallenge, leaveChallenge } from '@/hooks/useChallenge';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient, BASE_URL } from '@/utils/apiClient';
 import { formatShortDate } from '@/utils/date';
@@ -107,7 +107,7 @@ export default function FaithChallengeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isTestChallenge = !id || id.startsWith('test-');
   const challengeId = isTestChallenge ? null : id;
-  const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
+  const { detail: apiDetail, isLoading, error, refetch: refetchDetail } = useChallengeDetail(challengeId);
   const { feed: apiFeed, refetch: refetchFeed } = useChallengeCertifications(challengeId);
   const { items: recommendedItems } = useRecommendedChallenges();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -115,10 +115,15 @@ export default function FaithChallengeScreen() {
   const [certSubmitting, setCertSubmitting] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [joinLoading, setJoinLoading] = useState(false);
 
   const detail = isTestChallenge ? TEST_DETAIL : apiDetail;
   const feed = isTestChallenge ? TEST_FEED : apiFeed;
   const certifiedDates = detail?.myProgress?.allCertifiedDates ?? [];
+  const isEnded = detail ? new Date(detail.endDate) < new Date() : false;
+  const canInteract = !!detail?.isJoined;
+  const canManage = !!detail?.isCreator;
+  const canJoin = detail ? (!detail.isJoined && !isEnded) : false;
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -134,6 +139,39 @@ export default function FaithChallengeScreen() {
     if (!result.canceled && result.assets?.[0]) {
       setPhotoUri(result.assets[0].uri);
     }
+  };
+
+  const handleJoin = async () => {
+    if (joinLoading || isTestChallenge) return;
+    setJoinLoading(true);
+    try {
+      await joinChallenge(id!);
+      refetchDetail();
+      showToast('챌린지에 참여했습니다!');
+    } catch (err) {
+      Alert.alert('참여 실패', (err as Error)?.message || '챌린지 참여에 실패했습니다.');
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  const handleLeave = () => {
+    if (isTestChallenge) return;
+    Alert.alert('챌린지 탈퇴', '정말 챌린지에서 탈퇴하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '탈퇴하기',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await leaveChallenge(id!);
+            router.back();
+          } catch (err) {
+            Alert.alert('탈퇴 실패', (err as Error)?.message || '챌린지 탈퇴에 실패했습니다.');
+          }
+        },
+      },
+    ]);
   };
 
   const showToast = (msg: string) => {
@@ -254,27 +292,37 @@ export default function FaithChallengeScreen() {
         </View>
 
         {/* 인증 피드 — layout_1QJZ47: padding 8 16 */}
-        {feed?.myCertification ? (
-          <View style={styles.section}>
-            <MyCertificationCard
-              item={feed.myCertification}
-              onDelete={() => { if (!isTestChallenge) refetchFeed(); }}
-              onEditDone={() => { if (!isTestChallenge) refetchFeed(); }}
-            />
-          </View>
-        ) : null}
-        {(feed?.otherCertifications ?? []).map(item => (
-          <View key={item.certId} style={styles.section}>
-            <OtherCertificationCard item={item} />
-          </View>
-        ))}
-        {!feed?.myCertification && (feed?.otherCertifications ?? []).length === 0 ? (
+        {canInteract ? (
+          <>
+            {feed?.myCertification ? (
+              <View style={styles.section}>
+                <MyCertificationCard
+                  item={feed.myCertification}
+                  onDelete={() => { if (!isTestChallenge) refetchFeed(); }}
+                  onEditDone={() => { if (!isTestChallenge) refetchFeed(); }}
+                />
+              </View>
+            ) : null}
+            {(feed?.otherCertifications ?? []).map(item => (
+              <View key={item.certId} style={styles.section}>
+                <OtherCertificationCard item={item} />
+              </View>
+            ))}
+            {!feed?.myCertification && (feed?.otherCertifications ?? []).length === 0 ? (
+              <View style={styles.section}>
+                <View style={styles.feedPlaceholder}>
+                  <Text style={styles.placeholderText}>아직 인증이 없습니다</Text>
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : (
           <View style={styles.section}>
             <View style={styles.feedPlaceholder}>
-              <Text style={styles.placeholderText}>아직 인증이 없습니다</Text>
+              <Text style={styles.placeholderText}>참여 후 인증 피드를 볼 수 있습니다</Text>
             </View>
           </View>
-        ) : null}
+        )}
 
         {/* 추천 챌린지 섹션 */}
         <Text style={styles.sectionTitle}>추천 챌린지</Text>
@@ -296,48 +344,63 @@ export default function FaithChallengeScreen() {
         )}
       </ScrollView>
 
-      {/* 하단 인증 바 — Figma layout_G34ZD3, layout_48FMB9 */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* 하단 인증/참여 바 */}
+      {canInteract ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.bottomBar}>
+            <View style={[styles.bottomBarInner, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+              <TouchableOpacity style={styles.cameraBtn} onPress={handlePickImage} activeOpacity={0.7}>
+                {photoUri ? (
+                  <Image source={{ uri: photoUri }} style={styles.photoThumb} />
+                ) : (
+                  <SvgXml xml={CAMERA_XML} width={24} height={24} />
+                )}
+                {photoUri && (
+                  <TouchableOpacity
+                    style={styles.photoRemove}
+                    onPress={() => setPhotoUri(null)}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                  >
+                    <Ionicons name="close-circle" size={16} color={colors.text.primary} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+              <TextInput
+                style={styles.certInput}
+                placeholder="댓글을 입력해주세요"
+                placeholderTextColor={colors.text.secondary}
+                value={certText}
+                onChangeText={setCertText}
+                returnKeyType="send"
+                onSubmitEditing={handleCertSubmit}
+              />
+              <TouchableOpacity
+                style={styles.certBtn}
+                onPress={handleCertSubmit}
+                activeOpacity={0.7}
+                disabled={certSubmitting}
+              >
+                <Text style={styles.certBtnText}>인증하기</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      ) : canJoin ? (
         <View style={styles.bottomBar}>
-          <View style={[styles.bottomBarInner, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-            <TouchableOpacity style={styles.cameraBtn} onPress={handlePickImage} activeOpacity={0.7}>
-              {photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.photoThumb} />
-              ) : (
-                <SvgXml xml={CAMERA_XML} width={24} height={24} />
-              )}
-              {photoUri && (
-                <TouchableOpacity
-                  style={styles.photoRemove}
-                  onPress={() => setPhotoUri(null)}
-                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                >
-                  <Ionicons name="close-circle" size={16} color={colors.text.primary} />
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-            <TextInput
-              style={styles.certInput}
-              placeholder="댓글을 입력해주세요"
-              placeholderTextColor={colors.text.secondary}
-              value={certText}
-              onChangeText={setCertText}
-              returnKeyType="send"
-              onSubmitEditing={handleCertSubmit}
-            />
+          <View style={{ paddingTop: spacing.md, paddingBottom: Math.max(insets.bottom, spacing.md), paddingHorizontal: spacing.md }}>
             <TouchableOpacity
-              style={styles.certBtn}
-              onPress={handleCertSubmit}
-              activeOpacity={0.7}
-              disabled={certSubmitting}
+              style={styles.joinBtn}
+              onPress={handleJoin}
+              activeOpacity={0.8}
+              disabled={joinLoading}
             >
-              <Text style={styles.certBtnText}>인증하기</Text>
+              <Text style={styles.joinBtnText}>{joinLoading ? '참여 중...' : '챌린지 참여하기'}</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      ) : null}
 
       {/* 인증 완료 토스트 */}
       {toastMsg && (
@@ -364,15 +427,27 @@ export default function FaithChallengeScreen() {
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-            <SheetOption
-              label="챌린지 수정하기"
-              onPress={() => {
-                setMenuVisible(false);
-                router.push('/challenge/edit');
-              }}
-            />
-            <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
-            <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
+            {canManage ? (
+              <>
+                <SheetOption
+                  label="챌린지 수정하기"
+                  onPress={() => { setMenuVisible(false); router.push('/challenge/edit'); }}
+                />
+                <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+                <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
+              </>
+            ) : canInteract ? (
+              <>
+                <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+                <SheetOption
+                  label="챌린지 탈퇴하기"
+                  onPress={() => { setMenuVisible(false); handleLeave(); }}
+                  destructive
+                />
+              </>
+            ) : (
+              <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -580,6 +655,17 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: colors.primary,
+  },
+  joinBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.smd,
+    alignItems: 'center' as const,
+  },
+  joinBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.white,
   },
 
   toastContainer: {

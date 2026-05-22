@@ -332,3 +332,11 @@ export function useCertificationComments(certificationId: string) {
 
   return { comments, isLoading, fetch, createComment, deleteComment };
 }
+
+export async function joinChallenge(id: string): Promise<void> {
+  await apiClient(`/challenges/${id}/join`, { method: 'POST' });
+}
+
+export async function leaveChallenge(id: string): Promise<void> {
+  await apiClient(`/challenges/${id}/leave`, { method: 'POST' });
+}

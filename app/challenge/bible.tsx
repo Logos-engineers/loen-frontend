@@ -2,7 +2,7 @@ import { ChallengeCalendar } from '@/components/challenge/ChallengeCalendar';
 import { ChallengeListCard } from '@/components/challenge/ChallengeListCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import type { ChallengeDetail } from '@/hooks/useChallenge';
-import { useChallengeDetail, useRecommendedChallenges } from '@/hooks/useChallenge';
+import { useChallengeDetail, useRecommendedChallenges, joinChallenge, leaveChallenge } from '@/hooks/useChallenge';
 import { formatShortDate, toDateString } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -108,9 +109,10 @@ export default function BibleChallengeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isTestChallenge = !id || id.startsWith('test-');
   const challengeId = isTestChallenge ? null : id;
-  const { detail: apiDetail, isLoading, error } = useChallengeDetail(challengeId);
+  const { detail: apiDetail, isLoading, error, refetch: refetchDetail } = useChallengeDetail(challengeId);
   const { items: recommendedItems } = useRecommendedChallenges();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
 
   const detail = isTestChallenge ? TEST_DETAIL : apiDetail ?? TEST_DETAIL;
   const certifiedDates = useMemo(
@@ -118,6 +120,43 @@ export default function BibleChallengeScreen() {
     [detail.myProgress],
   );
   const bibleRange = detail.bibleBooks?.join(', ') ?? '';
+  const isEnded = new Date(detail.endDate) < new Date();
+  const canInteract = detail.isJoined;
+  const canManage = detail.isCreator;
+  const canJoin = !detail.isJoined && !isEnded;
+
+  const handleJoin = async () => {
+    if (joinLoading || isTestChallenge) return;
+    setJoinLoading(true);
+    try {
+      await joinChallenge(id!);
+      refetchDetail();
+    } catch (err) {
+      Alert.alert('참여 실패', (err as Error)?.message || '챌린지 참여에 실패했습니다.');
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  const handleLeave = () => {
+    if (isTestChallenge) return;
+    Alert.alert('챌린지 탈퇴', '정말 챌린지에서 탈퇴하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '탈퇴하기',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await leaveChallenge(id!);
+            router.back();
+          } catch (err) {
+            Alert.alert('탈퇴 실패', (err as Error)?.message || '챌린지 탈퇴에 실패했습니다.');
+          }
+        },
+      },
+    ]);
+  };
+
   const weeklyProgressItems = useMemo<WeeklyProgressItem[]>(() => {
     if (isTestChallenge) return TEST_WEEKLY_PROGRESS;
 
@@ -213,18 +252,28 @@ export default function BibleChallengeScreen() {
           <ChallengeCalendar certifiedDates={certifiedDates} />
         </View>
 
-        {weeklyProgressItems.map(item => (
-          <View key={item.id} style={styles.section}>
-            <WeeklyProgressCard item={item} />
-          </View>
-        ))}
-        {weeklyProgressItems.length === 0 ? (
+        {canInteract ? (
+          <>
+            {weeklyProgressItems.map(item => (
+              <View key={item.id} style={styles.section}>
+                <WeeklyProgressCard item={item} />
+              </View>
+            ))}
+            {weeklyProgressItems.length === 0 ? (
+              <View style={styles.section}>
+                <View style={styles.feedPlaceholder}>
+                  <Text style={styles.placeholderText}>아직 달성 현황이 없습니다</Text>
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : (
           <View style={styles.section}>
             <View style={styles.feedPlaceholder}>
-              <Text style={styles.placeholderText}>아직 달성 현황이 없습니다</Text>
+              <Text style={styles.placeholderText}>참여 후 달성 현황을 볼 수 있습니다</Text>
             </View>
           </View>
-        ) : null}
+        )}
 
         {/* 추천 챌린지 */}
         <Text style={styles.sectionTitle}>추천 챌린지</Text>
@@ -250,6 +299,22 @@ export default function BibleChallengeScreen() {
         )}
       </ScrollView>
 
+      {/* 하단 참여하기 바 */}
+      {!canInteract && canJoin ? (
+        <View style={styles.bottomBar}>
+          <View style={{ paddingTop: spacing.md, paddingBottom: Math.max(insets.bottom, spacing.md), paddingHorizontal: spacing.md }}>
+            <TouchableOpacity
+              style={styles.joinBtn}
+              onPress={handleJoin}
+              activeOpacity={0.8}
+              disabled={joinLoading}
+            >
+              <Text style={styles.joinBtnText}>{joinLoading ? '참여 중...' : '챌린지 참여하기'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
       {/* 옵션 바텀시트 */}
       <Modal
         visible={menuVisible}
@@ -263,15 +328,27 @@ export default function BibleChallengeScreen() {
           onPress={() => setMenuVisible(false)}
         >
           <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-            <SheetOption
-              label="챌린지 수정하기"
-              onPress={() => {
-                setMenuVisible(false);
-                router.push('/challenge/edit');
-              }}
-            />
-            <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
-            <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
+            {canManage ? (
+              <>
+                <SheetOption
+                  label="챌린지 수정하기"
+                  onPress={() => { setMenuVisible(false); router.push('/challenge/edit'); }}
+                />
+                <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+                <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
+              </>
+            ) : canInteract ? (
+              <>
+                <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+                <SheetOption
+                  label="챌린지 탈퇴하기"
+                  onPress={() => { setMenuVisible(false); handleLeave(); }}
+                  destructive
+                />
+              </>
+            ) : (
+              <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -575,6 +652,22 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: fontSize.md,
     color: colors.text.secondary,
+  },
+  bottomBar: {
+    backgroundColor: colors.white,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  joinBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.smd,
+    alignItems: 'center' as const,
+  },
+  joinBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.white,
   },
   overlay: {
     flex: 1,
