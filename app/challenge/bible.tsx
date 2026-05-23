@@ -1,284 +1,715 @@
-import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { useChallenge } from '@/hooks/useChallenge';
+import { ChallengeCalendar } from '@/components/challenge/ChallengeCalendar';
+import { ChallengeListCard } from '@/components/challenge/ChallengeListCard';
+import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
+import type { ChallengeDetail } from '@/hooks/useChallenge';
+import { useChallengeDetail, useRecommendedChallenges, joinChallenge, leaveChallenge } from '@/hooks/useChallenge';
+import { formatShortDate, toDateString } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// ─── 테스트 데이터 ──────────────────────────────────────────────────────────────
+
+const TEST_DETAIL: ChallengeDetail = {
+  challengeId: 'test-bible-1',
+  type: 'BIBLE',
+  name: '출애굽기 완독하기',
+  goal: null,
+  startDate: '2026-01-01',
+  endDate: '2026-12-31',
+  dDay: 225,
+  verificationMethod: 'BIBLE_READ',
+  visibility: 'PUBLIC',
+  participantCount: 10,
+  isJoined: true,
+  isCreator: true,
+  isPinned: false,
+  notificationEnabled: true,
+  bibleBooks: ['출애굽기 1:1 ~ 40:38'],
+  myProgress: {
+    completedDays: 5,
+    lastCertifiedDate: '2026-05-20',
+    weeklyCalendar: {
+      '2026-05-18': true,
+      '2026-05-19': true,
+      '2026-05-20': true,
+    },
+    allCertifiedDates: [
+      '2026-05-10', '2026-05-14', '2026-05-18', '2026-05-19', '2026-05-20',
+    ],
+  },
+};
+
+type WeeklyProgressItem = {
+  id: string;
+  name: string;
+  subtitle: string;
+  completedDates: string[];
+  isMe?: boolean;
+};
+
+const TEST_WEEKLY_PROGRESS: WeeklyProgressItem[] = [
+  {
+    id: 'test-bible-progress-me',
+    name: '나',
+    subtitle: '내 달성 현황',
+    completedDates: ['2026-05-18', '2026-05-19', '2026-05-20'],
+    isMe: true,
+  },
+  {
+    id: 'test-bible-progress-1',
+    name: '김민준',
+    subtitle: '말씀 읽기',
+    completedDates: ['2026-05-17', '2026-05-18', '2026-05-20'],
+  },
+  {
+    id: 'test-bible-progress-2',
+    name: '이수진',
+    subtitle: '출애굽기 읽기',
+    completedDates: ['2026-05-17', '2026-05-18', '2026-05-19', '2026-05-20'],
+  },
+];
+
+const WEEK_DAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
+const TODAY_COLOR = '#F75D42';
+
+function buildWeekDates(baseDate: Date) {
+  const start = new Date(baseDate);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      week: WEEK_DAYS[index],
+      day: date.getDate(),
+      dateString: toDateString(date),
+    };
+  });
+}
+
+// ─── 메인 화면 ──────────────────────────────────────────────────────────────────
 
 export default function BibleChallengeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const isTestChallenge = !id || id.startsWith('test-');
+  const challengeId = isTestChallenge ? null : id;
+  const { detail: apiDetail, isLoading, error, refetch: refetchDetail } = useChallengeDetail(challengeId);
+  const { items: recommendedItems } = useRecommendedChallenges();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
 
-  const handleBack = () => router.back();
-  const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
-  const { challenges, isLoading, error } = useChallenge();
-  const challenge = challenges.find(item => item.type === 'BIBLE');
+  const detail = isTestChallenge ? TEST_DETAIL : apiDetail ?? TEST_DETAIL;
+  const certifiedDates = useMemo(
+    () => detail.myProgress?.allCertifiedDates ?? [],
+    [detail.myProgress],
+  );
+  const bibleRange = detail.bibleBooks?.join(', ') ?? '';
+  const isEnded = new Date(detail.endDate) < new Date();
+  const canInteract = detail.isJoined;
+  const canManage = detail.isCreator;
+  const canJoin = !detail.isJoined && !isEnded;
 
-  const formatShortDate = (isoStr?: string) => {
-    if (!isoStr) return '';
-    const d = new Date(isoStr);
-    const yy = d.getFullYear().toString().slice(2);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yy}.${mm}.${dd}`;
+  const handleJoin = async () => {
+    if (joinLoading || isTestChallenge) return;
+    setJoinLoading(true);
+    try {
+      await joinChallenge(id!);
+      refetchDetail();
+    } catch (err) {
+      Alert.alert('참여 실패', (err as Error)?.message || '챌린지 참여에 실패했습니다.');
+    } finally {
+      setJoinLoading(false);
+    }
   };
 
-  const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
-
-  // 동적 달력 생성
-  const getCalendarDates = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay(); // 0(일) ~ 6(토)
-    const lastDate = new Date(year, month + 1, 0).getDate();
-    
-    const dates = [];
-    for (let i = 0; i < firstDay; i++) {
-      dates.push({ day: '', dateString: '' });
-    }
-    for (let i = 1; i <= lastDate; i++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      dates.push({ day: String(i), dateString: dateStr });
-    }
-    const remain = dates.length % 7;
-    if (remain > 0) {
-      for (let i = 0; i < 7 - remain; i++) {
-        dates.push({ day: '', dateString: '' });
-      }
-    }
-    return dates;
+  const handleLeave = () => {
+    if (isTestChallenge) return;
+    Alert.alert('챌린지 탈퇴', '정말 챌린지에서 탈퇴하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '탈퇴하기',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await leaveChallenge(id!);
+            router.back();
+          } catch (err) {
+            Alert.alert('탈퇴 실패', (err as Error)?.message || '챌린지 탈퇴에 실패했습니다.');
+          }
+        },
+      },
+    ]);
   };
 
-  const fullDates = getCalendarDates();
-  
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const weeklyProgressItems = useMemo<WeeklyProgressItem[]>(() => {
+    if (isTestChallenge) return TEST_WEEKLY_PROGRESS;
 
-  const weekDates = useMemo(() => {
-    const todayIndex = fullDates.findIndex(d => d.dateString === todayStr);
-    if (todayIndex !== -1) {
-      const startIndex = Math.floor(todayIndex / 7) * 7;
-      return fullDates.slice(startIndex, startIndex + 7);
-    }
-    return fullDates.slice(0, 7); // 현재 달에 오늘이 없으면 첫 번째 주 표시
-  }, [fullDates, todayStr]);
+    return [{
+      id: `${detail.challengeId}-me`,
+      name: '나',
+      subtitle: '내 달성 현황',
+      completedDates: certifiedDates,
+      isMe: true,
+    }];
+  }, [certifiedDates, detail.challengeId, isTestChallenge]);
 
-  const datesToRender = isCalendarExpanded ? fullDates : weekDates;
+  if (isLoading && !isTestChallenge) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ActivityIndicator style={styles.loader} color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
-  const toggleDate = (dateStr: string) => {
-    if (!dateStr) return;
-    const newSet = new Set(selectedDates);
-    if (newSet.has(dateStr)) {
-      newSet.delete(dateStr);
-    } else {
-      newSet.add(dateStr);
-    }
-    setSelectedDates(newSet);
-  };
+  if (error && !isTestChallenge) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />
 
-      {/* 헤더 영역 수정: 최상단 타이틀 추가 */}
+      {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.headerButton}>
-          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={{ top: spacing.sm, bottom: spacing.sm, left: spacing.sm, right: spacing.sm }}
+          style={styles.headerBtn}
+        >
+          <Ionicons name="chevron-back" size={spacing.xl} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>성경 챌린지</Text>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.headerButton}>
-          <Ionicons name="ellipsis-horizontal" size={24} color={colors.text.secondary} />
+        <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          hitSlop={{ top: spacing.sm, bottom: spacing.sm, left: spacing.sm, right: spacing.sm }}
+          style={styles.headerBtn}
+        >
+          <Ionicons name="ellipsis-horizontal" size={spacing.xl} color={colors.text.secondary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, spacing.xxl) }}
       >
-        {/* 상단 챌린지 정보 */}
+        {/* 챌린지 제목 + 날짜 */}
         <View style={styles.infoSection}>
-          <Text style={styles.mainTitle}>{challenge?.name ?? '성경 챌린지'}</Text>
+          <Text style={styles.title}>{detail.name}</Text>
           <Text style={styles.dateText}>
-            {challenge ? `${formatShortDate(challenge.startDate)} ~ ${formatShortDate(challenge.endDate)}` : '등록된 챌린지가 없습니다'}
+            {formatShortDate(detail.startDate)} ~ {formatShortDate(detail.endDate)}
           </Text>
-          
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}><Text style={styles.badgeText}>성경 챌린지</Text></View>
-            {challenge && <View style={styles.badge}><Text style={styles.badgeText}>{challenge.participantCount}명 참여중</Text></View>}
-            {challenge?.isOwner && <View style={styles.badge}><Text style={styles.badgeText}>내가 만든 챌린지</Text></View>}
-          </View>
+        </View>
+
+        {/* 태그 행 */}
+        <View style={styles.tagSection}>
+          <TagChip label="성경 챌린지" />
+          <TagChip label={`${detail.participantCount}명 참여중`} />
+          {detail.isCreator && <TagChip label="내가 만든 챌린지" />}
         </View>
 
         {/* 읽을 범위 카드 */}
-        <View style={styles.rangeCard}>
-          <View style={styles.rangeIconWrapper}>
-            <Ionicons name="book" size={24} color={colors.white} />
+        {bibleRange ? (
+          <View style={styles.section}>
+            <View style={styles.rangeCard}>
+              <View style={styles.rangeIconWrapper}>
+                <Ionicons name="book" size={22} color={colors.white} />
+              </View>
+              <View style={styles.rangeTextCol}>
+                <Text style={styles.rangeLabel}>읽을 범위</Text>
+                <Text style={styles.rangeValue}>{bibleRange}</Text>
+              </View>
+            </View>
           </View>
-          <View>
-            <Text style={styles.rangeLabel}>읽을 범위</Text>
-            <Text style={styles.rangeValue}>{challenge?.bibleBooks?.join(', ') || '읽기 범위 정보 없음'}</Text>
-          </View>
+        ) : null}
+
+        {/* 챌린지 인증 */}
+        <Text style={styles.sectionTitle}>챌린지 인증</Text>
+
+        <View style={styles.section}>
+          <ChallengeCalendar certifiedDates={certifiedDates} />
         </View>
 
-        {/* 하단에 있던 CTA 버튼을 달력 위쪽으로 이동 */}
-        <TouchableOpacity 
-          style={[styles.ctaButton, { marginTop: 0, marginBottom: spacing.xxl }]} 
-          activeOpacity={0.8}
-          onPress={() => console.log('성경 읽으러 가기')}
-        >
-          <Text style={styles.ctaText}>성경 읽으러 가기</Text>
-        </TouchableOpacity>
-
-        {/* 챌린지 인증 섹션 */}
-        <Text style={styles.sectionTitle}>챌린지 인증</Text>
-        
-        {/* 달력 카드 */}
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
-            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>
-              <Ionicons name="chevron-back" size={20} color={colors.text.secondary} />
-            </TouchableOpacity>
-            <Text style={styles.calendarMonth}>{`${currentDate.getFullYear()}.${String(currentDate.getMonth() + 1).padStart(2, '0')}`}</Text>
-            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>
-              <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* 요일 헤더 한 번만 렌더링 */}
-          <View style={styles.calendarRow}>
-            {weekDays.map((day, idx) => (
-              <View key={idx} style={styles.calendarCell}>
-                <Text style={styles.calendarDayText}>{day}</Text>
+        {canInteract ? (
+          <>
+            {weeklyProgressItems.map(item => (
+              <View key={item.id} style={styles.section}>
+                <WeeklyProgressCard item={item} />
               </View>
             ))}
+            {weeklyProgressItems.length === 0 ? (
+              <View style={styles.section}>
+                <View style={styles.feedPlaceholder}>
+                  <Text style={styles.placeholderText}>아직 달성 현황이 없습니다</Text>
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <View style={styles.section}>
+            <View style={styles.feedPlaceholder}>
+              <Text style={styles.placeholderText}>참여 후 달성 현황을 볼 수 있습니다</Text>
+            </View>
           </View>
+        )}
 
-          <View style={styles.calendarGrid}>
-            {datesToRender.map((item, index) => {
-              const isSelected = selectedDates.has(item.dateString);
-              const isToday = item.dateString === todayStr;
-
-              return (
-                <TouchableOpacity 
-                  key={index} 
-                  style={styles.calendarGridCell}
-                  activeOpacity={0.7}
-                  onPress={() => toggleDate(item.dateString)}
-                  disabled={!item.dateString}
-                >
-                  {item.day === '' ? (
-                    <View style={styles.dateCircle} />
-                  ) : isSelected ? (
-                    <View style={[styles.dateCircle, styles.dateChecked]}>
-                      <Ionicons name="checkmark" size={16} color={colors.white} />
-                    </View>
-                  ) : isToday ? (
-                    <View style={[styles.dateCircle, styles.dateHighlight]}>
-                      <Text style={styles.dateCircleTextWhite}>{item.day}</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.dateCircle}>
-                      <Text style={styles.dateCircleText}>{item.day}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity 
-            style={styles.calendarFullView}
-            onPress={() => setIsCalendarExpanded(!isCalendarExpanded)}
-          >
-            <Text style={styles.calendarFullViewText}>{isCalendarExpanded ? '달력 접기' : '달력 전체보기'}</Text>
-            <Ionicons name={isCalendarExpanded ? "chevron-up" : "chevron-down"} size={16} color={colors.text.secondary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.userCard}>
-          <Text style={styles.emptyText}>챌린지 인증 내역 API가 필요합니다</Text>
-        </View>
-
-        {/* 추천 챌린지 섹션 */}
+        {/* 추천 챌린지 */}
         <Text style={styles.sectionTitle}>추천 챌린지</Text>
-        <View style={styles.challengeCard}>
-          <Text style={styles.emptyText}>
-            {isLoading ? '추천 챌린지를 불러오는 중입니다' : error ? '추천 챌린지를 불러오지 못했습니다' : '추천 챌린지 API가 필요합니다'}
-          </Text>
-        </View>
-        
+        {recommendedItems.length > 0 ? (
+          recommendedItems.map(item => (
+            <View key={item.challengeId} style={styles.section}>
+              <ChallengeListCard
+                item={item}
+                onPress={() => router.push(
+                  item.type === 'FAITH'
+                    ? `/challenge/faith?id=${item.challengeId}`
+                    : `/challenge/bible?id=${item.challengeId}`
+                )}
+              />
+            </View>
+          ))
+        ) : (
+          <View style={styles.section}>
+            <View style={styles.feedPlaceholder}>
+              <Text style={styles.placeholderText}>추천 챌린지가 없습니다</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
+
+      {/* 하단 참여하기 바 */}
+      {!canInteract && canJoin ? (
+        <View style={styles.bottomBar}>
+          <View style={{ paddingTop: spacing.md, paddingBottom: Math.max(insets.bottom, spacing.md), paddingHorizontal: spacing.md }}>
+            <TouchableOpacity
+              style={styles.joinBtn}
+              onPress={handleJoin}
+              activeOpacity={0.8}
+              disabled={joinLoading}
+            >
+              <Text style={styles.joinBtnText}>{joinLoading ? '참여 중...' : '챌린지 참여하기'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
+      {/* 옵션 바텀시트 */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.sheet} onStartShouldSetResponder={() => true}>
+            {canManage ? (
+              <>
+                <SheetOption
+                  label="챌린지 수정하기"
+                  onPress={() => {
+                    setMenuVisible(false);
+                    router.push(`/challenge/edit?id=${detail.challengeId}&type=BIBLE`);
+                  }}
+                />
+                <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+                <SheetOption label="챌린지 종료하기" onPress={() => setMenuVisible(false)} destructive />
+              </>
+            ) : canInteract ? (
+              <>
+                <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+                <SheetOption
+                  label="챌린지 탈퇴하기"
+                  onPress={() => { setMenuVisible(false); handleLeave(); }}
+                  destructive
+                />
+              </>
+            ) : (
+              <SheetOption label="챌린지 공유하기" onPress={() => setMenuVisible(false)} />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// ─── 서브 컴포넌트 ──────────────────────────────────────────────────────────────
+
+function TagChip({ label }: { label: string }) {
+  return (
+    <View style={chipStyles.chip}>
+      <Text style={chipStyles.text}>{label}</Text>
+    </View>
+  );
+}
+
+function SheetOption({
+  label,
+  onPress,
+  destructive,
+}: {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={sheetStyles.option}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={[sheetStyles.optionText, destructive && sheetStyles.optionTextDestructive]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function WeeklyProgressCard({ item }: { item: WeeklyProgressItem }) {
+  const weekDates = useMemo(() => buildWeekDates(new Date()), []);
+  const completed = useMemo(() => new Set(item.completedDates), [item.completedDates]);
+  const today = toDateString(new Date());
+
+  return (
+    <View style={styles.weeklyCard}>
+      <View style={styles.progressHeader}>
+        <View style={[styles.progressAvatar, item.isMe && styles.progressAvatarMe]}>
+          {item.isMe ? (
+            <Ionicons name="person" size={spacing.md} color={colors.white} />
+          ) : (
+            <Text style={styles.progressAvatarText}>{item.name.charAt(0)}</Text>
+          )}
+        </View>
+        <View style={styles.progressMeta}>
+          <Text style={styles.progressName}>{item.name}</Text>
+          <Text style={styles.progressSubtitle}>{item.subtitle}</Text>
+        </View>
+        <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.secondary} />
+      </View>
+
+      <View style={styles.weekStatusGrid}>
+        {weekDates.map(date => {
+          const isCompleted = completed.has(date.dateString);
+          const isToday = date.dateString === today;
+
+          return (
+            <View key={date.dateString} style={styles.weekStatusCell}>
+              <Text style={styles.weekStatusLabel}>{date.week}</Text>
+              <View
+                style={[
+                  styles.weekStatusCircle,
+                  isCompleted && styles.weekStatusCircleCompleted,
+                  isToday && !isCompleted && styles.weekStatusCircleToday,
+                ]}
+              >
+                {isCompleted ? (
+                  <Ionicons name="checkmark" size={spacing.md} color={colors.white} />
+                ) : (
+                  <Text style={[styles.weekStatusDay, isToday && styles.weekStatusDayToday]}>
+                    {date.day}
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── 스타일 ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.base },
-  header: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md },
-  headerButton: { width: 32, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
-  content: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  
-  infoSection: { marginBottom: spacing.xl },
-  mainTitle: { fontSize: 24, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.xs },
-  dateText: { fontSize: fontSize.sm, color: colors.text.secondary, marginBottom: spacing.md },
-  
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  badge: { backgroundColor: colors.border, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md },
-  badgeText: { fontSize: 11, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background.base,
+  },
+  loader: {
+    flex: 1,
+  },
+  errorBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  errorText: {
+    fontSize: fontSize.base,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  header: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+  },
+  headerBtn: {
+    width: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+  },
+  scroll: { flex: 1 },
+  infoSection: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  title: {
+    fontSize: fontSize.title,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+  },
+  dateText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  tagSection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.smd,
+  },
+  section: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
 
-  rangeCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  rangeIconWrapper: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#007AFF', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  rangeLabel: { fontSize: 11, color: colors.text.secondary, marginBottom: 2 },
-  rangeValue: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
+  // 읽을 범위 카드
+  rangeCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.card.offset,
+    shadowOpacity: shadow.card.opacity,
+    shadowRadius: shadow.card.radius,
+    elevation: shadow.card.elevation,
+  },
+  rangeIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rangeTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  rangeLabel: {
+    fontSize: fontSize.xs,
+    color: colors.text.secondary,
+    fontWeight: fontWeight.medium,
+  },
+  rangeValue: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+  },
 
-  sectionTitle: { fontSize: 18, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.lg },
+  // 참여자별 주간 달성 현황
+  weeklyCard: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    paddingBottom: spacing.md,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.card.offset,
+    shadowOpacity: shadow.card.opacity,
+    shadowRadius: shadow.card.radius,
+    elevation: shadow.card.elevation,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  progressAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressAvatarMe: {
+    backgroundColor: colors.primary,
+  },
+  progressAvatarText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+  progressMeta: {
+    flex: 1,
+  },
+  progressName: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  progressSubtitle: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  weekStatusGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+  },
+  weekStatusCell: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.nano,
+  },
+  weekStatusLabel: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  weekStatusCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekStatusCircleCompleted: {
+    backgroundColor: colors.primary,
+  },
+  weekStatusCircleToday: {
+    backgroundColor: TODAY_COLOR,
+  },
+  weekStatusDay: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  weekStatusDayToday: {
+    color: colors.white,
+  },
 
-  calendarCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md },
-  calendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.xl },
-  calendarMonth: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
-  
-  calendarRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
-  calendarCell: { alignItems: 'center', gap: spacing.xs, flex: 1 },
-  calendarDayText: { fontSize: 12, color: colors.text.secondary, marginBottom: 4 },
-  
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarGridCell: { width: '14.28%', alignItems: 'center', marginBottom: spacing.md },
-  
-  dateCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  dateChecked: { backgroundColor: '#5E5CE6' },
-  dateHighlight: { backgroundColor: '#FF3B30' },
-  dateCircleText: { fontSize: 14, color: colors.text.primary, fontWeight: fontWeight.medium },
-  dateCircleTextWhite: { fontSize: 14, color: colors.white, fontWeight: fontWeight.bold },
+  feedPlaceholder: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: shadow.color,
+    shadowOffset: shadow.card.offset,
+    shadowOpacity: shadow.card.opacity,
+    shadowRadius: shadow.card.radius,
+    elevation: shadow.card.elevation,
+  },
+  placeholderText: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
+  },
+  bottomBar: {
+    backgroundColor: colors.white,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  joinBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.smd,
+    alignItems: 'center' as const,
+  },
+  joinBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.white,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: colors.overlay.default,
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.background.elevated,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingBottom: spacing.md,
+  },
+});
 
-  calendarFullView: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
-  calendarFullViewText: { fontSize: 12, color: colors.text.secondary, fontWeight: fontWeight.medium },
+const chipStyles = StyleSheet.create({
+  chip: {
+    backgroundColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.xs,
+  },
+  text: {
+    fontSize: fontSize.sm,
+    color: colors.text.primary,
+    fontWeight: fontWeight.semibold,
+  },
+});
 
-  userCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.xxl },
-  emptyText: { color: colors.text.secondary, fontSize: fontSize.md, textAlign: 'center' },
-  userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xl },
-  userInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  avatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  userName: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text.primary },
-  userDesc: { fontSize: 11, color: colors.text.secondary },
-  
-  userCalendarRow: { flexDirection: 'row', justifyContent: 'space-between' },
-
-  // 추천 챌린지 카드 공통
-  challengeCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md },
-  cardBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  cardContent: { flexDirection: 'row', alignItems: 'center' },
-  cardIconWrapper: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  cardTextContainer: { flex: 1, marginRight: spacing.xs },
-  cardDate: { fontSize: 11, color: colors.text.secondary, marginBottom: 2 },
-  cardTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: 4 },
-  cardSubtitle: { fontSize: 12, color: colors.text.secondary },
-
-  ctaButton: { backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
-  ctaText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.bold },
+const sheetStyles = StyleSheet.create({
+  option: {
+    padding: spacing.md,
+  },
+  optionText: {
+    fontSize: fontSize.base,
+    color: colors.text.primary,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 26,
+  },
+  optionTextDestructive: {
+    color: colors.reaction.red,
+  },
 });

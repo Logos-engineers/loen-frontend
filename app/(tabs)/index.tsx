@@ -11,12 +11,9 @@ import { GoalSection } from '@/components/home/goal-section';
 import { HomeHeader } from '@/components/home/home-header';
 import { ObsSection } from '@/components/home/obs-section';
 import { PrayerSection } from '@/components/home/prayer-section';
-import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { useRouter } from 'expo-router';
-import { TouchableOpacity, Text } from 'react-native';
+import { colors } from '@/constants/tokens';
 
 export default function HomeScreen() {
-  const router = useRouter();
   return (
     // Figma: background/fill/common = #FFFFFF
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -29,37 +26,6 @@ export default function HomeScreen() {
       >
         <GoalSection />
         <BannerCarousel />
-        
-        {/* --- 임시 버튼 시작 --- */}
-        <TouchableOpacity
-          style={styles.tempButton}
-          onPress={() => router.push('/challenge/create')}
-        >
-          <Text style={styles.tempButtonText}>성경 챌린지 만들기 테스트</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
-          onPress={() => router.push('/challenge/list')}
-        >
-          <Text style={[styles.tempButtonText, { color: colors.primary }]}>내가 참여한 성경챌린지</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
-          onPress={() => router.push('/challenge/bible')}
-        >
-          <Text style={[styles.tempButtonText, { color: colors.primary }]}>성경챌린지</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
-          onPress={() => router.push('/challenge/faith')}
-        >
-          <Text style={[styles.tempButtonText, { color: colors.primary }]}>신앙챌린지</Text>
-        </TouchableOpacity>
-        {/* --- 임시 버튼 끝 --- */}
-
         <ObsSection />
         <FaithNoteCard />
         <BibleReadingSection />
@@ -80,19 +46,5 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 40,
-  },
-  tempButton: {
-    backgroundColor: colors.primary,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tempButtonText: {
-    color: colors.white,
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
   },
 });
