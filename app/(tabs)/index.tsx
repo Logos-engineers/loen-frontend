@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '@/components/home/banner-carousel';
 import { BibleReadingSection } from '@/components/home/bible-reading-section';
-import { ChallengeSection } from '@/components/home/challenge-section';
+// TODO(MVP v2): 챌린지 기능 활성화 시 주석 해제
+// import { ChallengeSection } from '@/components/home/challenge-section';
 import { FaithNoteCard } from '@/components/home/faith-note-card';
 import { GoalSection } from '@/components/home/goal-section';
 import { HomeHeader } from '@/components/home/home-header';
@@ -29,7 +30,8 @@ export default function HomeScreen() {
         <ObsSection />
         <FaithNoteCard />
         <BibleReadingSection />
-        <ChallengeSection />
+        {/* TODO(MVP v2): 챌린지 기능 활성화 시 주석 해제 */}
+        {/* <ChallengeSection /> */}
         <PrayerSection />
       </ScrollView>
     </SafeAreaView>

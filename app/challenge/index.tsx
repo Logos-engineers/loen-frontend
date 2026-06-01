@@ -5,6 +5,7 @@ import SearchIcon from '@/assets/icons/search.svg';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { BIBLE_BOOKS as BIBLE_BOOK_META } from '@/constants/BibleMeta';
 import { useChallenge, type ChallengeItem as ApiChallenge } from '@/hooks/useChallenge';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -122,6 +123,7 @@ export default function ChallengeListScreen() {
   const router = useRouter();
   const [searchText, setSearchText] = useState('');
   const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [isCreateMenuOpen, setCreateMenuOpen] = useState(false);
 
   const { challenges, isLoading, error, fetchChallenges } = useChallenge();
 
@@ -222,6 +224,48 @@ export default function ChallengeListScreen() {
           )}
         </View>
       </ScrollView>
+      {isCreateMenuOpen && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.createMenuBackdrop}
+          onPress={() => setCreateMenuOpen(false)}
+        />
+      )}
+      <View style={styles.createFabGroup} pointerEvents="box-none">
+        {isCreateMenuOpen && (
+          <View style={styles.createMenu}>
+            <TouchableOpacity
+              style={styles.createMenuButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                setCreateMenuOpen(false);
+                router.push('/challenge/edit?type=FAITH');
+              }}
+            >
+              <Text style={styles.createMenuText}>신앙 챌린지 만들기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.createMenuButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                setCreateMenuOpen(false);
+                router.push('/challenge/create');
+              }}
+            >
+              <Text style={styles.createMenuText}>성경 챌린지 만들기</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <TouchableOpacity
+          style={styles.createFab}
+          activeOpacity={0.85}
+          onPress={() => setCreateMenuOpen(prev => !prev)}
+          accessibilityRole="button"
+          accessibilityLabel="챌린지 만들기 메뉴"
+        >
+          <Ionicons name={isCreateMenuOpen ? 'close' : 'add'} size={30} color={colors.white} />
+        </TouchableOpacity>
+      </View>
       </SafeAreaView>
     </>
   );
@@ -267,7 +311,7 @@ const styles = StyleSheet.create({
 
   // Scroll
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: spacing.xxl },
+  scrollContent: { paddingBottom: 112 },
 
   // layout_4TRKMX — search bar: padding 16 all sides, gap 8
   searchWrapper: {
@@ -415,5 +459,52 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
     color: colors.text.secondary,
+  },
+  createMenuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  createFabGroup: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.xxl,
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  createMenu: {
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  createMenuButton: {
+    minWidth: 164,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.floating.offset,
+    shadowOpacity: shadow.floating.opacity,
+    shadowRadius: shadow.floating.radius,
+    elevation: shadow.floating.elevation,
+  },
+  createMenuText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  createFab: {
+    width: 58,
+    height: 58,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    shadowColor: shadow.color,
+    shadowOffset: shadow.floating.offset,
+    shadowOpacity: shadow.floating.opacity,
+    shadowRadius: shadow.floating.radius,
+    elevation: shadow.floating.elevation,
   },
 });

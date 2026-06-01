@@ -125,9 +125,9 @@ export default function ChallengeVisibilityScreen() {
 
           {(['public', 'oikos', 'link'] as const).map(v => {
             const info = {
-              public: { icon: 'people' as const,  title: '전체 공개',    desc: '로고스 청년 모두에게 공개되며,...' },
-              oikos:  { icon: 'person' as const,  title: '오이코스 공개', desc: '오이코스원에게만 공개되며, 오이코스원만...' },
-              link:   { icon: 'link' as const,    title: '링크로 공개',  desc: '챌린지 생성 완료 후 공유한 링크를 전달 받은...' },
+              public: { icon: 'people' as const,  title: '전체 공개',    desc: '로고스 청년 모두에게 공개되며,\n모두가 챌린지에 참여할 수 있어요' },
+              oikos:  { icon: 'person' as const,  title: '오이코스 공개', desc: '오이코스원에게만 공개되며, 오이코스원만 \n챌린지에 참여할 수 있어요. 챌린지 생성 완료 후 \n링크로도 공유 가능해요.' },
+              link:   { icon: 'link' as const,    title: '링크로 공개',  desc: '챌린지 생성 완료 후 공유한 링크를 전달 받은 \n청년만 챌린지에 참여할 수 있어요.' },
             }[v];
             const isLast = v === 'link';
             return (
@@ -138,13 +138,13 @@ export default function ChallengeVisibilityScreen() {
                 onPress={() => setVisibility(v)}
               >
                 <View style={styles.optionIcon}>
-                  <Ionicons name={info.icon} size={24} color={colors.text.primary} />
+                  <Ionicons name={info.icon} size={28} color={colors.text.primary} />
                 </View>
                 <View style={styles.optionTextContainer}>
                   <Text style={styles.optionTitle}>{info.title}</Text>
                   <Text style={styles.optionDesc} numberOfLines={1}>{info.desc}</Text>
                 </View>
-                <Ionicons name="checkmark-circle" size={24} color={visibility === v ? colors.primary : colors.border} />
+                <Ionicons name="checkmark-circle" size={24} color={visibility === v ? colors.primary : colors.text.dim} />
               </TouchableOpacity>
             );
           })}
@@ -239,17 +239,16 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.background.elevated, borderRadius: radius.lg,
-    padding: spacing.lg, marginBottom: spacing.md,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    padding: spacing.md, marginBottom: spacing.md,
   },
-  optionIcon: { marginRight: spacing.md },
+  optionIcon: { marginRight: spacing.smmd },
   optionTextContainer: { flex: 1, marginRight: spacing.sm },
   optionTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: 4 },
-  optionDesc: { fontSize: fontSize.xs, color: colors.text.secondary },
+  optionDesc: { fontSize: fontSize.sm, color: colors.text.secondary },
 
   footer: { paddingHorizontal: spacing.md, paddingBottom: spacing.lg, paddingTop: spacing.sm },
   buttonRow: { flexDirection: 'row', gap: spacing.sm },
-  btn: { flex: 1, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  btn: { flex: 1, height: 49, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   btnCancel: { backgroundColor: colors.primaryLight },
   btnActive: { backgroundColor: colors.primary },
   btnDelete: { backgroundColor: '#FF5A5A' },

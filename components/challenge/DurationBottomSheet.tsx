@@ -1,17 +1,10 @@
+import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import {
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DateWheelPicker from './DateWheelPicker';
-import { DurationTab, formatDateUntil } from './challengeTypes';
+import { DurationTab } from './challengeTypes';
 
 type DurationResult = {
   durationDays: number;
@@ -48,8 +41,6 @@ export default function DurationBottomSheet({
   onClose,
   onConfirm,
 }: Props) {
-  const insets = useSafeAreaInsets();
-
   const [activeTab, setActiveTab] = useState<DurationTab>(initialTab);
   const [durationDays, setDurationDays] = useState(initialDurationDays);
   const [dailyChapters, setDailyChapters] = useState(initialDailyChapters);
@@ -70,30 +61,29 @@ export default function DurationBottomSheet({
     return `${Math.max(1, durationDays)}일동안, 하루 약 ${Math.max(1, dailyChapters)}장씩 읽어요`;
   };
 
+  // 칩 3개(기간/하루/마감) 중 현재 선택된 한 가지 기준으로 바로 확정
   const handleComplete = () => {
-    if (activeTab === 'duration') {
-      setActiveTab('daily');
-      return;
-    }
-    if (activeTab === 'daily') {
-      setActiveTab('end');
-      return;
-    }
     onConfirm({ durationDays, dailyChapters, endDate, activeTab });
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.background} />
-        </TouchableWithoutFeedback>
-
-        <View style={styles.sheet}>
-          <View style={styles.handleWrapper}>
-            <View style={styles.handle} />
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      disableContentPadding
+      footer={
+        <>
+          <View style={styles.summaryRow}>
+            <Ionicons name="disc" size={20} color="#FF5A5A" style={{ marginRight: 6 }} />
+            <Text style={styles.summaryText}>{footerSummary()}</Text>
           </View>
-
+          <TouchableOpacity style={styles.confirmBtn} activeOpacity={0.8} onPress={handleComplete}>
+            <Text style={styles.confirmBtnText}>완료</Text>
+          </TouchableOpacity>
+        </>
+      }
+    >
+      <View>
           {/* 탭 헤더 */}
           <View style={styles.tabRow}>
             {TABS.map(tab => {
@@ -166,34 +156,12 @@ export default function DurationBottomSheet({
               />
             )}
           </View>
-
-          {/* 하단 요약 + 버튼 */}
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-            <View style={styles.summaryRow}>
-              <Ionicons name="disc" size={20} color="#FF5A5A" style={{ marginRight: 6 }} />
-              <Text style={styles.summaryText}>{footerSummary()}</Text>
-            </View>
-            <TouchableOpacity style={styles.confirmBtn} activeOpacity={0.8} onPress={handleComplete}>
-              <Text style={styles.confirmBtnText}>완료</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  background: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: {
-    backgroundColor: colors.background.elevated,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingTop: 12,
-  },
-  handleWrapper: { alignItems: 'center', paddingBottom: spacing.xl },
-  handle: { width: 48, height: 4, borderRadius: 2, backgroundColor: colors.border },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.xl,
@@ -233,7 +201,6 @@ const styles = StyleSheet.create({
     minWidth: 40,
     textAlign: 'center',
   },
-  footer: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   summaryRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   summaryText: { fontSize: fontSize.sm, color: colors.text.primary, fontWeight: fontWeight.medium },
   confirmBtn: {
