@@ -1,4 +1,6 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import BottomSheet from '@/components/ui/overlay/BottomSheet';
+import Popup from '@/components/ui/overlay/Popup';
 import DateWheelPicker from '@/components/challenge/DateWheelPicker';
 import DurationBottomSheet from '@/components/challenge/DurationBottomSheet';
 import {
@@ -16,17 +18,15 @@ import React, { useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function getTotalChapters(selected: string[]) {
   return selected.reduce((acc, book) => acc + (BIBLE_CHAPTER_MAP[book] || 0), 0);
@@ -34,7 +34,6 @@ function getTotalChapters(selected: string[]) {
 
 export default function ChallengeCreateScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   // 흐름: 1 (이름) → 2 (성경) → 3 (날짜) → 4 (기간)
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -65,6 +64,45 @@ export default function ChallengeCreateScreen() {
   const hasInput = challengeName.trim().length > 0;
   const formattedBooks = formatSelectedBooks(selectedBooks);
   const totalChapters = getTotalChapters(selectedBooks);
+
+  // 하단 CTA: 마지막 단계 전까지는 "다음으로", 마지막 단계에서 "완료"
+  const isFinalStep = step === 4;
+  const primaryLabel = isFinalStep ? '완료' : '다음으로';
+  const primaryDisabled =
+    step === 1
+      ? !hasInput
+      : step === 2
+        ? selectedBooks.length === 0
+        : step === 4
+          ? !isDurationSet
+          : false;
+
+  const handlePrimary = () => {
+    if (primaryDisabled) return;
+    if (step === 1) {
+      Keyboard.dismiss();
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
+      setStep(3);
+      return;
+    }
+    if (step === 3) {
+      setStep(4);
+      return;
+    }
+    router.push({
+      pathname: '/challenge/visibility',
+      params: {
+        challengeName,
+        selectedBooks: JSON.stringify(selectedBooks),
+        totalChapters,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+    });
+  };
 
   const handleBack = () => {
     if (step > 1) setStep(prev => (prev - 1) as 1 | 2 | 3 | 4);
@@ -132,62 +170,61 @@ export default function ChallengeCreateScreen() {
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.card}>
+          <View style={styles.inputStack}>
 
             {step >= 4 && (
-              <View style={styles.section}>
-                <Text style={styles.label}>읽을 기간을 정해주세요</Text>
-                <TouchableOpacity
-                  style={[styles.inputBorder, styles.inputBorderActive]}
-                  activeOpacity={0.7}
-                  onPress={() => { Keyboard.dismiss(); setIsDurationSheetOpen(true); }}
-                >
-                  <Text style={styles.inputText}>{renderDurationSummary()}</Text>
-                  <Ionicons name="chevron-down" size={20} color={colors.text.primary} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.fieldBlock}
+                activeOpacity={0.7}
+                onPress={() => { Keyboard.dismiss(); setIsDurationSheetOpen(true); }}
+              >
+                <Text style={styles.fieldLabel}>읽을 기간을 정해주세요</Text>
+                <View style={styles.fieldUnderline}>
+                  <View style={styles.fieldValueRow}>
+                    <Text style={styles.fieldValue}>{renderDurationSummary()}</Text>
+                    <Ionicons name="chevron-down" size={24} color={colors.text.secondary} />
+                  </View>
+                </View>
+              </TouchableOpacity>
             )}
 
             {step >= 3 && (
-              <View style={styles.section}>
-                <Text style={styles.label}>언제부터 읽을까요?</Text>
-                <TouchableOpacity style={[styles.inputBorder, styles.inputBorderActive]} activeOpacity={0.7} onPress={openDateSheet}>
-                  <Text style={styles.inputText}>{formatDateFrom(startDate)}</Text>
-                  <Ionicons name="chevron-down" size={20} color={colors.text.primary} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity style={styles.fieldBlock} activeOpacity={0.7} onPress={openDateSheet}>
+                <Text style={styles.fieldLabel}>언제부터 읽을까요?</Text>
+                <View style={styles.fieldUnderline}>
+                  <View style={styles.fieldValueRow}>
+                    <Text style={styles.fieldValue}>{formatDateFrom(startDate)}</Text>
+                    <Ionicons name="chevron-down" size={24} color={colors.text.secondary} />
+                  </View>
+                </View>
+              </TouchableOpacity>
             )}
 
             {step >= 2 && (
-              <View style={styles.section}>
-                <Text style={styles.label}>어디를 읽을까요?</Text>
-                <TouchableOpacity
-                  style={[styles.inputBorder, selectedBooks.length > 0 && styles.inputBorderActive]}
-                  activeOpacity={0.7}
-                  onPress={openBibleSheet}
-                >
-                  <Text style={[styles.inputText, selectedBooks.length === 0 && styles.inputTextPlaceholder]}>
-                    {selectedBooks.length > 0 ? formattedBooks : '성경을 선택해주세요'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={selectedBooks.length > 0 ? colors.text.primary : colors.text.secondary} />
-                </TouchableOpacity>
-                {selectedBooks.length > 0 && (
-                  <Text style={styles.subLabel}>{selectedBooks.length}권, 총 {totalChapters}장이에요</Text>
-                )}
-              </View>
+              <TouchableOpacity style={styles.fieldBlock} activeOpacity={0.7} onPress={openBibleSheet}>
+                <Text style={styles.fieldLabel}>어디를 읽을까요?</Text>
+                <View style={styles.fieldUnderline}>
+                  <View style={styles.fieldValueRow}>
+                    <Text style={[styles.fieldValue, selectedBooks.length === 0 && styles.fieldPlaceholder]}>
+                      {selectedBooks.length > 0 ? formattedBooks : '성경을 선택해주세요'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={24} color={colors.text.secondary} />
+                  </View>
+                </View>
+              </TouchableOpacity>
             )}
 
-            <View style={step >= 2 ? styles.sectionLast : undefined}>
-              <Text style={styles.label}>챌린지 이름을 정해주세요</Text>
-              <View style={[styles.inputBorder, isFocused && styles.inputBorderActive]}>
+            <View style={styles.fieldBlock}>
+              <Text style={[styles.fieldLabel, isFocused && styles.fieldLabelActive]}>챌린지 이름을 정해주세요</Text>
+              <View style={[styles.fieldUnderline, isFocused && styles.fieldUnderlineActive]}>
                 <TextInput
-                  style={styles.input}
+                  style={styles.fieldInput}
                   value={challengeName}
                   onChangeText={setChallengeName}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   placeholder="이윤재의 성경챌린지1"
-                  placeholderTextColor={colors.text.dim}
+                  placeholderTextColor={colors.text.secondary}
                   returnKeyType={step === 1 ? 'next' : 'done'}
                   onSubmitEditing={() => {
                     if (step === 1 && hasInput) setStep(2);
@@ -202,10 +239,10 @@ export default function ChallengeCreateScreen() {
         <View style={styles.footer}>
           {isFocused ? (
             <TouchableOpacity
-              style={[styles.btn, !hasInput && styles.btnDisabled]}
-              onPress={() => { if (hasInput && step === 1) setStep(2); }}
+              style={[styles.btn, primaryDisabled ? styles.btnDisabled : styles.btnActive]}
+              onPress={handlePrimary}
               activeOpacity={0.8}
-              disabled={!hasInput}
+              disabled={primaryDisabled}
             >
               <Text style={styles.btnTextActive}>완료</Text>
             </TouchableOpacity>
@@ -215,21 +252,12 @@ export default function ChallengeCreateScreen() {
                 <Text style={styles.btnTextCancel}>그만두기</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.btn, (!hasInput || selectedBooks.length === 0 || !isDurationSet) ? styles.btnDisabled : styles.btnActive]}
-                onPress={() => router.push({
-                  pathname: '/challenge/visibility',
-                  params: {
-                    challengeName,
-                    selectedBooks: JSON.stringify(selectedBooks),
-                    totalChapters,
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString(),
-                  },
-                })}
-                disabled={!hasInput || selectedBooks.length === 0 || !isDurationSet}
+                style={[styles.btn, primaryDisabled ? styles.btnDisabled : styles.btnActive]}
+                onPress={handlePrimary}
+                disabled={primaryDisabled}
                 activeOpacity={0.8}
               >
-                <Text style={styles.btnTextActive}>완료</Text>
+                <Text style={styles.btnTextActive}>{primaryLabel}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -237,55 +265,48 @@ export default function ChallengeCreateScreen() {
       </KeyboardAvoidingView>
 
       {/* 성경 선택 모달 */}
-      <Modal visible={isBibleSheetOpen} transparent animationType="slide" onRequestClose={() => setIsBibleSheetOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback onPress={() => setIsBibleSheetOpen(false)}>
-            <View style={styles.modalBackground} />
-          </TouchableWithoutFeedback>
-          <View style={styles.bottomSheet}>
-            <View style={styles.handleWrapper}><View style={styles.sheetHandle} /></View>
-            <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-              {BIBLE_BOOK_NAMES.map(book => {
-                const isSelected = tempSelectedBooks.includes(book);
-                return (
-                  <TouchableOpacity key={book} style={styles.bookRow} activeOpacity={0.7} onPress={() => toggleBook(book)}>
-                    <Text style={[styles.bookText, isSelected && styles.bookTextSelected]}>{book}</Text>
-                    {isSelected && <Ionicons name="checkmark-outline" size={24} color={colors.primary} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-              <TouchableOpacity
-                style={[styles.completeBtn, tempSelectedBooks.length === 0 && styles.completeBtnDisabled]}
-                disabled={tempSelectedBooks.length === 0}
-                onPress={handleCompleteBibleSelection}
-              >
-                <Text style={styles.completeBtnText}>완료</Text>
+      <BottomSheet
+        visible={isBibleSheetOpen}
+        onClose={() => setIsBibleSheetOpen(false)}
+        title="성경을 선택해주세요"
+        disableContentPadding
+        footer={
+          <TouchableOpacity
+            style={[styles.completeBtn, tempSelectedBooks.length === 0 && styles.completeBtnDisabled]}
+            disabled={tempSelectedBooks.length === 0}
+            onPress={handleCompleteBibleSelection}
+          >
+            <Text style={styles.completeBtnText}>완료</Text>
+          </TouchableOpacity>
+        }
+      >
+        <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
+          {BIBLE_BOOK_NAMES.map(book => {
+            const isSelected = tempSelectedBooks.includes(book);
+            return (
+              <TouchableOpacity key={book} style={styles.bookRow} activeOpacity={0.7} onPress={() => toggleBook(book)}>
+                <Text style={[styles.bookText, isSelected && styles.bookTextSelected]}>{book}</Text>
+                {isSelected && <Ionicons name="checkmark-outline" size={24} color={colors.primary} />}
               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+            );
+          })}
+        </ScrollView>
+      </BottomSheet>
 
       {/* 시작 날짜 모달 */}
-      <Modal visible={isDateSheetOpen} transparent animationType="slide" onRequestClose={() => setIsDateSheetOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback onPress={() => setIsDateSheetOpen(false)}>
-            <View style={styles.modalBackground} />
-          </TouchableWithoutFeedback>
-          <View style={styles.bottomSheet}>
-            <View style={styles.handleWrapper}><View style={styles.sheetHandle} /></View>
-            <Text style={styles.dateSheetTitle}>시작일 설정</Text>
-            <DateWheelPicker value={tempStartDate} onChange={setTempStartDate} />
-            <View style={[styles.sheetFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-              <TouchableOpacity style={styles.completeBtn} activeOpacity={0.8} onPress={handleCompleteDateSelection}>
-                <Text style={styles.completeBtnText}>완료</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <BottomSheet
+        visible={isDateSheetOpen}
+        onClose={() => setIsDateSheetOpen(false)}
+        title="시작일 설정"
+        disableContentPadding
+        footer={
+          <TouchableOpacity style={styles.completeBtn} activeOpacity={0.8} onPress={handleCompleteDateSelection}>
+            <Text style={styles.completeBtnText}>완료</Text>
+          </TouchableOpacity>
+        }
+      >
+        <DateWheelPicker value={tempStartDate} onChange={setTempStartDate} />
+      </BottomSheet>
 
       {/* 기간 설정 시트 */}
       <DurationBottomSheet
@@ -307,21 +328,15 @@ export default function ChallengeCreateScreen() {
       />
 
       {/* 이탈 방지 모달 */}
-      <Modal visible={isExitModalOpen} transparent animationType="fade" onRequestClose={() => setIsExitModalOpen(false)}>
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.exitModalCard}>
-            <Text style={styles.exitModalText}>지금까지 입력한 내용이 저장되지 않아요</Text>
-            <View style={styles.exitModalBtnRow}>
-              <TouchableOpacity style={[styles.exitModalBtn, styles.exitModalBtnStay]} onPress={() => setIsExitModalOpen(false)} activeOpacity={0.8}>
-                <Text style={styles.exitModalBtnTextStay}>머무르기</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.exitModalBtn, styles.exitModalBtnLeave]} onPress={() => router.replace('/(tabs)')} activeOpacity={0.8}>
-                <Text style={styles.exitModalBtnTextLeave}>나가기</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <Popup
+        visible={isExitModalOpen}
+        onClose={() => setIsExitModalOpen(false)}
+        description="지금까지 입력한 내용이 저장되지 않아요"
+        buttons={[
+          { label: '머무르기', variant: 'secondary', onPress: () => setIsExitModalOpen(false) },
+          { label: '나가기', variant: 'primary', onPress: () => router.replace('/(tabs)') },
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -335,16 +350,18 @@ const styles = StyleSheet.create({
   headerRightSpace: { width: 32 },
   content: { paddingHorizontal: spacing.md, paddingTop: spacing.xl },
 
-  card: { backgroundColor: colors.background.elevated, borderRadius: radius.lg, padding: spacing.xl, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  section: { marginBottom: spacing.xxl },
-  sectionLast: { marginBottom: 0 },
-  label: { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: fontWeight.medium },
-  subLabel: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: spacing.sm },
-  inputBorder: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: spacing.sm, marginTop: spacing.xs },
-  inputBorderActive: { borderBottomColor: colors.primary },
-  inputText: { fontSize: fontSize.lg, color: colors.text.primary, fontWeight: fontWeight.medium },
-  inputTextPlaceholder: { color: colors.text.secondary },
-  input: { flex: 1, fontSize: fontSize.lg, color: colors.text.primary, fontWeight: fontWeight.medium, padding: 0 },
+  inputStack: { backgroundColor: colors.background.elevated, borderRadius: radius.lg, overflow: 'hidden' },
+
+  // 입력 카드 공통 필드 (Figma 메타데이터: 라벨 14/600, 값 22/600, 값 바로 아래 1px 밑줄, 패딩 16)
+  fieldBlock: { paddingHorizontal: spacing.md, paddingVertical: spacing.md },
+  fieldLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing.sm },
+  fieldLabelActive: { color: colors.primary },
+  fieldUnderline: { borderBottomWidth: 1, borderBottomColor: colors.text.dim, paddingBottom: spacing.sm },
+  fieldUnderlineActive: { borderBottomColor: colors.primary },
+  fieldValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  fieldValue: { flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.semibold, color: colors.text.primary, minHeight: 33 },
+  fieldPlaceholder: { color: colors.text.secondary },
+  fieldInput: { fontSize: fontSize.xl, fontWeight: fontWeight.semibold, color: colors.text.primary, padding: 0, minHeight: 33 },
 
   footer: { paddingHorizontal: spacing.md, paddingBottom: spacing.lg, paddingTop: spacing.sm },
   buttonRow: { flexDirection: 'row', gap: spacing.sm },
@@ -355,28 +372,12 @@ const styles = StyleSheet.create({
   btnActive: { backgroundColor: colors.primary },
   btnTextActive: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.white },
 
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  bottomSheet: { backgroundColor: colors.background.elevated, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '80%', paddingTop: 12 },
-  handleWrapper: { alignItems: 'center', paddingBottom: spacing.xl },
-  sheetHandle: { width: 48, height: 4, borderRadius: 2, backgroundColor: colors.border },
-  sheetScroll: { paddingHorizontal: spacing.xl },
-  bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 },
+  // 성경 선택 BottomSheet 내부 콘텐츠 스타일
+  sheetScroll: { height: 300, paddingHorizontal: spacing.lg },
+  bookRow: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bookText: { fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
   bookTextSelected: { color: colors.primary, fontWeight: fontWeight.bold },
-  sheetFooter: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  completeBtn: { height: 52, backgroundColor: colors.primary, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  completeBtn: { height: 48, backgroundColor: colors.primary, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   completeBtnDisabled: { backgroundColor: 'rgba(101,97,255,0.3)' },
   completeBtnText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.bold },
-  dateSheetTitle: { fontSize: 20, fontWeight: fontWeight.bold, color: colors.text.primary, paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
-
-  modalOverlayCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  exitModalCard: { width: '80%', backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center' },
-  exitModalText: { fontSize: fontSize.base, color: colors.text.primary, fontWeight: fontWeight.medium, marginBottom: spacing.xl, textAlign: 'center' },
-  exitModalBtnRow: { flexDirection: 'row', gap: spacing.sm, width: '100%' },
-  exitModalBtn: { flex: 1, height: 48, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
-  exitModalBtnStay: { backgroundColor: '#F0F0F5' },
-  exitModalBtnTextStay: { color: colors.text.primary, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
-  exitModalBtnLeave: { backgroundColor: '#FF5A5A' },
-  exitModalBtnTextLeave: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
 });

@@ -56,7 +56,8 @@ export const colors = {
   // ─── 모달 / 오버레이 딤 처리 ────────────────────────────────────
   overlay: {
     default: 'rgba(13,28,45,0.55)',      // 다이얼로그 반투명 배경
-    heavy: 'rgba(13,28,45,0.6)',         // 바텀 시트 등 더 강한 딤
+    heavy: 'rgba(13,28,45,0.6)',         // 바텀 시트 등 더 강한 딤 — Figma dim/dim
+    toast: 'rgba(13,28,45,0.8)',         // toast/snackbar 배경 — trans/neutral/a2
   },
 
   // ─── 성경 통독표 장(chapter) 전용 색상 ──────────────────────────

@@ -75,8 +75,8 @@ export default function ChallengeEditScreen() {
   const [isHydrating, setIsHydrating] = useState(true);
 
   // 기본 정보
-  const [challengeName, setChallengeName] = useState('애굽 탈출하기');
-  const [challengeGoal, setChallengeGoal] = useState('하루 한 가지 감사 기록하기');
+  const [challengeName, setChallengeName] = useState('');
+  const [challengeGoal, setChallengeGoal] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
   // 성경 선택
@@ -187,6 +187,28 @@ export default function ChallengeEditScreen() {
       return;
     }
 
+    if (isFaithChallenge) {
+      try {
+        const created = await apiClient<{ challengeId: string }>('/challenges/faith', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: challengeName.trim(),
+            goal: challengeGoal.trim(),
+            startDate: toDateInputValue(startDate),
+            endDate: toDateInputValue(endDate),
+            visibility: stateToVisibility[visibility],
+            notificationEnabled: enabledAlarms.length > 0,
+            notificationTimes,
+          }),
+        });
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        router.replace(`/challenge/faith?id=${created.challengeId}`);
+      } catch (err) {
+        Alert.alert('생성 실패', (err as Error)?.message || '챌린지 생성에 실패했습니다.');
+      }
+      return;
+    }
+
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
         challengeName,
@@ -201,7 +223,7 @@ export default function ChallengeEditScreen() {
     } catch {
       // 저장 실패 무시
     }
-    router.replace(isFaithChallenge ? '/challenge/faith' : '/challenge/bible');
+    router.replace('/challenge/bible');
   };
 
   // 알람 관리 모드
@@ -305,7 +327,9 @@ export default function ChallengeEditScreen() {
       <View style={styles.header}>
         <View style={styles.headerSide} />
         <Text style={styles.headerTitle}>
-          {isFaithChallenge ? '신앙 챌린지 수정하기' : '성경 챌린지 수정하기'}
+          {isFaithChallenge
+            ? `신앙 챌린지 ${challengeId ? '수정하기' : '만들기'}`
+            : `성경 챌린지 ${challengeId ? '수정하기' : '만들기'}`}
         </Text>
         <View style={styles.headerSide} />
       </View>
@@ -455,7 +479,7 @@ export default function ChallengeEditScreen() {
                 activeOpacity={0.8}
                 disabled={!isDataValid}
               >
-                <Text style={styles.btnTextActive}>수정완료</Text>
+                <Text style={styles.btnTextActive}>{challengeId ? '수정완료' : '만들기'}</Text>
               </TouchableOpacity>
             </View>
           )}

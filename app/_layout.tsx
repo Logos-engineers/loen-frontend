@@ -1,12 +1,13 @@
 import * as Notifications from '@/utils/notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
+import { OverlayHost } from '@/components/ui/overlay';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -17,12 +18,15 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { isLoggedIn, isNewUser, isInitialized, initialize } = useAuthStore();
+  // 루트 네비게이터(Stack)가 마운트된 뒤에만 navigate 해야 함 (마운트 전 router.replace 시 크래시)
+  const rootNavState = useRootNavigationState();
 
   useEffect(() => {
     initialize();
   }, []);
 
   useEffect(() => {
+    if (!rootNavState?.key) return; // 네비게이터 마운트 전이면 대기
     if (!isInitialized) return;
 
     if (!isLoggedIn) {
@@ -32,7 +36,7 @@ export default function RootLayout() {
     } else {
       router.replace('/(tabs)');
     }
-  }, [isInitialized, isLoggedIn, isNewUser]);
+  }, [isInitialized, isLoggedIn, isNewUser, rootNavState?.key]);
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
@@ -85,6 +89,7 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
+      <OverlayHost />
     </GestureHandlerRootView>
   );
 }

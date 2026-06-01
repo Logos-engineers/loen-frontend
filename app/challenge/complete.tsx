@@ -1,11 +1,13 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useCallback } from 'react';
 import {
+  Image,
+  ImageSourcePropType,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,22 +16,28 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Figma 완료 화면 행 아이콘 (40×40 일러스트)
+const RESULT_ICONS = {
+  name: require('@/assets/images/challenge-result/name.png'),
+  bible: require('@/assets/images/challenge-result/bible.png'),
+  period: require('@/assets/images/challenge-result/period.png'),
+  alarm: require('@/assets/images/challenge-result/alarm.png'),
+  visibility: require('@/assets/images/challenge-result/visibility.png'),
+} as const;
+
 type CompleteCardProps = {
   title: string;
   value: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-  iconBgColor: string;
+  icon: ImageSourcePropType;
   rightComponent?: React.ReactNode;
 };
 
-const CompleteCard = ({ title, value, iconName, iconBgColor, rightComponent }: CompleteCardProps) => (
+const CompleteCard = ({ title, value, icon, rightComponent }: CompleteCardProps) => (
   <View style={styles.card}>
-    <View style={[styles.iconBox, { backgroundColor: iconBgColor }]}>
-      <Ionicons name={iconName} size={24} color={colors.white} />
-    </View>
+    <Image source={icon} style={styles.iconBox} resizeMode="contain" />
     <View style={styles.cardTextContainer}>
       <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardValue}>{value}</Text>
+      <Text style={styles.cardValue} numberOfLines={1}>{value}</Text>
     </View>
     {rightComponent && <View style={styles.rightComponent}>{rightComponent}</View>}
   </View>
@@ -107,49 +115,45 @@ export default function ChallengeCompleteScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
 
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <View style={styles.headerSpace} />
-        {/* 타이틀 없이 빈 헤더 (디자인 요구사항) */}
-        <View style={styles.headerSpace} />
-      </View>
+      {/* 배경 그라데이션 (Figma radial #E0DFFF 중앙 → #F2F4F7 — 3-스톱 세로로 근사) */}
+      <LinearGradient
+        colors={['#F2F4F7', '#E0DFFF', '#F2F4F7']}
+        locations={[0.18, 0.5, 0.84]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={{ height: spacing.xl }} />
+        <Text style={styles.title}>성경 챌린지 만들기 완료</Text>
 
         <CompleteCard
           title="챌린지 이름"
           value={challengeName}
-          iconName="alarm-outline"
-          iconBgColor="#007AFF"
+          icon={RESULT_ICONS.name}
         />
 
         <CompleteCard
           title="읽을 성경"
           value={booksText}
-          iconName="book-outline"
-          iconBgColor="#007AFF"
+          icon={RESULT_ICONS.bible}
         />
 
         <CompleteCard
           title="읽을 기간"
           value={durationText}
-          iconName="disc-outline"
-          iconBgColor="#FF3B30"
+          icon={RESULT_ICONS.period}
         />
 
         <CompleteCard
           title="알람"
           value={alarmText}
-          iconName="alarm-outline"
-          iconBgColor="#007AFF"
+          icon={RESULT_ICONS.alarm}
         />
 
         <CompleteCard
           title="공개여부"
           value={visibilityText}
-          iconName="people"
-          iconBgColor="#FF9500"
+          icon={RESULT_ICONS.visibility}
           rightComponent={
             visibility === 'link' ? (
               <TouchableOpacity style={styles.copyBtn} onPress={handleCopyLink} activeOpacity={0.7}>
@@ -192,19 +196,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.base,
   },
-  header: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  headerSpace: {
-    width: 32,
-  },
   content: {
     flex: 1,
     paddingHorizontal: spacing.md,
+  },
+  title: {
+    fontSize: 32,
+    lineHeight: 48,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    textAlign: 'center', // Figma: textAlignHorizontal CENTER
+    paddingHorizontal: spacing.xs,
+    marginTop: 78, // Figma: 상태바 아래 빈 네비(46) + 패딩(32)
+    marginBottom: spacing.xxl, // Figma: 타이틀→첫 카드 32
   },
 
   // 카드 컴포넌트
@@ -213,48 +217,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    padding: spacing.md,
+    marginBottom: 17, // Figma Container gap
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    marginRight: spacing.sm, // Figma: left 프레임 우패딩 8
   },
   cardTextContainer: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     color: colors.text.secondary,
-    marginBottom: 4,
+    fontWeight: fontWeight.medium,
   },
   cardValue: {
     fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
+    lineHeight: 26, // Figma lh 25.6 — 라벨과 라인높이로 직접 스택
+    fontWeight: fontWeight.semibold,
     color: colors.text.primary,
   },
   rightComponent: {
     marginLeft: spacing.sm,
   },
   copyBtn: {
-    backgroundColor: '#F0F0F5',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: radius.full,
+    backgroundColor: colors.border,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
   },
   copyBtnText: {
-    fontSize: fontSize.xs,
-    color: colors.text.secondary,
-    fontWeight: fontWeight.medium,
+    fontSize: fontSize.sm,
+    color: colors.text.primary,
+    fontWeight: fontWeight.semibold,
   },
 
   // 하단
@@ -264,13 +263,13 @@ const styles = StyleSheet.create({
   },
   editLinkBtn: {
     alignSelf: 'center',
-    paddingVertical: spacing.md,
-    marginBottom: spacing.md,
+    paddingTop: spacing.smmd,    // 12 — Figma above frame pad-top
+    paddingBottom: spacing.sm,   // 8  — 버튼 바로 위
   },
   editLinkText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.md,
     color: colors.primary,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.semibold,
     textDecorationLine: 'underline',
   },
   buttonRow: {
@@ -279,8 +278,8 @@ const styles = StyleSheet.create({
   },
   btn: {
     flex: 1,
-    height: 52,
-    borderRadius: radius.lg,
+    height: 49,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -288,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   btnTextCancel: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.heading,
     fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
@@ -296,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   btnTextActive: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.heading,
     fontWeight: fontWeight.semibold,
     color: colors.white,
   },

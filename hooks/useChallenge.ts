@@ -87,6 +87,17 @@ export type CreateBibleChallengePayload = {
   notificationTimes: string[];
 };
 
+export type CreateFaithChallengePayload = {
+  name: string;
+  goal: string;
+  startDate: string;
+  endDate: string;
+  visibility: 'PUBLIC' | 'OIKOS' | 'LINK';
+  verificationMethod?: 'ATTENDANCE' | 'MEDITATION' | 'PHOTO';
+  notificationEnabled: boolean;
+  notificationTimes: string[];
+};
+
 function normalizeChallenge(item: BackendChallengeItem): ChallengeItem {
   return {
     id: item.id ?? item.challengeId,

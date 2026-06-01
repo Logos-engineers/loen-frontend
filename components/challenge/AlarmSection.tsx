@@ -1,16 +1,15 @@
+import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import React, { useState } from 'react';
 import {
-  Modal,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TimeWheelPicker from './TimeWheelPicker';
 import {
   ChallengeAlarm,
@@ -37,7 +36,6 @@ export default function AlarmSection({
   selectedForDelete,
   onSelectedForDeleteChange,
 }: Props) {
-  const insets = useSafeAreaInsets();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
@@ -154,62 +152,59 @@ export default function AlarmSection({
       ))}
 
       {/* 알람 추가 바텀시트 */}
-      <Modal visible={isSheetOpen} transparent animationType="slide" onRequestClose={() => setIsSheetOpen(false)}>
-        <View style={styles.sheetOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setIsSheetOpen(false)} />
-          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-            <View style={styles.handleWrapper}>
-              <View style={styles.sheetHandle} />
-            </View>
+      <BottomSheet
+        visible={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+        title="알림을 언제 보낼까요?"
+        disableContentPadding
+        footer={
+          <View style={styles.sheetFooter}>
+            <TouchableOpacity
+              style={[styles.btn, styles.btnCancel]}
+              onPress={() => setIsSheetOpen(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.btnTextCancel}>취소</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btn, selectedWeekdays.length > 0 ? styles.btnActive : styles.btnDisabled]}
+              onPress={handleSaveAlarm}
+              activeOpacity={0.8}
+              disabled={selectedWeekdays.length === 0}
+            >
+              <Text style={styles.btnTextActive}>완료</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <TimeWheelPicker value={selectedTime} onChange={setSelectedTime} />
 
-            <TimeWheelPicker value={selectedTime} onChange={setSelectedTime} />
-
-            <View style={styles.weekdaySection}>
-              <View style={styles.weekdayHeader}>
-                <Text style={styles.weekdayTitle}>요일 선택</Text>
-                <Text style={styles.weekdaySummary}>
-                  {selectedWeekdays.length > 0 ? getWeekdayText(selectedWeekdays) : ''}
-                </Text>
-              </View>
-              <View style={styles.weekdayRow}>
-                {WEEKDAYS.map((day, index) => {
-                  const isSelected = selectedWeekdays.includes(index);
-                  return (
-                    <TouchableOpacity
-                      key={day}
-                      style={[styles.weekdayCircle, isSelected && styles.weekdayCircleActive]}
-                      onPress={() => toggleWeekday(index)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.weekdayText, isSelected && styles.weekdayTextActive]}>
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.sheetFooter}>
-              <TouchableOpacity
-                style={[styles.btn, styles.btnCancel]}
-                onPress={() => setIsSheetOpen(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.btnTextCancel}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.btn, selectedWeekdays.length > 0 ? styles.btnActive : styles.btnDisabled]}
-                onPress={handleSaveAlarm}
-                activeOpacity={0.8}
-                disabled={selectedWeekdays.length === 0}
-              >
-                <Text style={styles.btnTextActive}>완료</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={styles.weekdaySection}>
+          <View style={styles.weekdayHeader}>
+            <Text style={styles.weekdayTitle}>요일 선택</Text>
+            <Text style={styles.weekdaySummary}>
+              {selectedWeekdays.length > 0 ? getWeekdayText(selectedWeekdays) : ''}
+            </Text>
+          </View>
+          <View style={styles.weekdayRow}>
+            {WEEKDAYS.map((day, index) => {
+              const isSelected = selectedWeekdays.includes(index);
+              return (
+                <TouchableOpacity
+                  key={day}
+                  style={[styles.weekdayCircle, isSelected && styles.weekdayCircleActive]}
+                  onPress={() => toggleWeekday(index)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.weekdayText, isSelected && styles.weekdayTextActive]}>
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
-      </Modal>
+      </BottomSheet>
     </>
   );
 }
@@ -258,45 +253,40 @@ const styles = StyleSheet.create({
   alarmTime: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: 4 },
   alarmDays: { fontSize: fontSize.xs, color: colors.text.secondary },
 
-  // 알람 추가 시트
-  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.background.elevated,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingTop: 12,
-    paddingHorizontal: spacing.xl,
+  // 알람 추가 시트 (Figma: 요일 라벨 16/600, 요약 12/600, 요일칩 36 원형 — 비활성 배경 없음)
+  weekdaySection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  handleWrapper: { alignItems: 'center', paddingBottom: spacing.xl },
-  sheetHandle: { width: 48, height: 4, borderRadius: 2, backgroundColor: colors.border },
-
-  weekdaySection: { marginBottom: spacing.xxl },
   weekdayHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  weekdayTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  weekdaySummary: { fontSize: fontSize.xs, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  weekdayTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  weekdaySummary: { fontSize: fontSize.sm, color: colors.text.primary, fontWeight: fontWeight.semibold },
   weekdayRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekdayCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background.base,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   weekdayCircleActive: { backgroundColor: colors.primary },
-  weekdayText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.primary },
+  weekdayText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary },
   weekdayTextActive: { color: colors.white },
 
   sheetFooter: { flexDirection: 'row', gap: spacing.sm },
-  btn: { flex: 1, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  btn: { flex: 1, height: 49, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   btnCancel: { backgroundColor: colors.primaryLight },
   btnActive: { backgroundColor: colors.primary },
   btnDisabled: { backgroundColor: 'rgba(101,97,255,0.3)' },
-  btnTextCancel: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.primary },
-  btnTextActive: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.white },
+  btnTextCancel: { fontSize: fontSize.heading, fontWeight: fontWeight.semibold, color: colors.primary },
+  btnTextActive: { fontSize: fontSize.heading, fontWeight: fontWeight.semibold, color: colors.white },
 });
