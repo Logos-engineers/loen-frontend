@@ -8,6 +8,8 @@ type ObsCardProps = {
   reviewLabel?: string;
   showReviewCompleteTag?: boolean;
   viewLabel?: string;
+  singleLineTitle?: boolean;
+  noShadow?: boolean;
   onPressReview: () => void;
   onPressView: () => void;
 };
@@ -17,6 +19,8 @@ export function ObsCard({
   reviewLabel = '복습하기',
   showReviewCompleteTag = true,
   viewLabel = 'OBS 보기',
+  singleLineTitle = false,
+  noShadow = false,
   onPressReview,
   onPressView,
 }: ObsCardProps) {
@@ -24,11 +28,17 @@ export function ObsCard({
 
   return (
     <View style={styles.cardWrapper}>
-      <View style={styles.card}>
+      <View style={[styles.card, noShadow && styles.cardFlat]}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
             <Text style={styles.cardDate}>{formatKoreanDate(item.publishedDate)}</Text>
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text
+              style={styles.cardTitle}
+              numberOfLines={singleLineTitle ? 1 : undefined}
+              ellipsizeMode="tail"
+            >
+              {item.title}
+            </Text>
             <Text style={styles.cardVerse}>{item.biblePassage}</Text>
           </View>
           {showReviewCompleteTag && isDone && (
@@ -74,6 +84,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+  },
+  // 홈 화면 등 그림자 제거용 (flat)
+  cardFlat: {
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -138,12 +155,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   obsViewButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryLight,   // rgba(101,97,255,0.20)
   },
   obsViewButtonText: {
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
-    color: '#FAFAFA',
+    color: colors.primary,                   // 연보라 배경 위 가독성
   },
   primaryButton: {
     backgroundColor: colors.primary,
