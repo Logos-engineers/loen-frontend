@@ -67,8 +67,8 @@ export const colors = {
   readingPlan: {
     chapter: {
       read: 'rgba(101,97,255,0.75)',     // 읽은 장 배경 — primary 75% 불투명
-      unread: 'rgba(13,28,45,0.06)',     // 안 읽은 장 배경 — border보다 연한 회색
-      unreadText: 'rgba(13,28,45,0.4)', // 안 읽은 장 숫자 — text.secondary보다 연함
+      unread: '#F2F4F7',                 // 안 읽은 장 배경 — Figma count #F2F4F7 (bg/basic/subtlest)
+      unreadText: 'rgba(13,28,45,0.8)',  // 안 읽은 장 숫자 — Figma 12/600 fg/basic/stronger
     },
   },
 } as const;

@@ -65,7 +65,7 @@ function PrayerCard({ item }: { item: PrayerItem }) {
 
 export function PrayerSection() {
   const { notes, isLoading, error } = useFaithNotes('PRAYER');
-  const prayers: PrayerItem[] = notes.slice(0, 2).map(note => ({
+  const prayers: PrayerItem[] = notes.slice(0, 3).map(note => ({
     id: note.id,
     name: note.author.name || note.author.handle || '익명',
     content: note.content.join('\n'),

@@ -59,13 +59,22 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* 라우트는 유지하되 탭 바에서는 숨김 (홈 "전체 통독표 보기"에서 push로 진입) */}
       <Tabs.Screen
         name="plan"
         options={{
+          href: null,
           title: '성경통독표',
           tabBarIcon: ({ color }) => (
             <SvgXml xml={getTabIcon(PLAN_SVG, color)} width={24} height={24} />
           ),
+        }}
+      />
+      {/* 사용하지 않는 explore 화면 — 탭 바에서 숨김 */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen

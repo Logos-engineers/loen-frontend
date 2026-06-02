@@ -25,19 +25,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Testament = 'old' | 'new';
 
-const BOTTOM_TABS = ['말씀강해', '성경통독', '챌린지', '성경읽기'];
+const BOTTOM_TABS = ['말씀강해', '성경통독', '성경읽기'];
 const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
 type LastPosition = { bookCode: string; chapterNum: number };
 const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export default function PlanScreen() {
-  const { isLoading, stats, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
+  const { isLoading, stats, planData, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
   const { history, checkChapters, uncheckChapters } = useBibleHistory();
   const [activeTestament, setActiveTestament] = useState<Testament>('old');
   const [activeBottomTab, setActiveBottomTab] = useState('성경통독');
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
 
   const bookList = BIBLE_BOOKS.filter(b => b.testament === activeTestament);
+
+  // 목표 설정 플로우 완료 시 selectedBookCode가 저장됨 → 미설정 판별
+  const isGoalSet = planData.selectedBookCode !== null;
 
   // 서버 통계로 로컬 stats를 덮어씀 (서버 데이터 없으면 로컬 fallback)
   const mergedStats = {
@@ -99,7 +102,7 @@ export default function PlanScreen() {
           onPress={() => { if (router.canGoBack()) router.back(); }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={24} color="rgba(13,28,45,0.3)" />
+          <Ionicons name="chevron-back" size={24} color={colors.text.dim} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>성경 통독표</Text>
         <View style={styles.headerBack} />
@@ -114,36 +117,33 @@ export default function PlanScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statsRow}>
             <View style={styles.statsItem}>
-              {/* 라벨 + 편집 pill 한 행 */}
-              <View style={styles.statsLabelRow}>
-                <Text style={styles.statsLabel}>이번주 목표</Text>
+              <Text style={styles.statsLabel}>이번주 목표</Text>
+              {isGoalSet ? (
+                <Text style={styles.statsValue}>
+                  {mergedStats.weekRead} / {mergedStats.weeklyGoal}장
+                </Text>
+              ) : (
+                // 미설정: + 버튼 → 이번주 목표 설정 플로우
                 <TouchableOpacity
-                  style={styles.editChip}
-                  activeOpacity={0.65}
+                  style={styles.addGoalBtn}
+                  activeOpacity={0.7}
                   onPress={() => router.push('/plan/goal')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.editChipText}>편집</Text>
+                  <Ionicons name="add" size={18} color={colors.primary} />
                 </TouchableOpacity>
-              </View>
-              <Text style={styles.statsValue}>
-                <Text style={styles.statsNum}>{mergedStats.weekRead}</Text>
-                <Text style={styles.statsSuffix}> / {mergedStats.weeklyGoal}장</Text>
-              </Text>
+              )}
             </View>
             <View style={styles.statsDivider} />
             <View style={styles.statsItem}>
               <Text style={styles.statsLabel}>오늘</Text>
-              <Text style={styles.statsValue}>
-                <Text style={styles.statsNum}>{mergedStats.todayRead}</Text>
-                <Text style={styles.statsSuffix}>장</Text>
-              </Text>
+              <Text style={styles.statsValue}>{mergedStats.todayRead}장</Text>
             </View>
             <View style={styles.statsDivider} />
             <View style={styles.statsItem}>
               <Text style={styles.statsLabel}>전체</Text>
               <Text style={styles.statsValue}>
-                <Text style={styles.statsNum}>{mergedStats.totalRead}</Text>
-                <Text style={styles.statsSuffix}> / {mergedStats.totalChapters}장</Text>
+                {mergedStats.totalRead} / {mergedStats.totalChapters}장
               </Text>
             </View>
           </View>
@@ -170,17 +170,15 @@ export default function PlanScreen() {
           })}
         </View>
 
-        {/* ── 책 목록 ── */}
+        {/* ── 책 목록 ── (Figma: 흰 배경 위에 회색 제목 밴드를 가진 책 섹션을 풀폭으로 쌓음) */}
         <View style={styles.bookList}>
-          {bookList.map((book, idx) => (
-            <View key={book.code}>
-              {idx > 0 && <View style={styles.separator} />}
-              <BookCard
-                book={book}
-                readChapters={getReadChaptersForBook(book.code)}
-                onPress={() => handleBookPress(book)}
-              />
-            </View>
+          {bookList.map(book => (
+            <BookCard
+              key={book.code}
+              book={book}
+              readChapters={getReadChaptersForBook(book.code)}
+              onPress={() => handleBookPress(book)}
+            />
           ))}
         </View>
       </ScrollView>
@@ -219,7 +217,7 @@ export default function PlanScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background.base,
+    backgroundColor: colors.background.elevated, // Figma: 페이지 배경 흰색
   },
   centerLoader: {
     flex: 1,
@@ -233,7 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     height: 48,
-    backgroundColor: colors.background.base,
+    backgroundColor: colors.background.elevated, // Figma: 네비 흰색
   },
   headerBack: {
     width: 32,
@@ -244,7 +242,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: fontSize.base,
+    fontSize: fontSize.heading,   // 18px — Figma 네비 제목
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,
   },
@@ -253,18 +251,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 80 }, // 플로팅 바 고정 높이 확보
 
-  // ── 통계 카드
+  // ── 통계 카드 (Figma: container 361x76, r16, bg #F2F4F7, 그림자 없음)
   statsCard: {
-    backgroundColor: colors.background.elevated,
+    backgroundColor: colors.background.base,
     marginHorizontal: spacing.md,
-    marginTop: spacing.sm,      // 8px — spacing.sm
+    marginTop: spacing.md,      // 16px — Figma 상단 여백
     borderRadius: radius.lg,
-    paddingVertical: 14,        // 일회성: 토큰 사이 중간값
-    shadowColor: shadow.color,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    paddingVertical: spacing.md, // 16px
   },
   statsRow: {
     flexDirection: 'row',
@@ -275,39 +268,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,                     // 일회성: 라벨↔숫자 미세 간격
   },
-  statsLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,            // 4px — 라벨과 편집칩 사이
-  },
-  editChip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.full,
-    paddingVertical: 2,         // 일회성: 미니 pill 상하 패딩
-    paddingHorizontal: spacing.sm, // 8px
-  },
-  editChipText: {
-    fontSize: fontSize.xs,      // 11px
-    fontWeight: fontWeight.medium,
-    color: colors.primary,
-  },
+  // Figma: 라벨 12/600 rgba(13,28,45,0.5)
   statsLabel: {
-    fontSize: fontSize.xs,      // 11px — fontSize.xs
-    fontWeight: fontWeight.regular,
+    fontSize: fontSize.sm,      // 12px
+    fontWeight: fontWeight.semibold,
     color: colors.text.secondary,
   },
+  // Figma: 수치 16/700 rgba(13,28,45,0.8) — 단일 텍스트
   statsValue: {
-    // inline Text 조합용 컨테이너
-  },
-  statsNum: {
-    fontSize: fontSize.display,    // 17px — fontSize.display
+    fontSize: fontSize.base,    // 16px
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
   },
-  statsSuffix: {
-    fontSize: fontSize.md,      // 14px — fontSize.md
-    fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
+  // 미설정 시 + 버튼 — 수치 텍스트(높이 26)와 정렬되는 원형 버튼
+  addGoalBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statsDivider: {
     width: 1,
@@ -331,8 +311,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tabBtnText: {
-    fontSize: fontSize.sm,      // 12px — fontSize.sm
-    fontWeight: fontWeight.medium,
+    fontSize: fontSize.md,      // 14px — Figma 탭 레이블
+    fontWeight: fontWeight.semibold, // 비활성 600
     color: colors.text.secondary,
   },
   tabBtnTextActive: {
@@ -349,19 +329,9 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
 
-  // ── 책 목록
-  bookList: {
-    marginTop: spacing.sm,      // 8px — spacing.sm
-    backgroundColor: colors.background.elevated,
-    marginHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
-  },
+  // ── 책 목록 (Figma: 풀폭, 책마다 회색 제목 밴드 — 흰 카드 래퍼/구분선 없음)
+  // 탭과 첫 책 사이 공백 없음
+  bookList: {},
 
   // ── 하단 플로팅 세그먼트 바
   floatingBar: {

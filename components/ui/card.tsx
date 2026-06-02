@@ -20,10 +20,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
     padding: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
 });

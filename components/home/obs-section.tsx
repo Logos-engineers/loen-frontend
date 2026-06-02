@@ -35,6 +35,8 @@ export function ObsSection() {
         <ObsCard
           item={previousObs}
           reviewLabel="OBS 복습하기"
+          singleLineTitle
+          noShadow
           onPressView={() => router.push({
             pathname: '/obs/content/intro',
             params: {
