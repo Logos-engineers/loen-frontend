@@ -74,11 +74,13 @@ function ChapterGrid({
         return (
           <TouchableOpacity
             key={ch}
-            style={[g.cell, isSelected && g.cellSelected]}
+            style={g.cellWrap}
             onPress={() => onToggle({ book, chapter: ch })}
             activeOpacity={0.7}
           >
-            <Text style={[g.cellText, isSelected && g.cellTextSelected]}>{ch}</Text>
+            <View style={[g.cellBox, isSelected && g.cellBoxSelected]}>
+              <Text style={[g.cellText, isSelected && g.cellTextSelected]}>{ch}</Text>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -87,11 +89,30 @@ function ChapterGrid({
 }
 
 const g = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: 6 },
-  cell: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  cellSelected: { backgroundColor: colors.primary },
-  cellText: { fontSize: fontSize.sm, color: colors.text.secondary },
-  cellTextSelected: { color: '#fff', fontWeight: fontWeight.semibold },
+  // Figma: total page — flex-wrap, gap 4, pt8 pb16 px16 (배경 없음 = 흰 페이지 노출)
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: 4,
+  },
+  // Figma: 각 칸 래퍼 px4 py2
+  cellWrap: { paddingHorizontal: 4, paddingVertical: 2 },
+  // Figma: 셀 박스 24×24, rounded 8, 연한 그레이(#F2F4F7) / 선택 시 primary
+  cellBox: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.xs,
+    backgroundColor: colors.background.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellBoxSelected: { backgroundColor: colors.primary },
+  // Figma: Caption_12_SB, color 0.8
+  cellText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary, textAlign: 'center' },
+  cellTextSelected: { color: '#fff' },
 });
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -146,7 +167,6 @@ export default function SelectBibleScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={s.headerRight}>노트 작성하기</Text>
       </View>
 
       {/* 탭 */}
@@ -185,18 +205,20 @@ export default function SelectBibleScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background.base },
-  header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, backgroundColor: colors.background.elevated },
-  headerRight: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text.accent },
+  safe: { flex: 1, backgroundColor: colors.background.elevated },
+  header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.background.elevated },
   tabRow: { flexDirection: 'row', backgroundColor: colors.background.elevated, borderBottomWidth: 1, borderBottomColor: colors.border },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: colors.primary },
   tabText: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text.secondary },
   tabTextActive: { color: colors.primary, fontWeight: fontWeight.semibold },
   scroll: { flex: 1 },
-  bookHeader: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: 6 },
-  bookName: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  bookEng: { fontSize: fontSize.xs, color: colors.text.secondary },
+  // Figma: 책 제목 줄 — 그레이(#F2F4F7) 스트립, px16 py8
+  bookHeader: { backgroundColor: colors.background.base, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  // Figma: 창세기 — Title3_16_B (Bold 16, 0.8)
+  bookName: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, lineHeight: 26 },
+  // Figma: Genesis — Caption_12_M (Medium 12, 0.5)
+  bookEng: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.secondary, lineHeight: 18 },
   footer: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, backgroundColor: colors.background.elevated, borderTopWidth: 1, borderTopColor: colors.border },
   doneBtn: { height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   doneBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: '#fff' },

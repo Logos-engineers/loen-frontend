@@ -17,7 +17,7 @@ interface FaithNoteTabBarProps {
 
 export function FaithNoteTabBar({ selectedTab, onSelectTab }: FaithNoteTabBarProps) {
   return (
-    // Figma: bg:#FFF, border-bottom:1px rgba(13,28,45,0.08), flex-row
+    // Week selector 배경과 동일하게 base 배경 사용
     <View style={styles.container}>
       {TABS.map((tab) => {
         const isActive = tab.key === selectedTab;
@@ -41,20 +41,19 @@ export function FaithNoteTabBar({ selectedTab, onSelectTab }: FaithNoteTabBarPro
 }
 
 const styles = StyleSheet.create({
-  // Figma: bg:#FFFFFF, border-bottom:1px solid border
   container: {
-    backgroundColor: colors.background.elevated,
+    backgroundColor: colors.background.base,
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  // Figma: flex:1, height:44, align:center, pb:0
   tabItem: {
     flex: 1,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    backgroundColor: colors.background.base,
   },
   // Figma: 14px Medium, 비활성 = fg/basic/subtle
   tabLabel: {
