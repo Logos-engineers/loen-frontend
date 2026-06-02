@@ -8,7 +8,9 @@ type ThanksNote = {
   writerName: string;
   answers: string[];
   likeCount: number;
+  commentCount: number;
   isLiked: boolean;
+  isMine: boolean;
   createdAt: string;
 };
 
@@ -16,6 +18,8 @@ type PrayerNote = {
   id: string;
   writerName: string;
   prayers: string[];
+  commentCount: number;
+  isMine: boolean;
   createdAt: string;
 };
 
@@ -29,7 +33,9 @@ type WordNote = {
   title: string;
   description: string;
   likeCount: number;
+  commentCount: number;
   isLiked: boolean;
+  isMine: boolean;
   createdAt: string;
 };
 
@@ -67,8 +73,9 @@ function fromThanks(note: ThanksNote): FaithNoteItem {
     timeAgo: getTimeAgo(note.createdAt),
     content: note.answers,
     likeCount: note.likeCount,
-    commentCount: 0,
+    commentCount: note.commentCount ?? 0,
     isLiked: note.isLiked,
+    isMine: note.isMine ?? false,
   };
 }
 
@@ -81,8 +88,9 @@ function fromPrayer(note: PrayerNote): FaithNoteItem {
     timeAgo: getTimeAgo(note.createdAt),
     content: note.prayers,
     likeCount: 0,
-    commentCount: 0,
+    commentCount: note.commentCount ?? 0,
     isLiked: false,
+    isMine: note.isMine ?? false,
   };
 }
 
@@ -96,8 +104,9 @@ function fromWord(note: WordNote): FaithNoteItem {
     timeAgo: getTimeAgo(note.createdAt),
     content: [passageLabel, note.title, note.description].filter(Boolean),
     likeCount: note.likeCount,
-    commentCount: 0,
+    commentCount: note.commentCount ?? 0,
     isLiked: note.isLiked,
+    isMine: note.isMine ?? false,
   };
 }
 
@@ -156,7 +165,16 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     }
   }, [notes]);
 
+  const deleteNote = useCallback(async (id: string, tab: FaithNoteTab) => {
+    const path =
+      tab === 'THANKS' ? `/notes/thanks/${id}`
+      : tab === 'PRAYER' ? `/notes/prayers/${id}`
+      : `/bible/notes/${id}`;
+    await apiClient(path, { method: 'DELETE' });
+    setNotes((cur) => cur.filter((n) => n.id !== id));
+  }, []);
+
   const refetch = useCallback(() => fetchNotes(activeTab), [activeTab, fetchNotes]);
 
-  return { notes, isLoading, error, toggleLike, refetch };
+  return { notes, isLoading, error, toggleLike, deleteNote, refetch };
 }

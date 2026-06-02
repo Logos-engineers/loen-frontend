@@ -12,49 +12,54 @@ export function FaithNoteHeader({ onWritePress }: FaithNoteHeaderProps) {
   const router = useRouter();
 
   return (
-    // Figma: height:44, bg:#FFF, px:16, flex-row, justify:space-between, align:center
+    // Figma top navigator: translucent fill with 46px navigation row
     <View style={styles.container}>
-      {/* 뒤로가기 버튼 */}
       <TouchableOpacity
         onPress={() => router.back()}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         style={styles.backButton}
       >
-        <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        <Ionicons name="chevron-back" size={24} color={colors.text.secondary} />
       </TouchableOpacity>
 
-      {/* 우측: 노트 작성하기 — onWritePress가 있으면 터치 가능 */}
       {onWritePress ? (
         <TouchableOpacity
           onPress={onWritePress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.writeButton}
         >
           <Text style={styles.writeLabel}>노트 작성하기</Text>
         </TouchableOpacity>
       ) : (
-        <Text style={styles.writeLabel}>노트 작성하기</Text>
+        <View style={styles.writeButton}>
+          <Text style={styles.writeLabel}>노트 작성하기</Text>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Figma: height:44, px:16, bg:#FFFFFF
   container: {
-    height: 44,
-    backgroundColor: colors.background.elevated,
+    height: 46,
+    backgroundColor: 'rgba(242,244,247,0.72)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
   backButton: {
-    // hitSlop으로 터치 영역 확보
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
   },
-  // Figma: fg/accent/default = #6561FF, 14px Medium
+  writeButton: {
+    minWidth: 100,
+    alignItems: 'flex-end',
+  },
   writeLabel: {
     fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.semibold,
     color: colors.text.accent,
   },
 });
