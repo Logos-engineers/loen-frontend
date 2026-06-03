@@ -29,6 +29,8 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
     case 'OIKOS_INVITE':
     case 'OIKOS_LEADER':
       return 'people-outline';
+    case 'NOTICE':
+      return 'megaphone-outline';
     default:
       return 'notifications-outline';
   }
@@ -47,6 +49,12 @@ function navigateTo(item: NotificationItem) {
       });
     } else {
       router.push('/faith-note');
+    }
+  } else if (item.type === 'NOTICE') {
+    if (item.targetId) {
+      router.push({ pathname: '/notice/[id]', params: { id: item.targetId } });
+    } else {
+      router.push('/notice');
     }
   }
   // OIKOS_INVITE / OIKOS_LEADER: 전용 화면이 아직 없어 읽음 처리만 (오이코스 화면 추가 시 연결)
