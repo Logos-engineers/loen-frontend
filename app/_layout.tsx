@@ -54,7 +54,7 @@ export default function RootLayout() {
       const type = data.type;
       if (type === 'bible-plan') {
         router.push('/(tabs)/plan');
-      } else if (type === 'NOTE_COMMENT' || type === 'NOTE_LIKE') {
+      } else if (type === 'NOTE_COMMENT' || type === 'NOTE_LIKE' || type === 'NOTE_OIKOS_SHARE') {
         if (data.targetId && data.targetType) {
           router.push({ pathname: '/faith-note/[id]', params: { id: data.targetId, tab: data.targetType } });
         } else {
@@ -66,6 +66,12 @@ export default function RootLayout() {
         } else {
           router.push('/notice');
         }
+      } else if (type === 'OBS_PUBLISHED') {
+        router.push('/obs');
+      } else if (type === 'BIBLE_REMINDER') {
+        router.push('/(tabs)/plan');
+      } else if (type === 'ATTENDANCE_REMINDER') {
+        router.push('/mypage');
       } else {
         // OIKOS_INVITE/OIKOS_LEADER 등 전용 화면이 없는 타입 → 알림 센터로
         router.push('/notifications');
