@@ -24,14 +24,22 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
   switch (type) {
     case 'NOTE_COMMENT':
       return 'chatbubble-ellipses-outline';
+    case 'NOTE_LIKE':
+      return 'heart-outline';
+    case 'OIKOS_INVITE':
+    case 'OIKOS_LEADER':
+      return 'people-outline';
     default:
       return 'notifications-outline';
   }
 }
 
+// 노트 관련 알림(댓글/좋아요)은 해당 노트 상세로 딥링크
+const NOTE_TYPES = ['NOTE_COMMENT', 'NOTE_LIKE'];
+
 // 알림 탭 시 이동 — 가능하면 해당 게시글(신앙노트 상세)로, 정보 부족하면 목록으로
 function navigateTo(item: NotificationItem) {
-  if (item.type === 'NOTE_COMMENT') {
+  if (NOTE_TYPES.includes(item.type)) {
     if (item.targetId && item.targetType) {
       router.push({
         pathname: '/faith-note/[id]',
@@ -41,6 +49,7 @@ function navigateTo(item: NotificationItem) {
       router.push('/faith-note');
     }
   }
+  // OIKOS_INVITE / OIKOS_LEADER: 전용 화면이 아직 없어 읽음 처리만 (오이코스 화면 추가 시 연결)
 }
 
 export default function NotificationsScreen() {

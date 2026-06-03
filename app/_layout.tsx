@@ -54,13 +54,14 @@ export default function RootLayout() {
       const type = data.type;
       if (type === 'bible-plan') {
         router.push('/(tabs)/plan');
-      } else if (type === 'NOTE_COMMENT') {
+      } else if (type === 'NOTE_COMMENT' || type === 'NOTE_LIKE') {
         if (data.targetId && data.targetType) {
           router.push({ pathname: '/faith-note/[id]', params: { id: data.targetId, tab: data.targetType } });
         } else {
           router.push('/faith-note');
         }
       } else {
+        // OIKOS_INVITE/OIKOS_LEADER 등 전용 화면이 없는 타입 → 알림 센터로
         router.push('/notifications');
       }
     });
