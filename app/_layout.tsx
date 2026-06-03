@@ -10,6 +10,7 @@ import 'react-native-reanimated';
 import { OverlayHost } from '@/components/ui/overlay';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { checkInAttendance } from '@/hooks/useAttendance';
+import { registerPushToken } from '@/hooks/usePushToken';
 import { useAuthStore } from '@/store/auth-store';
 
 export const unstable_settings = {
@@ -43,6 +44,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (isInitialized && isLoggedIn && !isNewUser) {
       checkInAttendance();
+      registerPushToken();
     }
   }, [isInitialized, isLoggedIn, isNewUser]);
 
@@ -51,6 +53,10 @@ export default function RootLayout() {
       const type = response.notification.request.content.data?.type;
       if (type === 'bible-plan') {
         router.push('/(tabs)/plan');
+      } else if (type === 'NOTE_COMMENT') {
+        router.push('/faith-note');
+      } else {
+        router.push('/notifications');
       }
     });
     return () => subscription.remove();
@@ -85,6 +91,7 @@ export default function RootLayout() {
           <Stack.Screen name="obs/quiz/essay" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
