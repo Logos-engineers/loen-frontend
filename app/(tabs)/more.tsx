@@ -24,7 +24,10 @@ export default function MoreScreen() {
   const MENU_ITEMS: MenuItem[] = [
     ...BASE_MENU_ITEMS,
     ...(role === 'ADMIN'
-      ? [{ label: 'OBS 관리', icon: 'settings-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/obs/admin') }]
+      ? [
+          { label: 'OBS 관리', icon: 'settings-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/obs/admin') },
+          { label: '공지 등록', icon: 'megaphone-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/notice/write') },
+        ]
       : []),
   ];
 

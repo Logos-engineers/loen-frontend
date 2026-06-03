@@ -7,6 +7,7 @@ export type NotificationItem = {
   title: string;
   body: string | null;
   targetId: string | null;
+  targetType: string | null;   // 'THANKS' | 'PRAYER' | 'WORD' (딥링크 탭)
   isRead: boolean;
   createdAt: string;
 };

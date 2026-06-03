@@ -24,18 +24,40 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
   switch (type) {
     case 'NOTE_COMMENT':
       return 'chatbubble-ellipses-outline';
+    case 'NOTE_LIKE':
+      return 'heart-outline';
+    case 'OIKOS_INVITE':
+    case 'OIKOS_LEADER':
+      return 'people-outline';
+    case 'NOTICE':
+      return 'megaphone-outline';
     default:
       return 'notifications-outline';
   }
 }
 
-function routeFor(item: NotificationItem): string | null {
-  switch (item.type) {
-    case 'NOTE_COMMENT':
-      return '/faith-note';
-    default:
-      return null;
+// 노트 관련 알림(댓글/좋아요)은 해당 노트 상세로 딥링크
+const NOTE_TYPES = ['NOTE_COMMENT', 'NOTE_LIKE'];
+
+// 알림 탭 시 이동 — 가능하면 해당 게시글(신앙노트 상세)로, 정보 부족하면 목록으로
+function navigateTo(item: NotificationItem) {
+  if (NOTE_TYPES.includes(item.type)) {
+    if (item.targetId && item.targetType) {
+      router.push({
+        pathname: '/faith-note/[id]',
+        params: { id: item.targetId, tab: item.targetType },
+      });
+    } else {
+      router.push('/faith-note');
+    }
+  } else if (item.type === 'NOTICE') {
+    if (item.targetId) {
+      router.push({ pathname: '/notice/[id]', params: { id: item.targetId } });
+    } else {
+      router.push('/notice');
+    }
   }
+  // OIKOS_INVITE / OIKOS_LEADER: 전용 화면이 아직 없어 읽음 처리만 (오이코스 화면 추가 시 연결)
 }
 
 export default function NotificationsScreen() {
@@ -43,8 +65,7 @@ export default function NotificationsScreen() {
 
   const handlePress = (item: NotificationItem) => {
     if (!item.isRead) markRead(item.id);
-    const path = routeFor(item);
-    if (path) router.push(path as any);
+    navigateTo(item);
   };
 
   const renderItem = ({ item }: { item: NotificationItem }) => (
@@ -114,7 +135,7 @@ const styles = StyleSheet.create({
   readAll: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
   readAllDisabled: { color: colors.text.dim },
   loader: { marginTop: spacing.xxl },
-  listContent: { paddingVertical: spacing.sm },
+  listContent: { paddingTop: 0, paddingBottom: spacing.sm },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -50,12 +50,24 @@ export default function RootLayout() {
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const type = response.notification.request.content.data?.type;
+      const data = response.notification.request.content.data ?? {};
+      const type = data.type;
       if (type === 'bible-plan') {
         router.push('/(tabs)/plan');
-      } else if (type === 'NOTE_COMMENT') {
-        router.push('/faith-note');
+      } else if (type === 'NOTE_COMMENT' || type === 'NOTE_LIKE') {
+        if (data.targetId && data.targetType) {
+          router.push({ pathname: '/faith-note/[id]', params: { id: data.targetId, tab: data.targetType } });
+        } else {
+          router.push('/faith-note');
+        }
+      } else if (type === 'NOTICE') {
+        if (data.targetId) {
+          router.push({ pathname: '/notice/[id]', params: { id: data.targetId } });
+        } else {
+          router.push('/notice');
+        }
       } else {
+        // OIKOS_INVITE/OIKOS_LEADER 등 전용 화면이 없는 타입 → 알림 센터로
         router.push('/notifications');
       }
     });
@@ -92,6 +104,7 @@ export default function RootLayout() {
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
           <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
+          <Stack.Screen name="notice/write" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
