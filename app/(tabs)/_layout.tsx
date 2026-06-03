@@ -77,9 +77,11 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      {/* 교회생활 탭 — 우선 하단 네비게이션에서 제거 (라우트는 유지) */}
       <Tabs.Screen
         name="church"
         options={{
+          href: null,
           title: '교회생활',
           tabBarIcon: ({ color }) => (
             <SvgXml xml={getTabIcon(CHURCHLIFE_SVG, color)} width={24} height={24} />

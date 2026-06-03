@@ -14,6 +14,7 @@ interface MenuItem {
 }
 
 const BASE_MENU_ITEMS: MenuItem[] = [
+  { label: '마이페이지', icon: 'person-outline', onPress: () => router.push('/mypage') },
   { label: '공지사항', icon: 'notifications-outline', onPress: () => router.push('/notice') },
 ];
 
@@ -51,6 +52,7 @@ const styles = StyleSheet.create({
   header: {
     height: 52,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
