@@ -29,15 +29,23 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
     case 'OIKOS_INVITE':
     case 'OIKOS_LEADER':
       return 'people-outline';
+    case 'NOTE_OIKOS_SHARE':
+      return 'share-social-outline';
     case 'NOTICE':
       return 'megaphone-outline';
+    case 'OBS_PUBLISHED':
+      return 'book-outline';
+    case 'BIBLE_REMINDER':
+      return 'alarm-outline';
+    case 'ATTENDANCE_REMINDER':
+      return 'checkmark-done-outline';
     default:
       return 'notifications-outline';
   }
 }
 
-// 노트 관련 알림(댓글/좋아요)은 해당 노트 상세로 딥링크
-const NOTE_TYPES = ['NOTE_COMMENT', 'NOTE_LIKE'];
+// 노트 관련 알림(댓글/좋아요/오이코스 공유)은 해당 노트 상세로 딥링크
+const NOTE_TYPES = ['NOTE_COMMENT', 'NOTE_LIKE', 'NOTE_OIKOS_SHARE'];
 
 // 알림 탭 시 이동 — 가능하면 해당 게시글(신앙노트 상세)로, 정보 부족하면 목록으로
 function navigateTo(item: NotificationItem) {
@@ -56,6 +64,12 @@ function navigateTo(item: NotificationItem) {
     } else {
       router.push('/notice');
     }
+  } else if (item.type === 'OBS_PUBLISHED') {
+    router.push('/obs');
+  } else if (item.type === 'BIBLE_REMINDER') {
+    router.push('/(tabs)/plan');
+  } else if (item.type === 'ATTENDANCE_REMINDER') {
+    router.push('/mypage');
   }
   // OIKOS_INVITE / OIKOS_LEADER: 전용 화면이 아직 없어 읽음 처리만 (오이코스 화면 추가 시 연결)
 }

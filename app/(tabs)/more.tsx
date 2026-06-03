@@ -1,4 +1,5 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/store/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -20,9 +21,19 @@ const BASE_MENU_ITEMS: MenuItem[] = [
 
 export default function MoreScreen() {
   const role = useAuthStore((s) => s.role);
+  const { profile } = useProfile();
+
+  // 직책이 부원(MEMBER)이 아니거나 ADMIN이면 오이코스 관리 노출
+  const canManageOikos =
+    role === 'ADMIN' || (!!profile?.position && profile.position !== 'MEMBER');
 
   const MENU_ITEMS: MenuItem[] = [
     ...BASE_MENU_ITEMS,
+    ...(canManageOikos
+      ? [
+          { label: '오이코스 관리', icon: 'people-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/oikos/management') },
+        ]
+      : []),
     ...(role === 'ADMIN'
       ? [
           { label: 'OBS 관리', icon: 'settings-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/obs/admin') },

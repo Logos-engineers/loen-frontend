@@ -1,11 +1,15 @@
-import { colors, fontSize, spacing } from '@/constants/tokens';
+import { radius, spacing } from '@/constants/tokens';
+import { Image } from 'expo-image';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+// 임시 배너 (Figma '스키장 홍보' 1560×880) — 추후 서버 연동 배너로 교체 예정
+const BANNER = require('../../assets/images/home-banner.png');
 
 export function BannerCarousel() {
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.emptyText}>등록된 배너가 없습니다</Text>
+      <Image source={BANNER} style={styles.banner} contentFit="cover" />
     </View>
   );
 }
@@ -15,10 +19,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  emptyText: {
-    color: colors.text.secondary,
-    fontSize: fontSize.md,
-    textAlign: 'center',
-    paddingVertical: spacing.lg,
+  banner: {
+    width: '100%',
+    aspectRatio: 1560 / 880,
+    borderRadius: radius.lg,
   },
 });

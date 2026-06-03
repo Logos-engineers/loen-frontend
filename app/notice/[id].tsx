@@ -1,5 +1,6 @@
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { useNoticeDetail } from '@/hooks/useNotice';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
@@ -28,7 +29,7 @@ export default function NoticeDetailScreen() {
       <StatusBar style="dark" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.backText}>{'<'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>공지사항</Text>
         <View style={{ width: 32 }} />

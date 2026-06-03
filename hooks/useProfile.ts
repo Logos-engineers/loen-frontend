@@ -14,6 +14,7 @@ export type Profile = {
   bio: string | null;
   hobbies: string[] | null;
   oikosId: string | null;
+  position: string | null; // MEMBER | S_LEADER | LEADER | GROUP_LEADER | EXECUTIVE | COACH
 };
 
 export type UpdateProfilePayload = {
