@@ -52,7 +52,7 @@ export default function MyPageScreen() {
         />
 
         {/* 앱 출석체크 */}
-        <SectionHeader title="앱 출석체크" />
+        <SectionHeader title="로그인 출석체크" />
         <View style={styles.card}>
           <AttendanceWeek
             weekStart={week?.weekStart}

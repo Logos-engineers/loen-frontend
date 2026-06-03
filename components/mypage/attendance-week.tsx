@@ -35,9 +35,9 @@ function thisMonday(): Date {
 
 /**
  * 마이페이지 앱 출석 주간 캘린더.
- * 신앙노트 주간 셀렉터(faith-note-week-selector)와 동일한 pill + 원형 디자인을 사용하되,
- * 상호작용 없이 출석 현황만 표시한다. 출석한 날 = 활성(검정 pill), 원 안에 날짜.
- * 서버 데이터가 없을 때도 이번 주 날짜를 로컬 기준으로 표시한다.
+ * 신앙노트 주간 셀렉터(faith-note-week-selector)와 동일한 원형 디자인을 사용하되,
+ * 상호작용 없이 출석 현황만 표시한다. 출석한 날 = 메인 보라색으로 채움(흰 날짜),
+ * 오늘(미출석) = 보라 테두리. 서버 데이터가 없을 때도 이번 주 날짜를 로컬 기준으로 표시한다.
  */
 export function AttendanceWeek({ weekStart, today, attendedDates = [] }: AttendanceWeekProps) {
   const base = weekStart ? parseYmd(weekStart) : thisMonday();
@@ -62,13 +62,15 @@ export function AttendanceWeek({ weekStart, today, attendedDates = [] }: Attenda
                 !isAttended && isToday && styles.circleToday,
               ]}
             >
-              {isAttended ? (
-                <Text style={styles.checkText}>✓</Text>
-              ) : (
-                <Text style={[styles.dateText, isToday && styles.dateTextToday]}>
-                  {date.getDate()}
-                </Text>
-              )}
+              <Text
+                style={[
+                  styles.dateText,
+                  isAttended && styles.dateTextActive,
+                  !isAttended && isToday && styles.dateTextToday,
+                ]}
+              >
+                {date.getDate()}
+              </Text>
             </View>
           </View>
         );
@@ -120,9 +122,7 @@ const styles = StyleSheet.create({
   dateTextToday: {
     color: colors.primary,
   },
-  checkText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.bold,
+  dateTextActive: {
     color: colors.white,
   },
 });
