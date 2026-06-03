@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
   header: {
     height: 52,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
