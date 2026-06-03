@@ -14,6 +14,7 @@ interface MenuItem {
 }
 
 const BASE_MENU_ITEMS: MenuItem[] = [
+  { label: '마이페이지', icon: 'person-outline', onPress: () => router.push('/mypage') },
   { label: '공지사항', icon: 'notifications-outline', onPress: () => router.push('/notice') },
 ];
 

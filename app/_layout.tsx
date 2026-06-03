@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 
 import { OverlayHost } from '@/components/ui/overlay';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { checkInAttendance } from '@/hooks/useAttendance';
 import { useAuthStore } from '@/store/auth-store';
 
 export const unstable_settings = {
@@ -37,6 +38,13 @@ export default function RootLayout() {
       router.replace('/(tabs)');
     }
   }, [isInitialized, isLoggedIn, isNewUser, rootNavState?.key]);
+
+  // 앱 진입(로그인 상태) 기준 출석 체크 — 하루 1회 멱등 처리
+  useEffect(() => {
+    if (isInitialized && isLoggedIn && !isNewUser) {
+      checkInAttendance();
+    }
+  }, [isInitialized, isLoggedIn, isNewUser]);
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
@@ -77,6 +85,9 @@ export default function RootLayout() {
           <Stack.Screen name="obs/quiz/essay" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
+          <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
+          <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
+          <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/index" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/write-thanks" options={{ headerShown: false }} />

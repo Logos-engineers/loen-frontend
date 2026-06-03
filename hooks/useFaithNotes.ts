@@ -3,7 +3,7 @@ import { apiClient } from '@/utils/apiClient';
 import type { FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import type { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
 
-type ThanksNote = {
+export type ThanksNote = {
   id: string;
   writerName: string;
   answers: string[];
@@ -14,7 +14,7 @@ type ThanksNote = {
   createdAt: string;
 };
 
-type PrayerNote = {
+export type PrayerNote = {
   id: string;
   writerName: string;
   prayers: string[];
@@ -23,7 +23,7 @@ type PrayerNote = {
   createdAt: string;
 };
 
-type WordNote = {
+export type WordNote = {
   id: string;
   writerName: string;
   bibleName: string;
@@ -39,7 +39,7 @@ type WordNote = {
   createdAt: string;
 };
 
-type NoteListResponse<T> = {
+export type NoteListResponse<T> = {
   content: T[];
   page: number;
   totalElements: number;
@@ -64,7 +64,7 @@ function toAuthor(writerName: string) {
   return { handle: '', name: writerName, hasAvatar: false, initial: writerName[0] ?? '?' };
 }
 
-function fromThanks(note: ThanksNote): FaithNoteItem {
+export function fromThanks(note: ThanksNote): FaithNoteItem {
   return {
     id: String(note.id),
     tab: 'THANKS',
@@ -79,7 +79,7 @@ function fromThanks(note: ThanksNote): FaithNoteItem {
   };
 }
 
-function fromPrayer(note: PrayerNote): FaithNoteItem {
+export function fromPrayer(note: PrayerNote): FaithNoteItem {
   return {
     id: String(note.id),
     tab: 'PRAYER',
@@ -94,7 +94,7 @@ function fromPrayer(note: PrayerNote): FaithNoteItem {
   };
 }
 
-function fromWord(note: WordNote): FaithNoteItem {
+export function fromWord(note: WordNote): FaithNoteItem {
   const passageLabel = `${note.bibleName} ${note.chapter}장 ${note.phaseStart}-${note.phaseEnd}절`;
   return {
     id: String(note.id),
