@@ -50,11 +50,16 @@ export default function RootLayout() {
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const type = response.notification.request.content.data?.type;
+      const data = response.notification.request.content.data ?? {};
+      const type = data.type;
       if (type === 'bible-plan') {
         router.push('/(tabs)/plan');
       } else if (type === 'NOTE_COMMENT') {
-        router.push('/faith-note');
+        if (data.targetId && data.targetType) {
+          router.push({ pathname: '/faith-note/[id]', params: { id: data.targetId, tab: data.targetType } });
+        } else {
+          router.push('/faith-note');
+        }
       } else {
         router.push('/notifications');
       }

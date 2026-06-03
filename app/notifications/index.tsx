@@ -29,12 +29,17 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
   }
 }
 
-function routeFor(item: NotificationItem): string | null {
-  switch (item.type) {
-    case 'NOTE_COMMENT':
-      return '/faith-note';
-    default:
-      return null;
+// 알림 탭 시 이동 — 가능하면 해당 게시글(신앙노트 상세)로, 정보 부족하면 목록으로
+function navigateTo(item: NotificationItem) {
+  if (item.type === 'NOTE_COMMENT') {
+    if (item.targetId && item.targetType) {
+      router.push({
+        pathname: '/faith-note/[id]',
+        params: { id: item.targetId, tab: item.targetType },
+      });
+    } else {
+      router.push('/faith-note');
+    }
   }
 }
 
@@ -43,8 +48,7 @@ export default function NotificationsScreen() {
 
   const handlePress = (item: NotificationItem) => {
     if (!item.isRead) markRead(item.id);
-    const path = routeFor(item);
-    if (path) router.push(path as any);
+    navigateTo(item);
   };
 
   const renderItem = ({ item }: { item: NotificationItem }) => (
@@ -114,7 +118,7 @@ const styles = StyleSheet.create({
   readAll: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
   readAllDisabled: { color: colors.text.dim },
   loader: { marginTop: spacing.xxl },
-  listContent: { paddingVertical: spacing.sm },
+  listContent: { paddingTop: 0, paddingBottom: spacing.sm },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
