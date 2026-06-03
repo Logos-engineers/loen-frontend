@@ -23,10 +23,10 @@ export function HomeHeader() {
 }
 
 const styles = StyleSheet.create({
-  // Figma: height:46, px:16, bg:#FFF, flex-row, justify:space-between, align:center
+  // height:46, px:16, bg:background.base(회색 — 페이지 배경과 통일), flex-row, justify:space-between, align:center
   container: {
     height: 46,
-    backgroundColor: colors.background.elevated,
+    backgroundColor: colors.background.base,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
