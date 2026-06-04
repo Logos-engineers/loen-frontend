@@ -1,10 +1,11 @@
 import { overlay } from '@/components/ui/overlay';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { Notice } from '@/hooks/useNotice';
 import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,10 +24,38 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const TITLE_MAX = 255;
 
 export default function NoticeWriteScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEdit = !!id;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sendNotification, setSendNotification] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+
+  // 수정 모드: 기존 공지 불러와 프리필
+  useEffect(() => {
+    if (!isEdit) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await apiClient<Notice>(`/notices/${id}`);
+        if (mounted) {
+          setTitle(data.title ?? '');
+          setDescription(data.description ?? '');
+        }
+      } catch (e: any) {
+        Alert.alert('오류', e?.message ?? '공지를 불러오지 못했습니다.', [
+          { text: '확인', onPress: () => router.back() },
+        ]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [id, isEdit]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -35,18 +64,29 @@ export default function NoticeWriteScreen() {
     }
     setSaving(true);
     try {
-      await apiClient('/admin/notices', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          sendNotification,
-        }),
-      });
-      overlay.toast(sendNotification ? '공지를 등록하고 알림을 보냈어요.' : '공지를 등록했어요.');
+      if (isEdit) {
+        await apiClient(`/admin/notices/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+          }),
+        });
+        overlay.toast('공지를 수정했어요.');
+      } else {
+        await apiClient('/admin/notices', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+            sendNotification,
+          }),
+        });
+        overlay.toast(sendNotification ? '공지를 등록하고 알림을 보냈어요.' : '공지를 등록했어요.');
+      }
       router.back();
     } catch (e: any) {
-      Alert.alert('오류', e?.message ?? '공지 등록에 실패했습니다.');
+      Alert.alert('오류', e?.message ?? (isEdit ? '공지 수정에 실패했습니다.' : '공지 등록에 실패했습니다.'));
     } finally {
       setSaving(false);
     }
@@ -60,59 +100,65 @@ export default function NoticeWriteScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>공지 등록</Text>
-        <TouchableOpacity onPress={handleSubmit} disabled={saving} hitSlop={8}>
+        <Text style={styles.headerTitle}>{isEdit ? '공지 수정' : '공지 등록'}</Text>
+        <TouchableOpacity onPress={handleSubmit} disabled={saving || loading} hitSlop={8}>
           {saving ? (
             <ActivityIndicator color={colors.primary} />
           ) : (
-            <Text style={styles.submitText}>등록</Text>
+            <Text style={styles.submitText}>{isEdit ? '저장' : '등록'}</Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.field}>
-            <Text style={styles.label}>제목</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="공지 제목"
-              placeholderTextColor={colors.text.dim}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={TITLE_MAX}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>내용</Text>
-            <TextInput
-              style={[styles.input, styles.inputMultiline]}
-              placeholder="공지 내용을 입력하세요."
-              placeholderTextColor={colors.text.dim}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-            />
-          </View>
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleText}>
-              <Text style={styles.toggleLabel}>전체 알림 발송</Text>
-              <Text style={styles.toggleHint}>등록 시 모든 사용자에게 알림/푸시를 보냅니다.</Text>
+      {loading ? (
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      ) : (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.flex}
+        >
+          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+            <View style={styles.field}>
+              <Text style={styles.label}>제목</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="공지 제목"
+                placeholderTextColor={colors.text.dim}
+                value={title}
+                onChangeText={setTitle}
+                maxLength={TITLE_MAX}
+              />
             </View>
-            <Switch
-              value={sendNotification}
-              onValueChange={setSendNotification}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.white}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>내용</Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline]}
+                placeholder="공지 내용을 입력하세요."
+                placeholderTextColor={colors.text.dim}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+              />
+            </View>
+
+            {!isEdit ? (
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleText}>
+                  <Text style={styles.toggleLabel}>전체 알림 발송</Text>
+                  <Text style={styles.toggleHint}>등록 시 모든 사용자에게 알림/푸시를 보냅니다.</Text>
+                </View>
+                <Switch
+                  value={sendNotification}
+                  onValueChange={setSendNotification}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+            ) : null}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
