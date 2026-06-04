@@ -1,10 +1,11 @@
 import { radius, spacing, colors, fontSize, fontWeight } from '@/constants/tokens';
-import { useBanners } from '@/hooks/useBanners';
+import { useBanners, type Banner } from '@/hooks/useBanners';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   FlatList,
-  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +15,39 @@ import {
 
 // 등록된 배너가 없을 때 보여줄 기본 배너 (Figma 홈 '광고 배너' 361×124 @3x)
 const FALLBACK_BANNER = require('../../assets/images/home-banner.png');
+
+function BannerItem({ item, width }: { item: Banner; width: number }) {
+  const hasText = !!(item.title || item.subtitle);
+  return (
+    <View style={[styles.page, { width }]}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => router.push({ pathname: '/banner/[id]', params: { id: item.id } })}
+      >
+        <View style={styles.card}>
+          <Image source={{ uri: item.imageUrl }} style={styles.banner} contentFit="cover" />
+          {hasText ? (
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.5)']}
+              style={styles.scrim}
+              pointerEvents="none"
+            />
+          ) : null}
+          {hasText ? (
+            <View style={styles.textOverlay} pointerEvents="none">
+              {item.title ? (
+                <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+              ) : null}
+              {item.subtitle ? (
+                <Text style={styles.subtitle} numberOfLines={1}>{item.subtitle}</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export function BannerCarousel() {
   const { banners } = useBanners();
@@ -40,17 +74,7 @@ export function BannerCarousel() {
         onMomentumScrollEnd={(e) =>
           setIndex(Math.round(e.nativeEvent.contentOffset.x / width))
         }
-        renderItem={({ item }) => (
-          <View style={[styles.page, { width }]}>
-            <TouchableOpacity
-              activeOpacity={item.linkUrl ? 0.85 : 1}
-              disabled={!item.linkUrl}
-              onPress={() => item.linkUrl && Linking.openURL(item.linkUrl)}
-            >
-              <Image source={{ uri: item.imageUrl }} style={styles.banner} contentFit="cover" />
-            </TouchableOpacity>
-          </View>
-        )}
+        renderItem={({ item }) => <BannerItem item={item} width={width} />}
       />
       {banners.length > 1 ? (
         <View style={styles.pill}>
@@ -74,10 +98,38 @@ const styles = StyleSheet.create({
   page: {
     paddingHorizontal: spacing.md,   // 각 페이지 폭=화면폭, 좌우 16 마진으로 카드 inset
   },
+  card: {
+    borderRadius: radius.lg,   // 16px
+    overflow: 'hidden',
+  },
   banner: {
     width: '100%',
     aspectRatio: 361 / 124,   // Figma 배너 카드 361×124 (≈2.91)
-    borderRadius: radius.lg,   // 16px
+    borderRadius: radius.lg,
+  },
+  scrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '70%',
+  },
+  textOverlay: {
+    position: 'absolute',
+    left: spacing.md,
+    bottom: spacing.smd,
+    right: spacing.md,
+    gap: 2,
+  },
+  title: {
+    color: colors.white,
+    fontSize: fontSize.base,        // 16px
+    fontWeight: fontWeight.bold,
+  },
+  subtitle: {
+    color: colors.white,
+    fontSize: fontSize.md,          // 14px
+    fontWeight: fontWeight.medium,
   },
   pill: {
     position: 'absolute',

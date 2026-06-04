@@ -5,9 +5,20 @@ import { useAuthStore } from '@/store/auth-store';
 export type Banner = {
   id: string;
   imageUrl: string;
+  title: string | null;
+  subtitle: string | null;
+  content: string | null;
   linkUrl: string | null;
   active: boolean;
   sortOrder: number;
+};
+
+export type CreateBannerInput = {
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  content?: string;
+  linkUrl?: string;
 };
 
 type BannerListResponse = { banners: Banner[] };
@@ -51,6 +62,32 @@ export function useBanners() {
   return { banners, isLoading, refetch: fetchBanners };
 }
 
+/** 배너 단건 상세 (공지 형식). */
+export function useBanner(id: string) {
+  const [banner, setBanner] = useState<Banner | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await apiClient<Banner>(`/banners/${id}`);
+        if (alive) setBanner(data);
+      } catch (e: any) {
+        if (alive) setError(e?.message ?? '배너를 불러오지 못했습니다.');
+      } finally {
+        if (alive) setIsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  return { banner, isLoading, error };
+}
+
 /** 관리자 배너 관리 (전체 목록 + 생성/활성토글/삭제). */
 export function useAdminBanners() {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -75,10 +112,16 @@ export function useAdminBanners() {
   }, [fetchAll]);
 
   const createBanner = useCallback(
-    async (imageUrl: string, linkUrl?: string) => {
+    async (input: CreateBannerInput) => {
       await apiClient('/admin/banners', {
         method: 'POST',
-        body: JSON.stringify({ imageUrl, linkUrl: linkUrl?.trim() || null }),
+        body: JSON.stringify({
+          imageUrl: input.imageUrl,
+          title: input.title?.trim() || null,
+          subtitle: input.subtitle?.trim() || null,
+          content: input.content?.trim() || null,
+          linkUrl: input.linkUrl?.trim() || null,
+        }),
       });
       await fetchAll();
     },

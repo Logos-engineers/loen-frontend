@@ -11,6 +11,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -24,7 +25,18 @@ export default function BannerAdminScreen() {
   const { banners, isLoading, error, createBanner, setActive, deleteBanner } = useAdminBanners();
   const [busy, setBusy] = useState(false);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [titleInput, setTitleInput] = useState('');
+  const [subtitleInput, setSubtitleInput] = useState('');
+  const [contentInput, setContentInput] = useState('');
   const [linkInput, setLinkInput] = useState('');
+
+  const resetForm = () => {
+    setPendingImage(null);
+    setTitleInput('');
+    setSubtitleInput('');
+    setContentInput('');
+    setLinkInput('');
+  };
 
   const handlePickAndUpload = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -43,8 +55,8 @@ export default function BannerAdminScreen() {
     setBusy(true);
     try {
       const url = await uploadBannerImage(result.assets[0].uri);
+      resetForm();
       setPendingImage(url);
-      setLinkInput('');
     } catch (e: any) {
       Alert.alert('오류', e?.message ?? '이미지 업로드에 실패했습니다.');
     } finally {
@@ -56,9 +68,14 @@ export default function BannerAdminScreen() {
     if (!pendingImage) return;
     setBusy(true);
     try {
-      await createBanner(pendingImage, linkInput);
-      setPendingImage(null);
-      setLinkInput('');
+      await createBanner({
+        imageUrl: pendingImage,
+        title: titleInput,
+        subtitle: subtitleInput,
+        content: contentInput,
+        linkUrl: linkInput,
+      });
+      resetForm();
     } catch (e: any) {
       Alert.alert('오류', e?.message ?? '배너 등록에 실패했습니다.');
     } finally {
@@ -88,7 +105,7 @@ export default function BannerAdminScreen() {
       <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" />
       <View style={styles.rowInfo}>
         <Text style={styles.rowLink} numberOfLines={1}>
-          {item.linkUrl || '링크 없음'}
+          {item.title || '(제목 없음)'}
         </Text>
         <Text style={styles.rowState}>{item.active ? '노출 중' : '숨김'}</Text>
       </View>
@@ -134,32 +151,62 @@ export default function BannerAdminScreen() {
         <Text style={styles.addBtnText}>배너 추가</Text>
       </TouchableOpacity>
 
-      {/* 업로드한 이미지 + 링크 입력 → 등록 */}
-      <Modal visible={pendingImage !== null} transparent animationType="fade" onRequestClose={() => setPendingImage(null)}>
+      {/* 업로드한 이미지 + 텍스트 입력 → 등록 */}
+      <Modal visible={pendingImage !== null} transparent animationType="fade" onRequestClose={resetForm}>
         <View style={styles.dialogBackdrop}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>새 배너 등록</Text>
-            {pendingImage ? (
-              <Image source={{ uri: pendingImage }} style={styles.preview} contentFit="cover" />
-            ) : null}
-            <TextInput
-              style={styles.linkField}
-              placeholder="링크 URL (선택) — 예: https://..."
-              placeholderTextColor={colors.text.dim}
-              value={linkInput}
-              onChangeText={setLinkInput}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-            <View style={styles.dialogActions}>
-              <TouchableOpacity style={styles.dialogBtn} onPress={() => setPendingImage(null)}>
-                <Text style={styles.dialogBtnText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.dialogBtn, styles.dialogBtnPrimary]} onPress={handleRegister}>
-                <Text style={[styles.dialogBtnText, styles.dialogBtnTextPrimary]}>등록</Text>
-              </TouchableOpacity>
+          <ScrollView
+            contentContainerStyle={styles.dialogScroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.dialog}>
+              <Text style={styles.dialogTitle}>새 배너 등록</Text>
+              {pendingImage ? (
+                <Image source={{ uri: pendingImage }} style={styles.preview} contentFit="cover" />
+              ) : null}
+              <TextInput
+                style={styles.field}
+                placeholder="제목 (홈 배너에 표시)"
+                placeholderTextColor={colors.text.dim}
+                value={titleInput}
+                onChangeText={setTitleInput}
+                maxLength={40}
+              />
+              <TextInput
+                style={styles.field}
+                placeholder="부제목 (홈 배너에 표시)"
+                placeholderTextColor={colors.text.dim}
+                value={subtitleInput}
+                onChangeText={setSubtitleInput}
+                maxLength={60}
+              />
+              <TextInput
+                style={[styles.field, styles.fieldMultiline]}
+                placeholder="세부 내용 (배너 탭 시 상세에 표시)"
+                placeholderTextColor={colors.text.dim}
+                value={contentInput}
+                onChangeText={setContentInput}
+                multiline
+              />
+              <TextInput
+                style={styles.field}
+                placeholder="외부 링크 URL (선택)"
+                placeholderTextColor={colors.text.dim}
+                value={linkInput}
+                onChangeText={setLinkInput}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              <View style={styles.dialogActions}>
+                <TouchableOpacity style={styles.dialogBtn} onPress={resetForm}>
+                  <Text style={styles.dialogBtnText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.dialogBtn, styles.dialogBtnPrimary]} onPress={handleRegister}>
+                  <Text style={[styles.dialogBtnText, styles.dialogBtnTextPrimary]}>등록</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -216,20 +263,26 @@ const styles = StyleSheet.create({
   dialogBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  dialogScroll: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
   },
-  dialog: { backgroundColor: colors.background.base, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md },
-  dialogTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
-  preview: { width: '100%', aspectRatio: 361 / 124, borderRadius: radius.md },
-  linkField: {
-    height: 44,
+  dialog: { backgroundColor: colors.background.base, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+  dialogTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: 2 },
+  preview: { width: '100%', aspectRatio: 361 / 124, borderRadius: radius.md, marginBottom: 2 },
+  field: {
+    minHeight: 44,
     paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     backgroundColor: colors.background.elevated,
     borderRadius: radius.md,
     fontSize: fontSize.base,
     color: colors.text.primary,
   },
+  fieldMultiline: { minHeight: 80, textAlignVertical: 'top' },
   dialogActions: { flexDirection: 'row', gap: spacing.sm },
   dialogBtn: { flex: 1, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background.elevated },
   dialogBtnPrimary: { backgroundColor: colors.primary },
