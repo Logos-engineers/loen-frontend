@@ -39,9 +39,13 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.tab.active,
         tabBarInactiveTintColor: colors.tab.inactive,
         tabBarStyle: {
-          backgroundColor: colors.background.elevated,
+          backgroundColor: colors.background.elevated,  // #FFFFFF
           borderTopColor: colors.border,
           borderTopWidth: 1,
+          // 기본 그림자(Android elevation / iOS shadow) 제거 — 디자인엔 회색 그림자 없이 흰색 페이드만 존재
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowColor: 'transparent',
         },
         tabBarLabelStyle: {
           fontSize: 11,

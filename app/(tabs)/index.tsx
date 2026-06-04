@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
@@ -34,6 +35,12 @@ export default function HomeScreen() {
         {/* <ChallengeSection /> */}
         <PrayerSection />
       </ScrollView>
+      {/* 하단 네비게이션 위 흰색 페이드 (Figma 'blur') — 회색 배경을 흰색으로 자연스럽게 전환 */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0)', '#FFFFFF']}
+        style={styles.bottomFade}
+        pointerEvents="none"
+      />
     </SafeAreaView>
   );
 }
@@ -48,5 +55,12 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 40,
+  },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 24,
   },
 });
