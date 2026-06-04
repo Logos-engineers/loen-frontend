@@ -128,6 +128,23 @@ export function useAdminBanners() {
     [fetchAll],
   );
 
+  const updateBanner = useCallback(
+    async (id: string, input: CreateBannerInput) => {
+      await apiClient(`/admin/banners/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          imageUrl: input.imageUrl,
+          title: input.title?.trim() || null,
+          subtitle: input.subtitle?.trim() || null,
+          content: input.content?.trim() || null,
+          linkUrl: input.linkUrl?.trim() || null,
+        }),
+      });
+      await fetchAll();
+    },
+    [fetchAll],
+  );
+
   const setActive = useCallback(
     async (id: string, active: boolean) => {
       setBanners((cur) => cur.map((b) => (b.id === id ? { ...b, active } : b)));
@@ -151,5 +168,5 @@ export function useAdminBanners() {
     [],
   );
 
-  return { banners, isLoading, error, refetch: fetchAll, createBanner, setActive, deleteBanner };
+  return { banners, isLoading, error, refetch: fetchAll, createBanner, updateBanner, setActive, deleteBanner };
 }

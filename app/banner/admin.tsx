@@ -22,27 +22,33 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function BannerAdminScreen() {
-  const { banners, isLoading, error, createBanner, setActive, deleteBanner } = useAdminBanners();
+  const { banners, isLoading, error, createBanner, updateBanner, setActive, deleteBanner } = useAdminBanners();
   const [busy, setBusy] = useState(false);
-  const [pendingImage, setPendingImage] = useState<string | null>(null);
+
+  // 에디터(등록/수정 공용) 상태
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState('');
   const [subtitleInput, setSubtitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
   const [linkInput, setLinkInput] = useState('');
 
-  const resetForm = () => {
-    setPendingImage(null);
+  const closeEditor = () => {
+    setEditorOpen(false);
+    setEditingId(null);
+    setImageUrl(null);
     setTitleInput('');
     setSubtitleInput('');
     setContentInput('');
     setLinkInput('');
   };
 
-  const handlePickAndUpload = async () => {
+  const pickImage = async (): Promise<string | null> => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('권한 필요', '사진 접근 권한을 허용해 주세요.');
-      return;
+      return null;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -50,34 +56,68 @@ export default function BannerAdminScreen() {
       aspect: [29, 10], // 배너 비율(≈2.9:1)
       quality: 0.8,
     });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets[0]) return null;
 
     setBusy(true);
     try {
-      const url = await uploadBannerImage(result.assets[0].uri);
-      resetForm();
-      setPendingImage(url);
+      return await uploadBannerImage(result.assets[0].uri);
     } catch (e: any) {
       Alert.alert('오류', e?.message ?? '이미지 업로드에 실패했습니다.');
+      return null;
     } finally {
       setBusy(false);
     }
   };
 
-  const handleRegister = async () => {
-    if (!pendingImage) return;
+  // 등록: 먼저 이미지 선택 → 에디터 오픈
+  const handleStartCreate = async () => {
+    const url = await pickImage();
+    if (!url) return;
+    setEditingId(null);
+    setImageUrl(url);
+    setTitleInput('');
+    setSubtitleInput('');
+    setContentInput('');
+    setLinkInput('');
+    setEditorOpen(true);
+  };
+
+  // 수정: 기존 값으로 에디터 오픈
+  const handleStartEdit = (banner: Banner) => {
+    setEditingId(banner.id);
+    setImageUrl(banner.imageUrl);
+    setTitleInput(banner.title ?? '');
+    setSubtitleInput(banner.subtitle ?? '');
+    setContentInput(banner.content ?? '');
+    setLinkInput(banner.linkUrl ?? '');
+    setEditorOpen(true);
+  };
+
+  // 에디터 내 이미지 변경
+  const handleChangeImage = async () => {
+    const url = await pickImage();
+    if (url) setImageUrl(url);
+  };
+
+  const handleSave = async () => {
+    if (!imageUrl) return;
     setBusy(true);
     try {
-      await createBanner({
-        imageUrl: pendingImage,
+      const payload = {
+        imageUrl,
         title: titleInput,
         subtitle: subtitleInput,
         content: contentInput,
         linkUrl: linkInput,
-      });
-      resetForm();
+      };
+      if (editingId) {
+        await updateBanner(editingId, payload);
+      } else {
+        await createBanner(payload);
+      }
+      closeEditor();
     } catch (e: any) {
-      Alert.alert('오류', e?.message ?? '배너 등록에 실패했습니다.');
+      Alert.alert('오류', e?.message ?? '저장에 실패했습니다.');
     } finally {
       setBusy(false);
     }
@@ -102,13 +142,15 @@ export default function BannerAdminScreen() {
 
   const renderItem = ({ item }: { item: Banner }) => (
     <View style={[styles.row, !item.active && styles.rowInactive]}>
-      <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" />
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowLink} numberOfLines={1}>
-          {item.title || '(제목 없음)'}
-        </Text>
-        <Text style={styles.rowState}>{item.active ? '노출 중' : '숨김'}</Text>
-      </View>
+      <TouchableOpacity style={styles.rowMain} activeOpacity={0.7} onPress={() => handleStartEdit(item)}>
+        <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" />
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowLink} numberOfLines={1}>
+            {item.title || '(제목 없음)'}
+          </Text>
+          <Text style={styles.rowState}>{item.active ? '노출 중' : '숨김'}</Text>
+        </View>
+      </TouchableOpacity>
       <Switch
         value={item.active}
         onValueChange={(v) => setActive(item.id, v)}
@@ -146,13 +188,13 @@ export default function BannerAdminScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.addBtn} onPress={handlePickAndUpload} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.addBtn} onPress={handleStartCreate} activeOpacity={0.8}>
         <Ionicons name="add" size={20} color={colors.white} />
         <Text style={styles.addBtnText}>배너 추가</Text>
       </TouchableOpacity>
 
-      {/* 업로드한 이미지 + 텍스트 입력 → 등록 */}
-      <Modal visible={pendingImage !== null} transparent animationType="fade" onRequestClose={resetForm}>
+      {/* 등록/수정 공용 에디터 */}
+      <Modal visible={editorOpen} transparent animationType="fade" onRequestClose={closeEditor}>
         <View style={styles.dialogBackdrop}>
           <ScrollView
             contentContainerStyle={styles.dialogScroll}
@@ -160,9 +202,15 @@ export default function BannerAdminScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.dialog}>
-              <Text style={styles.dialogTitle}>새 배너 등록</Text>
-              {pendingImage ? (
-                <Image source={{ uri: pendingImage }} style={styles.preview} contentFit="cover" />
+              <Text style={styles.dialogTitle}>{editingId ? '배너 수정' : '새 배너 등록'}</Text>
+              {imageUrl ? (
+                <TouchableOpacity activeOpacity={0.8} onPress={handleChangeImage}>
+                  <Image source={{ uri: imageUrl }} style={styles.preview} contentFit="cover" />
+                  <View style={styles.changeImageBadge}>
+                    <Ionicons name="camera-outline" size={14} color={colors.white} />
+                    <Text style={styles.changeImageText}>이미지 변경</Text>
+                  </View>
+                </TouchableOpacity>
               ) : null}
               <TextInput
                 style={styles.field}
@@ -198,11 +246,13 @@ export default function BannerAdminScreen() {
                 keyboardType="url"
               />
               <View style={styles.dialogActions}>
-                <TouchableOpacity style={styles.dialogBtn} onPress={resetForm}>
+                <TouchableOpacity style={styles.dialogBtn} onPress={closeEditor}>
                   <Text style={styles.dialogBtnText}>취소</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.dialogBtn, styles.dialogBtnPrimary]} onPress={handleRegister}>
-                  <Text style={[styles.dialogBtnText, styles.dialogBtnTextPrimary]}>등록</Text>
+                <TouchableOpacity style={[styles.dialogBtn, styles.dialogBtnPrimary]} onPress={handleSave}>
+                  <Text style={[styles.dialogBtnText, styles.dialogBtnTextPrimary]}>
+                    {editingId ? '수정' : '등록'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -242,6 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.sm,
   },
+  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowInactive: { opacity: 0.5 },
   thumb: { width: 72, height: 28, borderRadius: radius.sm, backgroundColor: colors.border },
   rowInfo: { flex: 1, gap: 2 },
@@ -273,6 +324,19 @@ const styles = StyleSheet.create({
   dialog: { backgroundColor: colors.background.base, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
   dialogTitle: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: 2 },
   preview: { width: '100%', aspectRatio: 361 / 124, borderRadius: radius.md, marginBottom: 2 },
+  changeImageBadge: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.sm + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  changeImageText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   field: {
     minHeight: 44,
     paddingHorizontal: spacing.md,

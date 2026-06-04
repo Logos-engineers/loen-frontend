@@ -45,20 +45,20 @@ export function useNoticeDetail(id: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await apiClient<Notice>(`/notices/${id}`);
-        if (mounted) setNotice(data);
-      } catch (e: any) {
-        if (mounted) setError(e?.message ?? '오류가 발생했습니다.');
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
+  const refetch = useCallback(async () => {
+    if (!id) return;
+    setError(null);
+    try {
+      const data = await apiClient<Notice>(`/notices/${id}`);
+      setNotice(data);
+    } catch (e: any) {
+      setError(e?.message ?? '오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
 
-  return { notice, isLoading, error };
+  useEffect(() => { refetch(); }, [refetch]);
+
+  return { notice, isLoading, error, refetch };
 }
