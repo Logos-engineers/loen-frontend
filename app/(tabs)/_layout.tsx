@@ -40,9 +40,8 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.tab.inactive,
         tabBarStyle: {
           backgroundColor: colors.background.elevated,  // #FFFFFF
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          // 기본 그림자(Android elevation / iOS shadow) 제거 — 디자인엔 회색 그림자 없이 흰색 페이드만 존재
+          // 디자인엔 상단 테두리/그림자 없이 흰색 페이드만 — 회색 라인(border)·그림자 모두 제거
+          borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
           shadowColor: 'transparent',
