@@ -1,80 +1,67 @@
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
-import { ADD_EMOJI_SVG, FIRE_SVG, HEART_SVG } from '@/constants/icons';
+import { FIRE_SVG, HEART_SVG } from '@/constants/icons';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
-import { useFaithNotes } from '@/hooks/useFaithNotes';
+import { useFaithNotes, type ReactionItem } from '@/hooks/useFaithNotes';
+import type { FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import React from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-interface ReactionTag {
-  svg: string;
-  count: number;
-  active?: boolean;    // 활성이면 primary 배경
-}
-
-type PrayerItem = {
-  id: string;
-  name: string;
-  content: string;
-  reactions: ReactionTag[];
+// 이모지 코드 → SVG 아이콘 (홈 고정 셋: ❤️🔥)
+const REACTION_SVG: Record<string, string> = {
+  HEART: HEART_SVG,
+  FIRE: FIRE_SVG,
 };
 
-function PrayerCard({ item }: { item: PrayerItem }) {
+function PrayerCard({
+  item,
+  onReact,
+}: {
+  item: FaithNoteItem;
+  onReact: (id: string, emoji: string) => void;
+}) {
+  const name = item.author.name || item.author.handle || '익명';
   return (
     <Card style={styles.prayerCard}>
       <View style={styles.topRow}>
         {/* Figma: 32px 원형 아바타 (회색 placeholder) */}
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.name[0]}</Text>
+          <Text style={styles.avatarText}>{name[0]}</Text>
         </View>
         <View style={styles.textCol}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.content}>{item.content}</Text>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.content}>{item.content.join('\n')}</Text>
         </View>
       </View>
 
-      {/* Figma: 반응 태그 — icon tag 스타일 h:28, radius:9, px:10 */}
+      {/* 이모지 반응 태그 — icon tag h:28, radius:9, px:10 */}
       <View style={styles.reactionRow}>
-        {item.reactions.map((r, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[
-              styles.reactionTag,
-              r.active ? styles.reactionTagActive : styles.reactionTagDefault,
-            ]}
-            onPress={() => Alert.alert('반응')}
-            activeOpacity={0.7}
-          >
-            {/* Figma SVG 아이콘 16×16 */}
-            <SvgXml xml={r.svg} width={16} height={16} />
-            {r.count > 0 && (
-              <Text style={[
-                styles.reactionCount,
-                r.active && styles.reactionCountActive,
-              ]}>
-                {r.count}
-              </Text>
-            )}
-          </TouchableOpacity>
-        ))}
+        {(item.reactions ?? []).map((r: ReactionItem) => {
+          const svg = REACTION_SVG[r.emoji];
+          if (!svg) return null;
+          return (
+            <TouchableOpacity
+              key={r.emoji}
+              style={[styles.reactionTag, r.reacted ? styles.reactionTagActive : styles.reactionTagDefault]}
+              onPress={() => onReact(item.id, r.emoji)}
+              activeOpacity={0.7}
+            >
+              <SvgXml xml={svg} width={16} height={16} />
+              {r.count > 0 && (
+                <Text style={[styles.reactionCount, r.reacted && styles.reactionCountActive]}>{r.count}</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </Card>
   );
 }
 
 export function PrayerSection() {
-  const { notes, isLoading, error } = useFaithNotes('PRAYER');
-  const prayers: PrayerItem[] = notes.slice(0, 3).map(note => ({
-    id: note.id,
-    name: note.author.name || note.author.handle || '익명',
-    content: note.content.join('\n'),
-    reactions: [
-      { svg: HEART_SVG, count: note.likeCount, active: note.isLiked },
-      { svg: FIRE_SVG, count: 0, active: false },
-      { svg: ADD_EMOJI_SVG, count: 0, active: false },
-    ],
-  }));
+  const { notes, isLoading, error, toggleReaction } = useFaithNotes('PRAYER');
+  const prayers = notes.slice(0, 3);
 
   return (
     <View style={styles.wrapper}>
@@ -85,7 +72,7 @@ export function PrayerSection() {
         ) : error ? (
           <Text style={styles.emptyText}>기도노트를 불러오지 못했습니다</Text>
         ) : prayers.length > 0 ? prayers.map(item => (
-          <PrayerCard key={item.id} item={item} />
+          <PrayerCard key={item.id} item={item} onReact={toggleReaction} />
         )) : (
           <Text style={styles.emptyText}>등록된 기도노트가 없습니다</Text>
         )}

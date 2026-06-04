@@ -14,6 +14,12 @@ export type ThanksNote = {
   createdAt: string;
 };
 
+export type ReactionItem = {
+  emoji: string;   // 'HEART' | 'FIRE'
+  count: number;
+  reacted: boolean;
+};
+
 export type PrayerNote = {
   id: string;
   writerName: string;
@@ -21,6 +27,7 @@ export type PrayerNote = {
   commentCount: number;
   isMine: boolean;
   createdAt: string;
+  reactions: ReactionItem[];
 };
 
 export type WordNote = {
@@ -91,6 +98,7 @@ export function fromPrayer(note: PrayerNote): FaithNoteItem {
     commentCount: note.commentCount ?? 0,
     isLiked: false,
     isMine: note.isMine ?? false,
+    reactions: note.reactions ?? [],
   };
 }
 
@@ -165,6 +173,34 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     }
   }, [notes]);
 
+  // 기도노트 이모지 반응 토글 (낙관적 업데이트 후 PATCH)
+  const toggleReaction = useCallback(async (id: string, emoji: string) => {
+    const prev = [...notes];
+    setNotes((cur) =>
+      cur.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              reactions: (n.reactions ?? []).map((r) =>
+                r.emoji === emoji
+                  ? { ...r, reacted: !r.reacted, count: r.reacted ? r.count - 1 : r.count + 1 }
+                  : r,
+              ),
+            }
+          : n,
+      ),
+    );
+    try {
+      await apiClient(`/notes/prayers/${id}/reactions`, {
+        method: 'PATCH',
+        body: JSON.stringify({ emoji }),
+      });
+    } catch (e) {
+      setNotes(prev);
+      console.warn('[useFaithNotes] toggleReaction 실패', e);
+    }
+  }, [notes]);
+
   const deleteNote = useCallback(async (id: string, tab: FaithNoteTab) => {
     const path =
       tab === 'THANKS' ? `/notes/thanks/${id}`
@@ -176,5 +212,5 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
 
   const refetch = useCallback(() => fetchNotes(activeTab), [activeTab, fetchNotes]);
 
-  return { notes, isLoading, error, toggleLike, deleteNote, refetch };
+  return { notes, isLoading, error, toggleLike, toggleReaction, deleteNote, refetch };
 }
