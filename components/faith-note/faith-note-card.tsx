@@ -12,6 +12,7 @@ export interface FaithNoteItem {
   id: string;
   tab: FaithNoteTab;
   dayKey?: string;             // 'MON' | 'TUE' | ... (목 데이터 요일 필터용)
+  createdAt?: string;          // 원본 작성 시각 (주간 뷰 '작성한 날' 판별용)
   author: {
     handle: string;
     name: string;

@@ -1,4 +1,5 @@
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -15,12 +16,15 @@ const DAYS: { key: string; label: string }[] = [
 
 interface FaithNoteWeekSelectorProps {
   selectedDates: string[];
+  /** 이번 주 내가 노트를 작성한 요일 키 — 동그라미에 체크 표시 */
+  writtenDays?: string[];
   todayKey: string;
   onToggleDate: (key: string) => void;
 }
 
 export function FaithNoteWeekSelector({
   selectedDates,
+  writtenDays = [],
   todayKey,
   onToggleDate,
 }: FaithNoteWeekSelectorProps) {
@@ -29,6 +33,8 @@ export function FaithNoteWeekSelector({
       {DAYS.map((day) => {
         const isSelected = selectedDates.includes(day.key);
         const isToday = day.key === todayKey;
+        const isWritten = writtenDays.includes(day.key);
+        // 오늘 또는 필터 선택된 날 → 어두운 pill + 흰 라벨
         const isHighlighted = isSelected || isToday;
 
         return (
@@ -38,16 +44,21 @@ export function FaithNoteWeekSelector({
             onPress={() => onToggleDate(day.key)}
             activeOpacity={0.7}
           >
-            <View
-              style={[
-                styles.dayPill,
-                isHighlighted && styles.dayPillActive,
-              ]}
-            >
+            <View style={[styles.dayPill, isHighlighted && styles.dayPillActive]}>
               <Text style={[styles.dayLabel, isHighlighted && styles.dayLabelActive]}>
                 {day.label}
               </Text>
-              <View style={[styles.circle, isHighlighted && styles.circleActive]} />
+              <View
+                style={[
+                  styles.circle,
+                  isHighlighted && styles.circleActive,
+                  isWritten && styles.circleWritten,
+                ]}
+              >
+                {isWritten ? (
+                  <Ionicons name="checkmark" size={20} color={colors.white} />
+                ) : null}
+              </View>
             </View>
           </TouchableOpacity>
         );
@@ -91,8 +102,14 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: radius.full,
     backgroundColor: 'rgba(13,28,45,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   circleActive: {
     backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  // 작성한 날 — 파란 원 + 흰 체크 (Figma today/y, trans/blue/a1)
+  circleWritten: {
+    backgroundColor: '#4568FF',
   },
 });

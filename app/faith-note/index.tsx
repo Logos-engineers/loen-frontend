@@ -8,7 +8,7 @@ import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { FaithNoteTab, FaithNoteTabBar } from '@/components/faith-note/faith-note-tab-bar';
 import { FaithNoteWeekSelector } from '@/components/faith-note/faith-note-week-selector';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import { getTodayKey } from '@/utils/faith-note-store';
+import { getTodayKey, getWeekStart } from '@/utils/faith-note-store';
 import { useFaithNotes } from '@/hooks/useFaithNotes';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -98,6 +98,14 @@ export default function FaithNoteListScreen() {
     return notes.filter((n) => !n.dayKey || selectedDates.includes(n.dayKey));
   }, [notes, selectedDates]);
 
+  // 이번 주에 '내가' 작성한 요일 집합 → 주간 뷰 체크 표시
+  const writtenDays = useMemo(() => {
+    const weekStart = getWeekStart();
+    return notes
+      .filter((n) => n.isMine && n.dayKey && n.createdAt && new Date(n.createdAt) >= weekStart)
+      .map((n) => n.dayKey as string);
+  }, [notes]);
+
   // ── 드롭다운 옵션 선택
   const handleDropdownSelect = (tab: FaithNoteTab) => {
     setShowDropdown(false);
@@ -116,6 +124,7 @@ export default function FaithNoteListScreen() {
       {/* 주간 요일 선택기 */}
       <FaithNoteWeekSelector
         selectedDates={selectedDates}
+        writtenDays={writtenDays}
         todayKey={TODAY_KEY}
         onToggleDate={handleToggleDate}
       />
