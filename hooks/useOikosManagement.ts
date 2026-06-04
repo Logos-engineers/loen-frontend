@@ -94,6 +94,15 @@ export function useOikosManagement() {
     [fetchView],
   );
 
+  // 그룹장: 오이코스 삭제
+  const deleteOikos = useCallback(
+    async (oikosId: string) => {
+      await apiClient(`/oikos/management/oikos/${oikosId}`, { method: 'DELETE' });
+      await fetchView();
+    },
+    [fetchView],
+  );
+
   // 리더: 부원 추가
   const addMember = useCallback(
     async (oikosId: string, uid: string) => {
@@ -124,6 +133,7 @@ export function useOikosManagement() {
     refetch: fetchView,
     createOikos,
     assignLeaders,
+    deleteOikos,
     addMember,
     removeMember,
   };

@@ -33,7 +33,7 @@ const ROLE_TITLE: Record<SearchTarget['role'], string> = {
 };
 
 export default function OikosManagementScreen() {
-  const { view, isLoading, error, createOikos, assignLeaders, addMember, removeMember } =
+  const { view, isLoading, error, createOikos, assignLeaders, deleteOikos, addMember, removeMember } =
     useOikosManagement();
 
   const [searchTarget, setSearchTarget] = useState<SearchTarget | null>(null);
@@ -77,6 +77,26 @@ export default function OikosManagementScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const confirmDeleteOikos = (oikosId: string, name: string) => {
+    Alert.alert('오이코스 삭제', `'${name}' 오이코스를 삭제할까요?\n소속 인원의 연결이 해제됩니다.`, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await deleteOikos(oikosId);
+          } catch (e: any) {
+            Alert.alert('실패', e?.message ?? '삭제하지 못했습니다.');
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
   };
 
   const confirmRemoveMember = (oikosId: string, member: { uid: string; name: string }) => {
@@ -133,6 +153,7 @@ export default function OikosManagementScreen() {
                 onAddOikos={() => setCreateVisible(true)}
                 onAssign={(oikosId, role) => setSearchTarget({ oikosId, role })}
                 onRemoveMember={confirmRemoveMember}
+                onDeleteOikos={confirmDeleteOikos}
               />
             ))
           )}
@@ -200,6 +221,7 @@ function GroupSection({
   onAddOikos,
   onAssign,
   onRemoveMember,
+  onDeleteOikos,
 }: {
   group: GroupNode;
   canManageGroup: boolean;
@@ -207,6 +229,7 @@ function GroupSection({
   onAddOikos: () => void;
   onAssign: (oikosId: string, role: 'leader' | 'sleader') => void;
   onRemoveMember: (oikosId: string, member: { uid: string; name: string }) => void;
+  onDeleteOikos: (oikosId: string, name: string) => void;
 }) {
   return (
     <View style={styles.groupSection}>
@@ -236,6 +259,7 @@ function GroupSection({
             canManageMembers={canManageMembers}
             onAssign={onAssign}
             onRemoveMember={onRemoveMember}
+            onDeleteOikos={onDeleteOikos}
           />
         ))
       )}
@@ -250,16 +274,25 @@ function OikosCard({
   canManageMembers,
   onAssign,
   onRemoveMember,
+  onDeleteOikos,
 }: {
   oikos: OikosNode;
   canManageGroup: boolean;
   canManageMembers: boolean;
   onAssign: (oikosId: string, role: 'leader' | 'sleader') => void;
   onRemoveMember: (oikosId: string, member: { uid: string; name: string }) => void;
+  onDeleteOikos: (oikosId: string, name: string) => void;
 }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.oikosName}>{oikos.name}</Text>
+      <View style={styles.cardHeader}>
+        <Text style={styles.oikosName}>{oikos.name}</Text>
+        {canManageGroup ? (
+          <TouchableOpacity onPress={() => onDeleteOikos(oikos.id, oikos.name)} hitSlop={8}>
+            <Ionicons name="trash-outline" size={18} color={colors.text.dim} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       {/* 리더 */}
       <LeaderRow
@@ -389,6 +422,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   oikosName: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
   cardDivider: { height: 1, backgroundColor: colors.border, marginVertical: 2 },
 
