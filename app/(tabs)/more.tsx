@@ -1,4 +1,5 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { OIKOS_MANAGE_POSITIONS } from '@/hooks/useOikosManagement';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/store/auth-store';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +24,10 @@ export default function MoreScreen() {
   const role = useAuthStore((s) => s.role);
   const { profile } = useProfile();
 
-  // 직책이 부원(MEMBER)이 아니거나 ADMIN이면 오이코스 관리 노출
+  // 오이코스 관리 접근 가능 직책(그룹장/리더/S리더/임원/코치/회장/부회장/서기)이거나 ADMIN이면 노출
+  // (총무/회계/부원은 제외 — 권한 없음)
   const canManageOikos =
-    role === 'ADMIN' || (!!profile?.position && profile.position !== 'MEMBER');
+    role === 'ADMIN' || (!!profile?.position && OIKOS_MANAGE_POSITIONS.includes(profile.position));
 
   const MENU_ITEMS: MenuItem[] = [
     ...BASE_MENU_ITEMS,

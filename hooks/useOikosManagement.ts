@@ -152,7 +152,29 @@ export function positionLabel(position: string | null | undefined): string {
       return '임원';
     case 'COACH':
       return '코치';
+    case 'PRESIDENT':
+      return '회장';
+    case 'VICE_PRESIDENT':
+      return '부회장';
+    case 'SECRETARY':
+      return '서기';
+    case 'GENERAL_AFFAIRS':
+      return '총무';
+    case 'TREASURER':
+      return '회계';
     default:
       return '부원';
   }
 }
+
+/** 오이코스 관리 화면에 접근(메뉴 노출) 가능한 직책. 총무/회계/부원은 제외. */
+export const OIKOS_MANAGE_POSITIONS = [
+  'GROUP_LEADER',
+  'LEADER',
+  'S_LEADER',
+  'EXECUTIVE',
+  'COACH',
+  'PRESIDENT',
+  'VICE_PRESIDENT',
+  'SECRETARY',
+];
