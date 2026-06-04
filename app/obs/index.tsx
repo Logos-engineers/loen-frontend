@@ -212,6 +212,7 @@ export default function ObsScreen() {
   const renderItem = useCallback(({ item }: { item: ObsContent }) => (
     <ObsCard
       item={item}
+      noShadow
       onPressView={() => router.push({
         pathname: '/obs/content/intro',
         params: {
