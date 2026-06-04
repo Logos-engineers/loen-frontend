@@ -40,6 +40,7 @@ export default function MoreScreen() {
       ? [
           { label: 'OBS 관리', icon: 'settings-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/obs/admin') },
           { label: '공지 등록', icon: 'megaphone-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/notice/write') },
+          { label: '배너 관리', icon: 'image-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/banner/admin') },
         ]
       : []),
   ];

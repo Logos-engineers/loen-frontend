@@ -111,6 +111,7 @@ export default function RootLayout() {
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
           <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
           <Stack.Screen name="oikos/management" options={{ headerShown: false }} />
+          <Stack.Screen name="banner/admin" options={{ headerShown: false }} />
           <Stack.Screen name="notice" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
