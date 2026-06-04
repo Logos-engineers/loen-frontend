@@ -25,11 +25,19 @@ export interface FaithNoteItem {
   commentCount: number;
   isLiked: boolean;
   isMine?: boolean;            // 내 노트 여부 (true일 때만 ⋯ 수정/삭제 메뉴 노출)
+  reactions?: { emoji: string; count: number; reacted: boolean }[];  // 기도노트 이모지 반응(❤️🔥)
 }
+
+// 이모지 코드 → 아이콘/활성 색상
+const REACTION_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; active: string }> = {
+  HEART: { name: 'heart', active: colors.reaction.red },
+  FIRE: { name: 'flame', active: '#FF7A00' },
+};
 
 interface FaithNoteCardProps {
   item: FaithNoteItem;
   onLikeToggle?: (id: string) => void;  // 좋아요 토글 콜백 (없으면 로컬 처리)
+  onReactionToggle?: (id: string, emoji: string) => void;  // 기도노트 이모지 반응 토글
   onCommentPress?: (id: string) => void;
   onEdit?: (item: FaithNoteItem) => void;   // ⋯ → 수정
   onDelete?: (item: FaithNoteItem) => void; // ⋯ → 삭제
@@ -42,6 +50,7 @@ interface FaithNoteCardProps {
 export function FaithNoteCard({
   item,
   onLikeToggle,
+  onReactionToggle,
   onCommentPress,
   onEdit,
   onDelete,
@@ -137,18 +146,39 @@ export function FaithNoteCard({
       </View>
 
       <View style={styles.footerRow}>
-        <TouchableOpacity
-          style={[styles.reactionChip, hasLikeCount && styles.reactionChipCounted]}
-          onPress={handleLike}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="heart"
-            size={hasLikeCount ? 16 : 14}
-            color={item.isLiked ? colors.reaction.red : '#8F96A3'}
-          />
-          {hasLikeCount ? <Text style={styles.reactionCount}>{item.likeCount}</Text> : null}
-        </TouchableOpacity>
+        {item.reactions && item.reactions.length > 0 ? (
+          // 기도노트: 이모지 반응 칩(❤️🔥)
+          item.reactions.map((r) => {
+            const icon = REACTION_ICON[r.emoji];
+            if (!icon) return null;
+            const counted = r.count > 0;
+            return (
+              <TouchableOpacity
+                key={r.emoji}
+                style={[styles.reactionChip, counted && styles.reactionChipCounted]}
+                onPress={() => onReactionToggle?.(item.id, r.emoji)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name={icon.name} size={counted ? 16 : 14} color={r.reacted ? icon.active : '#8F96A3'} />
+                {counted ? <Text style={styles.reactionCount}>{r.count}</Text> : null}
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          // 감사/말씀: 기존 좋아요 하트
+          <TouchableOpacity
+            style={[styles.reactionChip, hasLikeCount && styles.reactionChipCounted]}
+            onPress={handleLike}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="heart"
+              size={hasLikeCount ? 16 : 14}
+              color={item.isLiked ? colors.reaction.red : '#8F96A3'}
+            />
+            {hasLikeCount ? <Text style={styles.reactionCount}>{item.likeCount}</Text> : null}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={[styles.reactionChip, hasCommentCount && styles.reactionChipCounted]}

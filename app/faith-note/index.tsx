@@ -57,7 +57,7 @@ export default function FaithNoteListScreen() {
   const [selectedTab, setSelectedTab] = useState<FaithNoteTab>('THANKS');
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const { notes, isLoading, error, toggleLike, deleteNote, refetch } = useFaithNotes(selectedTab);
+  const { notes, isLoading, error, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
   const [pendingDelete, setPendingDelete] = useState<FaithNoteItem | null>(null);
 
   useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
@@ -136,6 +136,7 @@ export default function FaithNoteListScreen() {
             <FaithNoteCard
               item={item}
               onLikeToggle={handleLikeToggle}
+              onReactionToggle={toggleReaction}
               onEdit={handleEdit}
               onDelete={setPendingDelete}
             />
