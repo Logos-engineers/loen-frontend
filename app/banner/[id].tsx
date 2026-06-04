@@ -83,17 +83,16 @@ const styles = StyleSheet.create({
   },
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
   scroll: { flex: 1 },
-  content: { paddingBottom: spacing.xxl },
+  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
   image: {
     width: '100%',
-    aspectRatio: 16 / 9,   // 원본 비율과 무관하게 항상 16:9로 고정 (cover로 잘림)
+    aspectRatio: 361 / 124,   // 원래 배너 비율 고정 (cover로 잘림, 원본 비율 달라도 안 찌그러짐)
+    borderRadius: radius.lg,
     backgroundColor: colors.border,
   },
   article: {
     backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
-    marginHorizontal: spacing.md,
-    marginTop: -spacing.lg,   // 히어로 이미지 위로 살짝 겹치게
     padding: spacing.lg,
     gap: spacing.sm,
     shadowColor: '#000',
