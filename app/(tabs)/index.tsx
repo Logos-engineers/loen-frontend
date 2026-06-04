@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '@/components/home/banner-carousel';
@@ -21,26 +21,34 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />
       <HomeHeader />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <GoalSection />
-        <BannerCarousel />
-        <ObsSection />
-        <FaithNoteCard />
-        <BibleReadingSection />
-        {/* TODO(MVP v2): 챌린지 기능 활성화 시 주석 해제 */}
-        {/* <ChallengeSection /> */}
-        <PrayerSection />
-      </ScrollView>
-      {/* 하단 네비게이션 위 흰색 페이드 (Figma 'blur') — 회색 배경을 흰색으로 자연스럽게 전환 */}
-      <LinearGradient
-        colors={['rgba(255,255,255,0)', '#FFFFFF']}
-        style={styles.bottomFade}
-        pointerEvents="none"
-      />
+      <View style={styles.body}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <GoalSection />
+          <BannerCarousel />
+          <ObsSection />
+          <FaithNoteCard />
+          <BibleReadingSection />
+          {/* TODO(MVP v2): 챌린지 기능 활성화 시 주석 해제 */}
+          {/* <ChallengeSection /> */}
+          <PrayerSection />
+        </ScrollView>
+        {/* 상단 헤더 아래 회색 페이드 (Figma 'blur') — 스크롤 콘텐츠가 헤더 밑으로 회색으로 사라지게 */}
+        <LinearGradient
+          colors={['#F2F4F7', 'rgba(242,244,247,0)']}
+          style={styles.topFade}
+          pointerEvents="none"
+        />
+        {/* 하단 네비게이션 위 흰색 페이드 (Figma 'blur') — 회색 배경을 흰색으로 자연스럽게 전환 */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0)', '#FFFFFF']}
+          style={styles.bottomFade}
+          pointerEvents="none"
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -50,11 +58,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.base, // #F2F4F7 = background/fill/elevated
   },
+  body: {
+    flex: 1,
+  },
   scroll: {
     flex: 1,
   },
   content: {
     paddingBottom: 40,
+  },
+  topFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 12,
   },
   bottomFade: {
     position: 'absolute',
