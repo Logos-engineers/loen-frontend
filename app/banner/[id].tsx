@@ -40,7 +40,12 @@ export default function BannerDetailScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Image source={{ uri: banner.imageUrl }} style={styles.image} contentFit="cover" />
+          <Image
+            source={{ uri: banner.imageUrl }}
+            style={styles.image}
+            contentFit="cover"
+            contentPosition="center"
+          />
           <View style={styles.article}>
             {banner.title ? <Text style={styles.title}>{banner.title}</Text> : null}
             {banner.subtitle ? <Text style={styles.subtitle}>{banner.subtitle}</Text> : null}
@@ -81,15 +86,27 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
   image: {
     width: '100%',
-    aspectRatio: 16 / 9,
+    aspectRatio: 16 / 9,   // 원본 비율과 무관하게 항상 16:9로 고정 (cover로 잘림)
     backgroundColor: colors.border,
   },
-  article: { padding: spacing.md, gap: spacing.sm },
+  article: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    marginHorizontal: spacing.md,
+    marginTop: -spacing.lg,   // 히어로 이미지 위로 살짝 겹치게
+    padding: spacing.lg,
+    gap: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   title: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
-    lineHeight: 30,
+    lineHeight: 32,
   },
   subtitle: { fontSize: fontSize.base, color: colors.text.secondary, lineHeight: 22 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
