@@ -24,10 +24,9 @@ export default function BannerDetailScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>배너</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -36,26 +35,32 @@ export default function BannerDetailScreen() {
       ) : error || !banner ? (
         <Text style={styles.errorText}>{error ?? '배너를 찾을 수 없습니다.'}</Text>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <Image source={{ uri: banner.imageUrl }} style={styles.image} contentFit="cover" />
-          {banner.title ? <Text style={styles.title}>{banner.title}</Text> : null}
-          {banner.subtitle ? <Text style={styles.subtitle}>{banner.subtitle}</Text> : null}
-          {banner.content ? (
-            <>
-              <View style={styles.divider} />
+          <View style={styles.article}>
+            {banner.title ? <Text style={styles.title}>{banner.title}</Text> : null}
+            {banner.subtitle ? <Text style={styles.subtitle}>{banner.subtitle}</Text> : null}
+            <View style={styles.divider} />
+            {banner.content ? (
               <Text style={styles.body}>{banner.content}</Text>
-            </>
-          ) : null}
-          {banner.linkUrl ? (
-            <TouchableOpacity
-              style={styles.linkBtn}
-              activeOpacity={0.8}
-              onPress={() => banner.linkUrl && Linking.openURL(banner.linkUrl)}
-            >
-              <Text style={styles.linkBtnText}>자세히 보기</Text>
-              <Ionicons name="open-outline" size={16} color={colors.white} />
-            </TouchableOpacity>
-          ) : null}
+            ) : (
+              <Text style={styles.bodyEmpty}>세부 내용이 없습니다.</Text>
+            )}
+            {banner.linkUrl ? (
+              <TouchableOpacity
+                style={styles.linkBtn}
+                activeOpacity={0.8}
+                onPress={() => banner.linkUrl && Linking.openURL(banner.linkUrl)}
+              >
+                <Text style={styles.linkBtnText}>자세히 보기</Text>
+                <Ionicons name="open-outline" size={16} color={colors.white} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -70,28 +75,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
-  content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xxl },
+  scroll: { flex: 1 },
+  content: { paddingBottom: spacing.xxl },
   image: {
     width: '100%',
-    aspectRatio: 361 / 124,
-    borderRadius: radius.lg,
+    aspectRatio: 16 / 9,
     backgroundColor: colors.border,
   },
+  article: { padding: spacing.md, gap: spacing.sm },
   title: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
-    marginTop: spacing.sm,
     lineHeight: 30,
   },
-  subtitle: { fontSize: fontSize.base, color: colors.text.secondary },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  subtitle: { fontSize: fontSize.base, color: colors.text.secondary, lineHeight: 22 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
   body: { fontSize: fontSize.base, color: colors.text.primary, lineHeight: 24 },
+  bodyEmpty: { fontSize: fontSize.base, color: colors.text.dim, lineHeight: 24 },
   linkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
