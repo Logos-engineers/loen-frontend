@@ -114,6 +114,21 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
           </TouchableOpacity>
         </View>
+
+        {/* 개발 전용 — 온보딩 화면 미리보기 (프로덕션 빌드에선 숨김) */}
+        {__DEV__ && (
+          <View style={styles.group}>
+            <TouchableOpacity
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push('/profile-setup')}
+            >
+              <Ionicons name="construct-outline" size={22} color={colors.text.secondary} />
+              <Text style={styles.rowLabel}>[DEV] 온보딩 화면 보기</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* 로그아웃 확인 */}
