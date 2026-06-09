@@ -3,6 +3,7 @@ import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/token
 import { useAlarms } from '@/hooks/useAlarms';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
+import { googleSignOut } from '@/utils/googleAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
     } catch {
       // 서버 로그아웃 실패해도 로컬 토큰은 제거
     }
+    await googleSignOut();   // 구글 세션 해제 → 재로그인 시 계정 선택 화면 표시
     await clearTokens();
     // 루트 레이아웃이 isLoggedIn=false 를 감지해 /login 으로 이동
   };
@@ -53,6 +55,7 @@ export default function SettingsScreen() {
     setWithdrawVisible(false);
     try {
       await apiClient('/users/me', { method: 'DELETE' });
+      await googleSignOut();   // 구글 세션 해제
       await clearTokens();
     } catch (e: any) {
       // 실패 시 팝업 닫고 알림은 토스트 대신 콘솔 (회원탈퇴 실패는 드묾)
