@@ -43,6 +43,7 @@ export default function ProfileSetupScreen() {
   const [showOikosModal, setShowOikosModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     apiClient<SelectableOikos[]>('/oikos/list')
@@ -72,14 +73,41 @@ export default function ProfileSetupScreen() {
           bio: bio.trim() || undefined,
         }),
       });
-      completeProfileSetup();
-      router.replace('/(tabs)');
+      setSubmitted(true);   // 환영 화면으로 전환 (앱 진입은 '시작하기'에서)
     } catch (e: any) {
       Alert.alert('오류', e.message || '프로필 설정 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleStart = () => {
+    completeProfileSetup();   // isNewUser=false → 루트가 탭으로 이동
+    router.replace('/(tabs)');
+  };
+
+  // 가입 완료 — 환영 화면
+  if (submitted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.welcomeWrap}>
+          <Text style={styles.welcomeEmoji}>🎉</Text>
+          <Text style={styles.welcomeTitle}>환영합니다, {nickname.trim()}님!</Text>
+          <Text style={styles.welcomeSub}>
+            가입이 완료되었어요.{'\n'}이제 Loen과 함께 신앙의 걸음을 시작해요.
+          </Text>
+        </View>
+        <View style={[styles.footer, styles.welcomeFooter]}>
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}
+            onPress={handleStart}
+          >
+            <Text style={styles.buttonText}>시작하기</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -240,6 +268,28 @@ const styles = StyleSheet.create({
   selectText: { fontSize: fontSize.base, color: colors.text.primary },
   placeholder: { color: colors.text.dim },
   footer: { marginTop: spacing.xl },
+  welcomeWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  welcomeEmoji: { fontSize: 56, marginBottom: spacing.sm },
+  welcomeTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  welcomeSub: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginTop: spacing.xs,
+  },
+  welcomeFooter: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
