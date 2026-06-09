@@ -1,57 +1,54 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BannerCarousel } from '@/components/home/banner-carousel';
 import { BibleReadingSection } from '@/components/home/bible-reading-section';
-import { ChallengeSection } from '@/components/home/challenge-section';
+// TODO(MVP v2): 챌린지 기능 활성화 시 주석 해제
+// import { ChallengeSection } from '@/components/home/challenge-section';
 import { FaithNoteCard } from '@/components/home/faith-note-card';
 import { GoalSection } from '@/components/home/goal-section';
 import { HomeHeader } from '@/components/home/home-header';
 import { ObsSection } from '@/components/home/obs-section';
 import { PrayerSection } from '@/components/home/prayer-section';
-import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { useRouter } from 'expo-router';
-import { TouchableOpacity, Text } from 'react-native';
+import { colors } from '@/constants/tokens';
 
 export default function HomeScreen() {
-  const router = useRouter();
   return (
     // Figma: background/fill/common = #FFFFFF
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />
       <HomeHeader />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <GoalSection />
-        <BannerCarousel />
-        
-        {/* --- 임시 버튼 시작 --- */}
-        <TouchableOpacity
-          style={styles.tempButton}
-          onPress={() => router.push('/challenge/create')}
+      <View style={styles.body}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.tempButtonText}>성경 챌린지 만들기 테스트</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tempButton, { backgroundColor: colors.primaryLight, marginTop: 10 }]}
-          onPress={() => router.push('/challenge/complete')}
-        >
-          <Text style={[styles.tempButtonText, { color: colors.primary }]}>내가 참여한 성경챌린지</Text>
-        </TouchableOpacity>
-        {/* --- 임시 버튼 끝 --- */}
-
-        <ObsSection />
-        <FaithNoteCard />
-        <BibleReadingSection />
-        <ChallengeSection />
-        <PrayerSection />
-      </ScrollView>
+          <GoalSection />
+          <BannerCarousel />
+          <ObsSection />
+          <FaithNoteCard />
+          <BibleReadingSection />
+          {/* TODO(MVP v2): 챌린지 기능 활성화 시 주석 해제 */}
+          {/* <ChallengeSection /> */}
+          <PrayerSection />
+        </ScrollView>
+        {/* 상단 헤더 아래 회색 페이드 (Figma 'blur') — 스크롤 콘텐츠가 헤더 밑으로 회색으로 사라지게 */}
+        <LinearGradient
+          colors={['#F2F4F7', 'rgba(242,244,247,0)']}
+          style={styles.topFade}
+          pointerEvents="none"
+        />
+        {/* 하단 네비게이션 위 흰색 페이드 (Figma 'blur') — 회색 배경을 흰색으로 자연스럽게 전환 */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0)', '#FFFFFF']}
+          style={styles.bottomFade}
+          pointerEvents="none"
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -61,24 +58,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.base, // #F2F4F7 = background/fill/elevated
   },
+  body: {
+    flex: 1,
+  },
   scroll: {
     flex: 1,
   },
   content: {
     paddingBottom: 40,
   },
-  tempButton: {
-    backgroundColor: colors.primary,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+  topFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 12,
   },
-  tempButtonText: {
-    color: colors.white,
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 24,
   },
 });

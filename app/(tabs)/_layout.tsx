@@ -39,9 +39,12 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.tab.active,
         tabBarInactiveTintColor: colors.tab.inactive,
         tabBarStyle: {
-          backgroundColor: colors.background.elevated,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
+          backgroundColor: colors.background.elevated,  // #FFFFFF
+          // 디자인엔 상단 테두리/그림자 없이 흰색 페이드만 — 회색 라인(border)·그림자 모두 제거
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowColor: 'transparent',
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -59,18 +62,29 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* 라우트는 유지하되 탭 바에서는 숨김 (홈 "전체 통독표 보기"에서 push로 진입) */}
       <Tabs.Screen
         name="plan"
         options={{
+          href: null,
           title: '성경통독표',
           tabBarIcon: ({ color }) => (
             <SvgXml xml={getTabIcon(PLAN_SVG, color)} width={24} height={24} />
           ),
         }}
       />
+      {/* 사용하지 않는 explore 화면 — 탭 바에서 숨김 */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          href: null,
+        }}
+      />
+      {/* 교회생활 탭 — 우선 하단 네비게이션에서 제거 (라우트는 유지) */}
       <Tabs.Screen
         name="church"
         options={{
+          href: null,
           title: '교회생활',
           tabBarIcon: ({ color }) => (
             <SvgXml xml={getTabIcon(CHURCHLIFE_SVG, color)} width={24} height={24} />

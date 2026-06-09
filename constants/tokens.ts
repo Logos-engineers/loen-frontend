@@ -50,10 +50,14 @@ export const colors = {
     yellow: '#F1C100',
   },
 
+  correct: '#1687F4',
+  incorrect: '#FF5358',
+
   // ─── 모달 / 오버레이 딤 처리 ────────────────────────────────────
   overlay: {
     default: 'rgba(13,28,45,0.55)',      // 다이얼로그 반투명 배경
-    heavy: 'rgba(13,28,45,0.6)',         // 바텀 시트 등 더 강한 딤
+    heavy: 'rgba(13,28,45,0.6)',         // 바텀 시트 등 더 강한 딤 — Figma dim/dim
+    toast: 'rgba(13,28,45,0.8)',         // toast/snackbar 배경 — trans/neutral/a2
   },
 
   // ─── 성경 통독표 장(chapter) 전용 색상 ──────────────────────────
@@ -63,8 +67,8 @@ export const colors = {
   readingPlan: {
     chapter: {
       read: 'rgba(101,97,255,0.75)',     // 읽은 장 배경 — primary 75% 불투명
-      unread: 'rgba(13,28,45,0.06)',     // 안 읽은 장 배경 — border보다 연한 회색
-      unreadText: 'rgba(13,28,45,0.4)', // 안 읽은 장 숫자 — text.secondary보다 연함
+      unread: '#F2F4F7',                 // 안 읽은 장 배경 — Figma count #F2F4F7 (bg/basic/subtlest)
+      unreadText: 'rgba(13,28,45,0.8)',  // 안 읽은 장 숫자 — Figma 12/600 fg/basic/stronger
     },
   },
 } as const;
@@ -88,8 +92,11 @@ export const shadow = {
 } as const;
 
 export const spacing = {
+  nano: 2,    // 2px  — chip 내부 gap 등 최소 간격
   xs: 4,
   sm: 8,
+  smd: 10,    // 10px — Figma 기본 gap (sm↔smmd 사이)
+  smmd: 12,   // 12px — 3×4 grid (sm↔md 사이)
   md: 16,
   lg: 20,
   xl: 24,
@@ -106,13 +113,15 @@ export const radius = {
 } as const;
 
 export const fontSize = {
-  micro: 10,   // 10px — 극소 숫자 (장 번호 원형 내부)
-  xs: 11,      // 11px — 배너 날짜, 통계 라벨
-  sm: 12,      // 12px — Caption_12
-  md: 14,      // 14px — Body2_14
-  base: 16,    // 16px — Title3_16
-  display: 17, // 17px — 통계 수치 강조 숫자 (xs~base 사이 중간값)
-  lg: 20,      // 20px — Title1_20_B
+  micro: 10,    // 10px — 극소 숫자 (장 번호 원형 내부)
+  xs: 11,       // 11px — 배너 날짜, 통계 라벨
+  sm: 12,       // 12px — Caption_12_SB
+  md: 14,       // 14px — Body2_14
+  base: 16,     // 16px — Title3_16_SB
+  display: 17,  // 17px — 통계 수치 강조 숫자
+  heading: 18,  // 18px — Title2_18_SB (네비게이션/화면 헤더 제목)
+  lg: 20,       // 20px — Title1_20_B
+  title: 24,    // 24px — 상세 화면 페이지 메인 타이틀
   xl: 22,
   xxl: 28,
 } as const;

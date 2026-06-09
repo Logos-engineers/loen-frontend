@@ -3,7 +3,7 @@
  * Single search result row: book + "N장 N절" + text with keyword highlighted.
  * Figma: result row SemiBold 14px label + Medium 16px text, keyword in primary color.
  */
-import { colors } from '@/constants/tokens';
+import { colors, radius, spacing, fontSize } from '@/constants/tokens';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -49,7 +49,7 @@ export function SearchResultItem({ result, onPress, showBookName = true }: Searc
     >
       <View style={styles.labelRow}>
         <Text style={styles.label}>
-          {showBookName ? `${bookName} ${chapterNum}장 ${verseNum}절` : `${chapterNum}장 ${verseNum}절`}
+          {showBookName ? `${bookName} ${chapterNum}:${verseNum}` : `${chapterNum}:${verseNum}`}
         </Text>
       </View>
       {renderHighlightedText()}
@@ -60,10 +60,10 @@ export function SearchResultItem({ result, onPress, showBookName = true }: Searc
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.background.base,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    gap: 6,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
   },
   labelRow: {
     flexDirection: 'row',
@@ -71,14 +71,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: 'Pretendard-Medium',
-    fontSize: 12,
+    fontSize: fontSize.sm,
     lineHeight: 18,
     color: colors.text.secondary,
   },
   verseText: {
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: 16,
-    lineHeight: 26,
+    fontFamily: 'Pretendard-Medium',
+    fontSize: fontSize.base,
+    lineHeight: 24,
     color: colors.text.primary,
   },
   verseTextHighlight: {

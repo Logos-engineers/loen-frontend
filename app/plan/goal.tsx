@@ -20,6 +20,7 @@
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { AlarmItem, useBiblePlan } from '@/hooks/useBiblePlan';
+import { useBibleHistory } from '@/hooks/useBibleHistory';
 import { useAlarms } from '@/hooks/useAlarms';
 import BibleSelectSheet from '@/components/plan/BibleSelectSheet';
 import AlarmTimeSheet from '@/components/plan/AlarmTimeSheet';
@@ -29,9 +30,8 @@ import DownButtonIcon from '@/assets/icons/downbutton.svg';
 import LightMinusButtonIcon from '@/assets/icons/LightMinusButton.svg';
 import LightPlusButtonIcon from '@/assets/icons/LightPlusButton.svg';
 import PlusButtonIcon from '@/assets/icons/PlusButton.svg';
-import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
-import CheckCirclePurpleIcon from '@/assets/icons/CheckCirclePurple.svg';
 import BackIcon from '@/assets/icons/back.svg';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -133,6 +133,7 @@ const sp = StyleSheet.create({
 // ─── 메인 ──────────────────────────────────────────────────────────────
 export default function GoalScreen() {
   const { planData, isLoading, saveGoalAndAlarms, addAlarm, removeAlarm, toggleAlarm } = useBiblePlan();
+  const { goal: existingGoal, createGoal, updateGoal } = useBibleHistory();
   const { requestPermission, scheduleAlarm, cancelAlarm } = useAlarms();
 
   // 로컬 편집 상태
@@ -181,9 +182,8 @@ export default function GoalScreen() {
 
   // ── 뒤로가기 ─────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
-    if (isDirty) setShowCancelModal(true);
-    else if (router.canGoBack()) router.back();
-  }, [isDirty]);
+    setShowCancelModal(true);
+  }, []);
 
   // ── 알림 추가 — lazy 권한 요청 ───────────────────────────────────
   const handleAddAlarm = useCallback(async () => {
@@ -205,9 +205,9 @@ export default function GoalScreen() {
       setShowAlarmSheet(false);
       try {
         const id = Date.now().toString();
-        const newAlarm = { id, hour, minute, days: selectedDays, enabled: true, notifIds: [] as string[] };
-        const notifIds = await scheduleAlarm(newAlarm);
-        newAlarm.notifIds = notifIds;
+        const newAlarm = { id, hour, minute, days: selectedDays, enabled: true, notificationIds: [] as string[] };
+        const notificationIds = await scheduleAlarm(newAlarm);
+        newAlarm.notificationIds = notificationIds;
         
         setAlarms(prev => [...prev, newAlarm]);
         await addAlarm(newAlarm); 
@@ -222,7 +222,7 @@ export default function GoalScreen() {
   // ── 알림 삭제 ─────────────────────────────────────────────────────
   const handleDeleteAlarm = useCallback(
     async (alarm: AlarmItem) => {
-      await cancelAlarm(alarm.notifIds);
+      await cancelAlarm(alarm.notificationIds);
       setAlarms(prev => prev.filter(a => a.id !== alarm.id));
       await removeAlarm(alarm.id);
     },
@@ -233,13 +233,17 @@ export default function GoalScreen() {
   const handleToggleAlarm = useCallback(
     async (alarm: AlarmItem, enabled: boolean) => {
       if (enabled) {
-        const notifIds = await scheduleAlarm({ ...alarm, enabled });
-        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notifIds } : a));
+        if (alarm.notificationIds && alarm.notificationIds.length > 0) {
+          await cancelAlarm(alarm.notificationIds);
+        }
+        const notificationIds = await scheduleAlarm({ ...alarm, enabled });
+        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notificationIds } : a));
+        await toggleAlarm(alarm.id, enabled, notificationIds);
       } else {
-        await cancelAlarm(alarm.notifIds);
-        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notifIds: [] } : a));
+        await cancelAlarm(alarm.notificationIds);
+        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notificationIds: [] } : a));
+        await toggleAlarm(alarm.id, enabled, []);
       }
-      await toggleAlarm(alarm.id, enabled);
     },
     [scheduleAlarm, cancelAlarm, toggleAlarm]
   );
@@ -250,20 +254,42 @@ export default function GoalScreen() {
     setIsSaving(true);
     try {
       await saveGoalAndAlarms(days, chaptersPerDay, selectedBook, alarms);
+
+      const bookCode = selectedBook ?? 'GEN';
+      const notificationEnabled = alarms.length > 0 && alarms.some(a => a.enabled);
+      const firstAlarm = alarms.find(a => a.enabled) ?? alarms[0];
+      const notificationDays = firstAlarm?.days.map(d => DAY_MAP[d]) ?? [];
+      const notificationTime = firstAlarm
+        ? `${String(firstAlarm.hour).padStart(2, '0')}:${String(firstAlarm.minute).padStart(2, '0')}`
+        : '08:00';
+
+      const payload = { bookCode, daysPerWeek: days, chaptersPerDay, notificationEnabled, notificationDays, notificationTime };
+
+      if (existingGoal?.id) {
+        await updateGoal(existingGoal.id, payload);
+      } else {
+        await createGoal(payload);
+      }
+
       router.replace('/plan/goal-success');
     } catch (e) {
       console.warn('[GoalScreen] 저장 실패', e);
       Alert.alert('오류', '목표 저장에 실패했습니다.');
       setIsSaving(false);
     }
-  }, [days, chaptersPerDay, selectedBook, alarms, saveGoalAndAlarms, isSaving]);
+  }, [days, chaptersPerDay, selectedBook, alarms, saveGoalAndAlarms, existingGoal, createGoal, updateGoal, isSaving]);
 
   // ── 스와이프 우측 삭제 버튼 ──────────────────────────────────────
   const renderRightActions = useCallback(
     (_: unknown, __: unknown, alarm: AlarmItem) => (
-      <TouchableOpacity style={s.swipeDel} onPress={() => handleDeleteAlarm(alarm)} activeOpacity={0.8}>
-        <Text style={s.swipeDelTxt}>삭제</Text>
-      </TouchableOpacity>
+      <View style={{ paddingLeft: 8, height: '100%' }}>
+        <TouchableOpacity style={s.swipeDel} onPress={() => { 
+          handleDeleteAlarm(alarm); 
+          Alert.alert('', '1개의 알람을 삭제했어요');
+        }} activeOpacity={0.8}>
+          <Text style={s.swipeDelTxt}>삭제</Text>
+        </TouchableOpacity>
+      </View>
     ),
     [handleDeleteAlarm]
   );
@@ -330,9 +356,7 @@ export default function GoalScreen() {
           </View>
 
           {/* 알림 목록 */}
-          {alarms.length === 0 ? (
-            <Text style={s.emptyAlarm}>설정된 알림이 없어요</Text>
-          ) : (
+          {alarms.length > 0 && (
             <View style={s.alarmList}>
               {alarms.map(alarm => {
                 const isSelected = selectedAlarmIds.includes(alarm.id);
@@ -360,13 +384,10 @@ export default function GoalScreen() {
                                 prev.includes(alarm.id) ? prev.filter(id => id !== alarm.id) : [...prev, alarm.id]
                               );
                             }}>
-                              {/* FIX 7: Manage Mode CheckCircle Bug. NEVER hide icon, only change state/color. */}
-                              <CheckCircleIcon 
-                                width={24} 
-                                height={24} 
-                                // Override the fill/tint dynamically based on state
-                                color={isSelected ? '#6554FF' : 'rgba(13,28,45,0.16)'}
-                                fill={isSelected ? '#6554FF' : undefined}
+                              <Ionicons 
+                                name="checkmark-circle" 
+                                size={24} 
+                                color={isSelected ? colors.primary : colors.border} 
                               />
                             </TouchableOpacity>
                           ) : (
@@ -391,6 +412,11 @@ export default function GoalScreen() {
               <PlusButtonIcon width={24} height={24} />
             </TouchableOpacity>
           </View>
+
+          {/* 빈 알림 표시 (추가하기 밑으로 이동) */}
+          {alarms.length === 0 && (
+            <Text style={s.emptyAlarm}>설정된 알림이 없어요</Text>
+          )}
         </View>
 
       </ScrollView>
@@ -413,16 +439,20 @@ export default function GoalScreen() {
             activeOpacity={0.85}
             onPress={async () => {
               if (selectedAlarmIds.length === 0) return;
+              const count = selectedAlarmIds.length;
               for (const id of selectedAlarmIds) {
                 const alarm = alarms.find(a => a.id === id);
                 if (alarm) await handleDeleteAlarm(alarm);
               }
               setIsManageMode(false);
               setSelectedAlarmIds([]);
+              Alert.alert('', `${count}개의 알람을 삭제했어요`);
             }}
             disabled={selectedAlarmIds.length === 0}
           >
-            <Text style={[s.ctaBtnText, s.ctaBtnTextConfirm]}>삭제하기</Text>
+            <Text style={[s.ctaBtnText, s.ctaBtnTextConfirm]}>
+              {selectedAlarmIds.length === 0 ? '삭제하기' : `${selectedAlarmIds.length}개 삭제하기`}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -523,15 +553,15 @@ const s = StyleSheet.create({
   alarmList: { gap: 16 },
   emptyAlarm: { fontSize: 14, color: 'rgba(13,28,45,0.5)', textAlign: 'center', paddingVertical: 16 },
   
-  alarmCardWrapper: { backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden' }, // 스와이프를 위해 border radius 래퍼
+  alarmCardWrapper: { borderRadius: 16 }, // 스와이프를 위해 border radius 래퍼
   alarmSwipeContainer: { borderRadius: 16 },
-  alarmRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#FFFFFF' },
+  alarmRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#FFFFFF', borderRadius: 16 },
   alarmInfo: { flex: 1, flexDirection: 'column' },
   alarmTime: { fontSize: 16, fontWeight: '600', color: 'rgba(13,28,45,0.8)', lineHeight: 25.6 },
   alarmDays: { fontSize: 12, fontWeight: '500', color: 'rgba(13,28,45,0.5)', lineHeight: 18, marginTop: 2 },
   alarmSwitchArea: { justifyContent: 'center', paddingLeft: 8 },
 
-  swipeDel: { backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', width: 74, height: '100%', borderTopRightRadius: 16, borderBottomRightRadius: 16 },
+  swipeDel: { backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', width: 74, height: '100%', borderRadius: 16 },
   swipeDelTxt: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
   addAlarmWrapper: { paddingTop: 8 },

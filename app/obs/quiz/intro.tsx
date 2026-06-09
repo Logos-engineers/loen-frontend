@@ -1,6 +1,7 @@
+import { startObsReview } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop, SvgXml } from 'react-native-svg';
 
@@ -13,7 +14,7 @@ import BigbookIcon from '@/assets/icons/Bigbook.svg';
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
 function getWeekOfMonth(dateString?: string) {
-  if (!dateString) return '7월 3째주';
+  if (!dateString) return '';
   const match = dateString.match(/(\d+)년\s+(\d+)월\s+(\d+)일/);
   if (!match) return dateString;
   const year = parseInt(match[1], 10);
@@ -25,11 +26,13 @@ function getWeekOfMonth(dateString?: string) {
 }
 
 export default function ReviewIntroScreen() {
-  const params = useLocalSearchParams<{ title?: string; verse?: string; date?: string }>();
-  
+  const params = useLocalSearchParams<{ contentId?: string; title?: string; verse?: string; date?: string }>();
+  const [isStarting, setIsStarting] = useState(false);
+
   const weekText = getWeekOfMonth(params.date);
-  const titleText = params.title || '시들어버린 박넝쿨의 역사';
-  const verseText = params.verse || '요나 4:1-11';
+  const titleText = params.title || 'OBS 제목 데이터가 없습니다';
+  const verseText = params.verse || '성경 범위 데이터가 없습니다';
+  const contentId = params.contentId ? Number(params.contentId) : null;
 
   return (
     <>
@@ -77,12 +80,20 @@ export default function ReviewIntroScreen() {
           >
             <Text style={styles.skipButtonText}>다음에 할래요</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.ctaButton} 
+          <TouchableOpacity
+            style={styles.ctaButton}
             activeOpacity={0.8}
-            onPress={() => router.push('/review/ox')}
+            disabled={isStarting}
+            onPress={async () => {
+              if (!contentId) { router.push('/obs/quiz/ox'); return; }
+              setIsStarting(true);
+              let reviewId = 0;
+              try { reviewId = await startObsReview(contentId); } catch { /* 409 or error — proceed without reviewId */ }
+              setIsStarting(false);
+              router.push({ pathname: '/obs/quiz/ox', params: { contentId: String(contentId), reviewId: String(reviewId) } });
+            }}
           >
-            <Text style={styles.ctaButtonText}>복습 시작하기</Text>
+            {isStarting ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaButtonText}>복습 시작하기</Text>}
           </TouchableOpacity>
         </View>
 

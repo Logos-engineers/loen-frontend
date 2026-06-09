@@ -1,16 +1,33 @@
-import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
+import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SvgXml } from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Rect, Stop, SvgXml } from 'react-native-svg';
 
-// Bigbook SVG (foreignObject 제거, RN svg transformer 호환 버전)
-const BOOK_SVG = `<svg width="160" height="133" viewBox="0 0 160 133" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M79.9922 124.02C86.8868 117.126 96.2388 113.249 105.991 113.249H151.263C156.081 113.249 159.99 109.34 159.99 104.522V8.72736C159.99 3.90894 156.081 0 151.263 0H105.991C96.2388 0 86.8868 3.87219 79.9922 10.7714" fill="white" fill-opacity="0.23"/>
-<path d="M80.0062 124.02C73.1116 117.126 63.7595 113.249 54.0079 113.249H8.73126C3.91284 113.249 0.00390625 109.34 0.00390625 104.522V8.72736C0.00390625 3.90894 3.91284 0 8.73126 0H54.0033C63.755 0 73.107 3.87219 80.0016 10.7714" fill="white"/>
-<path d="M80.0033 124.002L80.6455 123.38C87.4714 116.884 96.5434 113.246 105.99 113.246H151.263C156.081 113.246 159.99 109.337 159.99 104.519L160 113.252C160 118.07 156.091 121.979 151.272 121.979H114.728C106.06 121.98 97.7046 125.039 91.1133 130.564C89.5194 131.901 87.5719 132.751 85.4912 132.751H74.5088C72.4281 132.751 70.4806 131.901 68.8867 130.564C62.2954 125.043 53.9399 121.98 45.2725 121.979H8.72754C3.90912 121.979 0 118.07 0 113.252V104.519C0 109.337 3.90912 113.246 8.72754 113.246H54.0039C63.4508 113.246 73.1773 117.507 80.0033 124.002Z" fill="#6561FF"/>
+// Figma 책 일러스트 (node 7097:101785). backdrop-blur(foreignObject)만 제거한 실제 에셋.
+// 보라 그라데이션 backdrop + 오른쪽 페이지(흰 40%) + 왼쪽 페이지(흰) + 페이지 테두리(mask)
+const BOOK_SVG = `<svg width="180" height="137" viewBox="0 0 180 137" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M96.1769 136.8C98.5178 136.8 100.709 135.924 102.502 134.547C109.917 128.852 119.317 125.7 129.068 125.7H170.18C175.601 125.7 179.998 121.671 179.998 116.706V10.8047C179.998 5.28184 175.521 0.804688 169.998 0.804688H113.508L102.508 3.40039L90.0078 11.4004L66.5078 0.804688H10C4.47715 0.804688 0 5.28184 0 10.8047V116.706C0 121.671 4.39752 125.7 9.81819 125.7H50.9306C60.6816 125.7 70.0812 128.857 77.4965 134.547C79.2896 135.924 81.4807 136.8 83.8215 136.8H96.1769Z" fill="url(#paint0_linear_book)"/>
+<g>
+<mask id="path-2-inside-1_book" fill="white">
+<path d="M90 127.806C97.7564 120.701 108.277 116.706 119.248 116.706H170.178C175.599 116.706 179.997 112.678 179.997 107.712V8.99376C179.997 4.02826 175.599 0 170.178 0H119.248C108.277 0 97.7564 3.99039 90 11.1002"/>
+</mask>
+<path d="M90 127.806C97.7564 120.701 108.277 116.706 119.248 116.706H170.178C175.599 116.706 179.997 112.678 179.997 107.712V8.99376C179.997 4.02826 175.599 0 170.178 0H119.248C108.277 0 97.7564 3.99039 90 11.1002" fill="white" fill-opacity="0.4"/>
+<path d="M89.6623 127.437L89.2936 127.775L89.969 128.513L90.3377 128.175L90 127.806L89.6623 127.437ZM89.6621 10.7316L89.2936 11.0695L89.9693 11.8066L90.3379 11.4688L90 11.1002L89.6621 10.7316ZM90 127.806L90.3377 128.175C97.9977 121.158 108.397 117.206 119.248 117.206V116.706V116.206C108.158 116.206 97.515 120.244 89.6623 127.437L90 127.806ZM119.248 116.706V117.206H170.178V116.706V116.206H119.248V116.706ZM170.178 116.706V117.206C175.833 117.206 180.497 112.994 180.497 107.712H179.997H179.497C179.497 112.361 175.365 116.206 170.178 116.206V116.706ZM179.997 107.712H180.497V8.99376H179.997H179.497V107.712H179.997ZM179.997 8.99376H180.497C180.497 3.71174 175.833 -0.5 170.178 -0.5V0V0.5C175.365 0.5 179.497 4.34477 179.497 8.99376H179.997ZM170.178 0V-0.5H119.248V0V0.5H170.178V0ZM119.248 0V-0.5C108.158 -0.5 97.5151 3.53331 89.6621 10.7316L90 11.1002L90.3379 11.4688C97.9977 4.44746 108.396 0.5 119.248 0.5V0Z" fill="white" mask="url(#path-2-inside-1_book)"/>
+</g>
+<mask id="path-4-inside-2_book" fill="white">
+<path d="M90.0018 127.806C82.2454 120.701 71.7245 116.706 60.7539 116.706H9.81819C4.39752 116.706 0 112.678 0 107.712V8.99376C0 4.02826 4.39752 0 9.81819 0H60.7488C71.7193 0 82.2403 3.99039 89.9966 11.1002"/>
+</mask>
+<path d="M90.0018 127.806C82.2454 120.701 71.7245 116.706 60.7539 116.706H9.81819C4.39752 116.706 0 112.678 0 107.712V8.99376C0 4.02826 4.39752 0 9.81819 0H60.7488C71.7193 0 82.2403 3.99039 89.9966 11.1002" fill="white"/>
+<path d="M90.0018 127.806L90.3395 127.437C82.4868 120.244 71.8437 116.206 60.7539 116.206V116.706V117.206C71.6052 117.206 82.0041 121.158 89.6641 128.175L90.0018 127.806ZM60.7539 116.706V116.206H9.81819V116.706V117.206H60.7539V116.706ZM9.81819 116.706V116.206C4.63147 116.206 0.5 112.361 0.5 107.712H0H-0.5C-0.5 112.994 4.16356 117.206 9.81819 117.206V116.706ZM0 107.712H0.5V8.99376H0H-0.5V107.712H0ZM0 8.99376H0.5C0.5 4.34477 4.63147 0.5 9.81819 0.5V0V-0.5C4.16356 -0.5 -0.5 3.71174 -0.5 8.99376H0ZM9.81819 0V0.5H60.7488V0V-0.5H9.81819V0ZM60.7488 0V0.5C71.6002 0.5 81.999 4.44746 89.6588 11.4688L89.9966 11.1002L90.3345 10.7316C82.4816 3.53331 71.8384 -0.5 60.7488 -0.5V0Z" fill="white" mask="url(#path-4-inside-2_book)"/>
+<defs>
+<linearGradient id="paint0_linear_book" x1="177.415" y1="0.804689" x2="2.58327" y2="136.8" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6561FF" stop-opacity="0"/>
+<stop offset="0.714437" stop-color="#6561FF"/>
+</linearGradient>
+</defs>
 </svg>`;
 
 // 현재 날짜 포맷: "YYYY년 M월 D일"
@@ -22,46 +39,63 @@ function getKoreanDate(): string {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CompleteScreen() {
-  const router = useRouter();
   const { noteType } = useLocalSearchParams<{ noteType?: string }>();
   const noteLabel = noteType === 'PRAYER' ? '기도노트' : noteType === 'WORD' ? '말씀노트' : '감사노트';
   const today = getKoreanDate();
+  // 컨테이너 실측 크기 + 책 중심 측정 → 그라데이션을 책 중심에 정확히 정렬 (좌표 압축 방지, 반응형)
+  const [{ w, h }, setLayout] = useState({ w: 0, h: 0 });
+  const [bookCenterY, setBookCenterY] = useState<number | null>(null);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
 
-      {/* 상단 여백 */}
-      <View style={styles.spacer} />
+      <View
+        style={styles.container}
+        onLayout={(e) =>
+          setLayout({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })
+        }
+      >
+        {/* 라디얼 그라데이션 — 컨테이너와 동일 좌표계, 중심을 책 중심(bookCenterY)에 정렬 */}
+        {h > 0 && (
+          <Svg width={w} height={h} style={styles.gradientLayer} pointerEvents="none">
+            <Defs>
+              <RadialGradient
+                id="bgGrad"
+                cx={w / 2}
+                cy={bookCenterY ?? h * 0.48}
+                r={h * 0.5}
+                gradientUnits="userSpaceOnUse"
+              >
+                <Stop offset="0" stopColor="#E0DFFF" />
+                <Stop offset="1" stopColor="#F2F4F7" />
+              </RadialGradient>
+            </Defs>
+            <Rect x={0} y={0} width={w} height={h} fill="url(#bgGrad)" />
+          </Svg>
+        )}
 
-      {/* ── 중앙: 날짜 + 일러스트 + 텍스트 */}
-      <View style={styles.centerContent}>
-        {/* Figma: 날짜 표시 */}
-        <Text style={styles.date}>{today}</Text>
-
-        {/* Figma: 책 일러스트 */}
-        <View style={styles.bookWrapper}>
-          <SvgXml xml={BOOK_SVG} width={140} height={116} />
+        {/* 위 영역 — Figma 비율(340). 타이틀을 상단에 배치 */}
+        <View style={styles.aboveRegion}>
+          <View style={styles.titleSection}>
+            <Text style={styles.date}>{today}</Text>
+            <Text style={styles.title}>{noteLabel} 작성 완료</Text>
+          </View>
         </View>
 
-        {/* Figma: 타이틀 */}
-        <View style={styles.textGroup}>
-          <Text style={styles.noteType}>신앙노트 작성 완료</Text>
-          <Text style={styles.title}>{noteLabel} 작성 완료</Text>
-        </View>
-      </View>
-
-      <View style={styles.spacer} />
-
-      {/* ── 하단 버튼 */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
+        {/* 책 일러스트 — 위:아래 = 340:375 → 화면 세로 ~48%(중앙)에 위치 */}
+        <View
+          style={styles.bookWrap}
+          onLayout={(e) => {
+            const { y, height } = e.nativeEvent.layout;
+            setBookCenterY(y + height / 2);
+          }}
         >
-          <Text style={styles.ctaText}>공유 게시글 보기</Text>
-        </TouchableOpacity>
+          <SvgXml xml={BOOK_SVG} width={180} height={137} />
+        </View>
+
+        {/* 아래 영역 — Figma 비율(375) */}
+        <View style={styles.belowRegion} />
       </View>
     </SafeAreaView>
   );
@@ -72,60 +106,38 @@ export default function CompleteScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background.elevated,
+    backgroundColor: colors.background.base,
   },
-  spacer: { flex: 1 },
+  container: { flex: 1 },
+  // 그라데이션 레이어 — 컨테이너 전체를 덮음 (width/height는 실측값으로 지정)
+  gradientLayer: { position: 'absolute', top: 0, left: 0 },
 
-  // ── 중앙 콘텐츠
-  centerContent: {
+  // Figma 비율: 책 위 340 : 아래 375 → 책이 화면 세로 ~48%에 위치 (반응형)
+  aboveRegion: {
+    flex: 340,
+    paddingTop: 62, // Figma: 빈 네비게이션(46) + 타이틀 섹션 상단 패딩(16)
     alignItems: 'center',
-    gap: spacing.xl,
-    paddingHorizontal: spacing.xl,
   },
-  date: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
-  },
-  textGroup: {
+  belowRegion: { flex: 375 },
+  titleSection: {
     alignItems: 'center',
     gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
   },
-  bookWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
+  bookWrap: { alignItems: 'center' },
+  date: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+    textAlign: 'center',
   },
-  noteType: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
-  },
+  // Figma: Screen Title 32_B
   title: {
-    fontSize: fontSize.lg,
+    fontSize: 32,
+    lineHeight: 48,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
     textAlign: 'center',
   },
 
-  // ── 하단 버튼
-  footer: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  // Figma: primary bg, 52px height, radius:16, full width
-  ctaButton: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: '#FFFFFF',
-  },
 });

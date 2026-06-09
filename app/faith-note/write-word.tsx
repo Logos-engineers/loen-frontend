@@ -2,15 +2,16 @@ import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/token
 import {
   BiblePassage,
   clearPendingPassages,
-  faithNoteStore,
   getPendingPassages,
-  getTodayKey,
 } from '@/utils/faith-note-store';
+import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,9 +24,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const DARK_BG = '#0D1C2D';
-const CARD_BG = 'rgba(255,255,255,0.08)';
-const CARD_BG_FILLED = 'rgba(255,255,255,0.14)';
+// ─── 색상 상수 (Figma: 라이트 테마) ──────────────────────────────────────────────
+const SCREEN_BG = '#F2F4F7';
+const INPUT_BG = 'rgba(13,28,45,0.08)';
+const PLACEHOLDER_COLOR = 'rgba(13,28,45,0.3)';
+const SUBMIT_DISABLED_BG = 'rgba(101,97,255,0.4)'; // primary 40% 불투명
 
 // ─── 선택된 구절 표시 문자열 ───────────────────────────────────────────────────
 
@@ -79,6 +82,8 @@ const ms = StyleSheet.create({
 
 export default function WriteWordScreen() {
   const router = useRouter();
+  const { noteId } = useLocalSearchParams<{ noteId?: string }>();
+  const isEdit = !!noteId;
   const [passages, setPassages] = useState<BiblePassage[]>([]);
   const [bodyText, setBodyText] = useState('');
   const [isBodyFocused, setIsBodyFocused] = useState(false);
@@ -92,6 +97,25 @@ export default function WriteWordScreen() {
       if (pending.length > 0) setPassages(pending);
     }, []),
   );
+
+  // 편집 모드: 기존 노트 불러와 prefill (구절 + 묵상 내용)
+  useEffect(() => {
+    if (!noteId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const detail = await apiClient<{ bibleName: string; chapter: number; description: string }>(
+          `/bible/notes/${noteId}`,
+        );
+        if (cancelled) return;
+        if (detail.bibleName) setPassages([{ book: detail.bibleName, chapter: detail.chapter }]);
+        setBodyText(detail.description ?? '');
+      } catch (e) {
+        Alert.alert('오류', '노트를 불러오지 못했습니다.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [noteId]);
 
   const hasContent = passages.length > 0 || bodyText.trim().length > 0;
   const passageLabel = formatPassages(passages);
@@ -111,41 +135,65 @@ export default function WriteWordScreen() {
     router.push('/faith-note/select-bible');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!hasContent) return;
-    const content: string[] = [];
-    if (passageLabel) content.push(passageLabel);
-    if (bodyText.trim()) content.push(bodyText.trim());
-    faithNoteStore.addNote({
-      id: `word-${Date.now()}`,
-      tab: 'WORD',
-      dayKey: getTodayKey(),
-      author: { handle: 'me', name: '나', hasAvatar: false, initial: '나' },
-      timeAgo: '방금',
-      content,
-      likeCount: 0,
-      commentCount: 0,
-      isLiked: false,
-    });
-    clearPendingPassages();
-    router.replace('/faith-note/publish?noteType=WORD');
+    const firstPassage = passages[0];
+    const bookMeta = firstPassage
+      ? BIBLE_BOOKS.find(b => b.korName === firstPassage.book)
+      : null;
+    const payload = {
+      bibleName: firstPassage?.book ?? '',
+      bibleEnglishShort: bookMeta?.code ?? '',
+      chapter: firstPassage?.chapter ?? 1,
+      phaseStart: 1,
+      phaseEnd: 1,
+      title: passageLabel || (firstPassage?.book ?? ''),
+      description: bodyText.trim(),
+    };
+    try {
+      if (isEdit) {
+        await apiClient(`/bible/notes/${noteId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        clearPendingPassages();
+        router.back();
+        return;
+      }
+      await apiClient('/bible/notes', {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, isHidden: false, isOpenToOikos: false }),
+      });
+      clearPendingPassages();
+      router.replace('/faith-note/publish?noteType=WORD');
+    } catch (e) {
+      Alert.alert('오류', '노트 저장에 실패했습니다.');
+    }
   };
 
   return (
+    // Figma: 라이트 배경 (#F2F4F7)
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* 헤더 */}
       <View style={s.header}>
         <TouchableOpacity onPress={handleBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="chevron-back" size={24} color="rgba(255,255,255,0.8)" />
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={s.headerRight}>노트 작성하기</Text>
       </View>
 
-      <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
+      <KeyboardAvoidingView
+        style={s.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* 타이틀 */}
           <View style={s.titleSection}>
             <Text style={s.subtitle}>말씀노트 작성하기</Text>
@@ -159,14 +207,14 @@ export default function WriteWordScreen() {
               <Text style={[s.selectorText, !passageLabel && s.selectorPlaceholder]} numberOfLines={2}>
                 {passageLabel || '성경을 선택해주세요'}
               </Text>
-              <Ionicons name="chevron-down" size={18} color="rgba(255,255,255,0.5)" />
+              <Ionicons name="chevron-down" size={18} color="rgba(13,28,45,0.5)" />
             </TouchableOpacity>
           </View>
 
-          {/* 묵상 내용 입력 */}
-          <View style={s.section}>
-            <Text style={s.sectionLabel}>묵상내용 작성</Text>
-            <View style={[s.textAreaBox, isBodyFocused && s.textAreaBoxFocused]}>
+          {/* 묵상 내용 입력 — 남은 공간을 채움 */}
+          <View style={[s.section, s.bodySection]}>
+            <Text style={[s.sectionLabel, isBodyFocused && s.sectionLabelFocused]}>묵상 내용 작성</Text>
+            <View style={s.textAreaBox}>
               <TextInput
                 ref={bodyRef}
                 style={s.textArea}
@@ -175,25 +223,25 @@ export default function WriteWordScreen() {
                 onFocus={() => setIsBodyFocused(true)}
                 onBlur={() => setIsBodyFocused(false)}
                 placeholder="묵상 내용을 입력해주세요"
-                placeholderTextColor="rgba(255,255,255,0.3)"
+                placeholderTextColor={PLACEHOLDER_COLOR}
                 multiline
                 textAlignVertical="top"
               />
             </View>
           </View>
-
-          {/* 제출 버튼 */}
-          <View style={s.submitWrapper}>
-            <TouchableOpacity
-              style={[s.submitButton, hasContent && s.submitButtonActive]}
-              onPress={handleSubmit}
-              activeOpacity={hasContent ? 0.8 : 1}
-              disabled={!hasContent}
-            >
-              <Text style={[s.submitText, hasContent && s.submitTextActive]}>다음으로</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
+
+        {/* 하단 고정 버튼 */}
+        <View style={s.footer}>
+          <TouchableOpacity
+            style={[s.submitButton, hasContent && s.submitButtonActive]}
+            onPress={handleSubmit}
+            activeOpacity={hasContent ? 0.8 : 1}
+            disabled={!hasContent}
+          >
+            <Text style={s.submitText}>작성 완료하기</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
 
       <QuitModal visible={showQuitModal} onContinue={() => setShowQuitModal(false)} onQuit={handleQuit} />
@@ -204,29 +252,45 @@ export default function WriteWordScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: DARK_BG },
+  safe: { flex: 1, backgroundColor: SCREEN_BG },
   flex: { flex: 1 },
   header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md },
-  headerRight: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.primary },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  // flexGrow로 콘텐츠가 화면을 채워 묵상 입력칸이 늘어나도록
+  scrollContent: { flexGrow: 1, paddingBottom: spacing.md },
+
+  // 타이틀
   titleSection: { paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.xl, gap: 6 },
-  subtitle: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: 'rgba(255,255,255,0.5)' },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#FFFFFF', lineHeight: 28 },
+  subtitle: { fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.secondary },
+  title: { fontSize: fontSize.title, fontWeight: fontWeight.bold, color: colors.text.primary, lineHeight: 34 },
+
+  // 섹션
   section: { paddingHorizontal: spacing.md, marginBottom: spacing.md, gap: 8 },
-  sectionLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: 'rgba(255,255,255,0.5)', paddingLeft: 4 },
+  bodySection: { flex: 1 },
+  sectionLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.secondary, paddingLeft: 4 },
+  sectionLabelFocused: { color: colors.primary },
+
   // 성경 선택 드롭다운
-  selector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: CARD_BG, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 14, borderWidth: 1, borderColor: 'transparent', gap: spacing.sm },
-  selectorText: { flex: 1, fontSize: fontSize.md, color: '#FFFFFF' },
-  selectorPlaceholder: { color: 'rgba(255,255,255,0.3)' },
-  // 묵상 텍스트 영역
-  textAreaBox: { backgroundColor: CARD_BG, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: 'transparent', minHeight: 200 },
-  textAreaBoxFocused: { borderColor: colors.primary, backgroundColor: CARD_BG_FILLED },
-  textArea: { fontSize: fontSize.md, color: '#FFFFFF', lineHeight: 22, minHeight: 180 },
-  // 제출 버튼
-  submitWrapper: { paddingHorizontal: spacing.md, paddingTop: spacing.lg },
-  submitButton: { height: 52, borderRadius: radius.lg, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  selector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: INPUT_BG,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    gap: spacing.sm,
+  },
+  selectorText: { flex: 1, fontSize: fontSize.base, color: colors.text.primary },
+  selectorPlaceholder: { color: PLACEHOLDER_COLOR },
+
+  // 묵상 텍스트 영역 — 남은 공간 채움
+  textAreaBox: { flex: 1, backgroundColor: INPUT_BG, borderRadius: radius.md, padding: spacing.md, minHeight: 200 },
+  textArea: { flex: 1, fontSize: fontSize.base, color: colors.text.primary, lineHeight: 24 },
+
+  // 하단 고정 버튼
+  footer: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  submitButton: { height: 49, borderRadius: radius.md, backgroundColor: SUBMIT_DISABLED_BG, alignItems: 'center', justifyContent: 'center' },
   submitButtonActive: { backgroundColor: colors.primary },
-  submitText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: 'rgba(255,255,255,0.4)' },
-  submitTextActive: { color: '#FFFFFF' },
+  submitText: { fontSize: fontSize.heading, fontWeight: fontWeight.semibold, color: colors.white },
 });

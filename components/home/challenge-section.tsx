@@ -3,54 +3,66 @@ import { Card } from '@/components/ui/card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useChallenge } from '@/hooks/useChallenge';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const CHALLENGE_DATA = {
-  tag: '성경 챌린지',
-  title: '박채연의 성경 챌린지 1',
-  detail: '요한복음, 시편 · 총 173장',
-  dueDate: '~7/31',
-};
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function ChallengeSection() {
   const router = useRouter();
+  const { challenges, isLoading, error } = useChallenge();
+  const challenge = challenges[0];
 
   return (
     <View>
-      <SectionHeader title="챌린지" />
+      <SectionHeader title="챌린지" showArrow onPress={() => router.push('/challenge')} />
 
       <View style={styles.wrapper}>
         <Card style={styles.card}>
-          <View style={styles.tagRow}>
-            <View style={styles.chip}>
-              <Text style={styles.chipText}>{CHALLENGE_DATA.tag}</Text>
+          {isLoading ? (
+            <View style={styles.stateBox}>
+              <ActivityIndicator color={colors.primary} />
             </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => Alert.alert('챌린지 상세')}
-            activeOpacity={0.7}
-          >
-            {/* Figma: book.svg 32×32 (SVG transformer) */}
-            <BookIcon width={32} height={32} />
-
-            <View style={styles.textCol}>
-              <Text style={styles.title} numberOfLines={1}>{CHALLENGE_DATA.title}</Text>
-              <Text style={styles.detail} numberOfLines={1}>{CHALLENGE_DATA.detail}</Text>
+          ) : error ? (
+            <View style={styles.stateBox}>
+              <Text style={styles.emptyText}>챌린지를 불러오지 못했습니다</Text>
             </View>
-
-            {/* Figma: 날짜 배지(흰색 배경) + chevron-right */}
-            <View style={styles.dateBadgeRow}>
-              <View style={styles.dateBadge}>
-                <Text style={styles.dateBadgeText}>{CHALLENGE_DATA.dueDate}</Text>
+          ) : challenge ? (
+            <>
+              <View style={styles.tagRow}>
+                <View style={styles.chip}>
+                  <Text style={styles.chipText}>{challenge.type === 'BIBLE' ? '성경 챌린지' : '신앙 챌린지'}</Text>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => router.push('/challenge')}
+                activeOpacity={0.7}
+              >
+                <BookIcon width={32} height={32} />
+
+                <View style={styles.textCol}>
+                  <Text style={styles.title} numberOfLines={1}>{challenge.name}</Text>
+                  <Text style={styles.detail} numberOfLines={1}>
+                    {challenge.type === 'BIBLE' ? (challenge.bibleBooks?.join(', ') || '읽기 범위 정보 없음') : '챌린지 목표 정보 없음'}
+                  </Text>
+                </View>
+
+                <View style={styles.dateBadgeRow}>
+                  <View style={styles.dateBadge}>
+                    <Text style={styles.dateBadgeText}>{challenge.participantCount}명</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.stateBox}>
+              <Text style={styles.emptyText}>등록된 챌린지가 없습니다</Text>
             </View>
-          </TouchableOpacity>
+          )}
 
           <View style={styles.buttonWrapper}>
             <PrimaryButton
@@ -70,6 +82,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   card: { gap: 0, padding: 0, overflow: 'hidden' },
+  stateBox: {
+    minHeight: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+  },
+  emptyText: {
+    color: colors.text.secondary,
+    fontSize: fontSize.md,
+  },
   tagRow: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>라즈베리파이 공용 서버 구축 종합 계획</title>
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #60a5fa;
+      --success: #22c55e;
+      --warning: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    header { text-align: center; margin-bottom: 50px; }
+    h1 { font-size: 2.5rem; margin-bottom: 10px; color: var(--text); }
+    .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+
+    .section {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 1px solid #334155;
+    }
+    h2 { font-size: 1.5rem; margin-bottom: 20px; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+    h2::before { content: '•'; color: var(--primary); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .item-card {
+      background: #0f172a;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+    }
+    .item-card h3 { font-size: 1.1rem; margin-bottom: 10px; color: var(--success); }
+    .item-card p { font-size: 0.95rem; color: var(--text-muted); }
+
+    ul { list-style: none; }
+    li { margin-bottom: 12px; padding-left: 20px; position: relative; }
+    li::before { content: '→'; position: absolute; left: 0; color: var(--primary); }
+
+    .note {
+      background: rgba(59, 130, 246, 0.1);
+      border-left: 4px solid var(--primary);
+      padding: 15px 20px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .warning-note {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 4px solid var(--warning);
+      padding: 15px 20px;
+      border-radius: 4px;
+      margin-top: 20px;
+      color: #fbbf24;
+    }
+
+    code {
+      background: #000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #ec4899;
+    }
+
+    footer { text-align: center; margin-top: 60px; color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>🍓 팀 공용 서버 인프라 구축 계획</h1>
+    <p class="subtitle">라즈베리파이 + SSD + Tailscale 기반 협업 환경 최적화</p>
+  </header>
+
+  <!-- 1. 하드웨어 전략 -->
+  <div class="section">
+    <h2>1. 하드웨어 전략: USB 3.0 SSD 활용</h2>
+    <p>기존 SD 카드의 물리적 한계를 극복하기 위해 USB 3.0 SSD(UDB)를 메인 저장소로 사용합니다.</p>
+    <div class="grid" style="margin-top:20px;">
+      <div class="item-card">
+        <h3>데이터 안정성</h3>
+        <p>DB의 빈번한 쓰기 작업으로부터 저장 장치 마모 및 데이터 손실 방지.</p>
+      </div>
+      <div class="item-card">
+        <h3>성능 극대화</h3>
+        <p>SD 카드 대비 압도적인 I/O 속도로 API 응답 및 쿼리 처리 속도 향상.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 인프라 구성 -->
+  <div class="section">
+    <h2>2. 핵심 인프라 구성 요소</h2>
+    <ul>
+      <li><strong>Database:</strong> PostgreSQL 16 (on Raspberry Pi) - 팀 통합 데이터 저장소.</li>
+      <li><strong>Network:</strong> Tailscale VPN - 별도 포트포워딩 없이 <code>100.x.x.x</code> IP로 안전하게 원격 접속.</li>
+      <li><strong>API Engine:</strong> Spring Boot (Java 21) - 실시간 팀 공용 API 제공.</li>
+      <li><strong>Documentation:</strong> Swagger UI - <code>/swagger-ui/index.html</code>을 통한 API 명세 상시 공유.</li>
+    </ul>
+  </div>
+
+  <!-- 3. 협업 및 보안 전략 -->
+  <div class="section">
+    <h2>3. API Key 및 비밀값 관리 전략</h2>
+    <p>보안과 협업 효율의 균형을 위해 관리 채널을 이원화합니다.</p>
+    <div class="grid" style="margin-top:20px;">
+      <div class="item-card">
+        <h3>Notion (협업/공유)</h3>
+        <p>팀원 개발용 <code>.env</code> 가이드라인 보관. 접근 권한 관리 및 2FA 설정을 통해 보안 유지.</p>
+      </div>
+      <div class="item-card">
+        <h3>Server-Side .env</h3>
+        <p>실제 서버 구동에 필요한 핵심 Secret은 라즈베리파이 내부에만 보관하여 외부 유출 원천 차단.</p>
+      </div>
+    </div>
+    <div class="warning-note">
+      <strong>⚠️ 보안 주의사항:</strong> 노션 페이지는 절대 '웹에 게시'하지 않으며, 팀원 계정은 반드시 2단계 인증(2FA)을 활성화합니다.
+    </div>
+  </div>
+
+  <!-- 4. 향후 구현 로드맵 -->
+  <div class="section">
+    <h2>4. 향후 구현 로드맵 (Next Steps)</h2>
+    <ol style="margin-left: 20px; color: var(--text-muted);">
+      <li style="margin-bottom:15px;">
+        <strong style="color:var(--text);">[Phase 1] DB 환경 세팅:</strong> 
+        라즈베리파이 OS SSD 마이그레이션 및 PostgreSQL 설치/권한 설정.
+      </li>
+      <li style="margin-bottom:15px;">
+        <strong style="color:var(--text);">[Phase 2] VPN 연결:</strong> 
+        팀원들을 Tailscale Tailnet에 합류시키고 접속 테스트 수행.
+      </li>
+      <li style="margin-bottom:15px;">
+        <strong style="color:var(--text);">[Phase 3] API 배포 및 문서화:</strong> 
+        Spring Boot 서버 구동 및 Swagger UI 접근 확인.
+      </li>
+      <li style="margin-bottom:15px;">
+        <strong style="color:var(--text);">[Phase 4] 백업 자동화:</strong> 
+        Cloudflare R2를 활용한 일일 DB 백업 자동 스크립트 등록.
+      </li>
+    </ol>
+  </div>
+
+  <footer>
+    <p>© 2026 LOEN Project Infrastructure Team</p>
+    <p>Last Updated: Friday, May 15, 2026</p>
+  </footer>
+</div>
+
+</body>
+</html>

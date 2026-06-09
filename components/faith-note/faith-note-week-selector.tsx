@@ -1,5 +1,5 @@
-import CheckIcon from '@/assets/icons/check.svg';
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -15,25 +15,27 @@ const DAYS: { key: string; label: string }[] = [
 ];
 
 interface FaithNoteWeekSelectorProps {
-  /** 선택된 날 배열 — 다중 선택, 빈 배열이면 아무것도 선택 안됨 */
   selectedDates: string[];
-  /** 오늘 날짜 키 — 하단 점(dot) 인디케이터 표시용 */
+  /** 이번 주 내가 노트를 작성한 요일 키 — 동그라미에 체크 표시 */
+  writtenDays?: string[];
   todayKey: string;
-  /** 날짜 토글 핸들러 */
   onToggleDate: (key: string) => void;
 }
 
 export function FaithNoteWeekSelector({
   selectedDates,
+  writtenDays = [],
   todayKey,
   onToggleDate,
 }: FaithNoteWeekSelectorProps) {
   return (
-    // Figma: bg:#FFFFFF, px:16, py:12, flex-row, justify:space-between
     <View style={styles.container}>
       {DAYS.map((day) => {
         const isSelected = selectedDates.includes(day.key);
         const isToday = day.key === todayKey;
+        const isWritten = writtenDays.includes(day.key);
+        // 오늘 또는 필터 선택된 날 → 어두운 pill + 흰 라벨
+        const isHighlighted = isSelected || isToday;
 
         return (
           <TouchableOpacity
@@ -42,31 +44,22 @@ export function FaithNoteWeekSelector({
             onPress={() => onToggleDate(day.key)}
             activeOpacity={0.7}
           >
-            {/* Figma: 36×36 원형 버블 */}
-            <View
-              style={[
-                styles.bubble,
-                isSelected && styles.bubbleSelected,
-              ]}
-            >
-              {isSelected ? (
-                // 선택된 날: primary 배경 + 체크 아이콘
-                <CheckIcon width={16} height={16} />
-              ) : (
-                // 미선택: 요일 텍스트
-                <Text
-                  style={[
-                    styles.dayLabel,
-                    isToday && styles.dayLabelToday,
-                  ]}
-                >
-                  {day.label}
-                </Text>
-              )}
+            <View style={[styles.dayPill, isHighlighted && styles.dayPillActive]}>
+              <Text style={[styles.dayLabel, isHighlighted && styles.dayLabelActive]}>
+                {day.label}
+              </Text>
+              <View
+                style={[
+                  styles.circle,
+                  isHighlighted && styles.circleActive,
+                  isWritten && styles.circleWritten,
+                ]}
+              >
+                {isWritten ? (
+                  <Ionicons name="checkmark" size={20} color={colors.white} />
+                ) : null}
+              </View>
             </View>
-
-            {/* 오늘 날짜 인디케이터 — 선택 여부와 무관 */}
-            {isToday && <View style={styles.todayDot} />}
           </TouchableOpacity>
         );
       })}
@@ -75,52 +68,48 @@ export function FaithNoteWeekSelector({
 }
 
 const styles = StyleSheet.create({
-  // Figma: bg:#FFFFFF, px:16, py:12, flex-row, justify:space-between
   container: {
-    backgroundColor: colors.background.elevated,
+    backgroundColor: colors.background.base,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   dayWrapper: {
-    alignItems: 'center',
     flex: 1,
-    gap: 3,
-  },
-
-  // Figma: 36×36 원형
-  bubble: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.border,     // 기본 — 회색
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  // Figma: 선택됨 — primary(#6561FF) 배경
-  bubbleSelected: {
-    backgroundColor: colors.primary,
+  dayPill: {
+    padding: 4,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    gap: 4,
   },
-
+  dayPillActive: {
+    backgroundColor: colors.text.primary,
+  },
   dayLabel: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
-    color: colors.text.secondary,
+    color: colors.text.primary,
   },
-  // 오늘 날짜 라벨 — primary 색상 강조 (미선택 상태에서만 표시)
-  dayLabelToday: {
-    color: colors.primary,
-    fontWeight: fontWeight.semibold,
+  dayLabelActive: {
+    color: colors.white,
   },
-
-  // 오늘 날짜 하단 점 인디케이터
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 1,
+  circle: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(13,28,45,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleActive: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  // 작성한 날 — 파란 원 + 흰 체크 (Figma today/y, trans/blue/a1)
+  circleWritten: {
+    backgroundColor: '#4568FF',
   },
 });

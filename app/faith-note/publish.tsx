@@ -1,3 +1,8 @@
+import CheckCircleOff from '@/assets/icons/CheckCircle.svg';
+import CheckCircleOn from '@/assets/icons/check-circle-on.svg';
+import IconAll from '@/assets/icons/icon-public-all.svg';
+import IconLink from '@/assets/icons/icon-public-link.svg';
+import IconOikos from '@/assets/icons/icon-public-oikos.svg';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,17 +21,32 @@ function getNoteLabel(noteType: string | undefined) {
 
 // ─── 공개 옵션 ────────────────────────────────────────────────────────────────
 
-type PublishOption = 'ALL' | 'GROUP' | 'PRIVATE';
+type PublishOption = 'ALL' | 'OIKOS' | 'LINK';
 
 const PUBLISH_OPTIONS: {
   key: PublishOption;
-  icon: 'earth-outline' | 'people-outline' | 'lock-closed-outline';
+  Icon: React.ComponentType<{ width: number; height: number }>;
   label: string;
   description: string;
 }[] = [
-  { key: 'ALL', icon: 'earth-outline', label: '전체 공개', description: '모든 그룹원이 볼 수 있어요' },
-  { key: 'GROUP', icon: 'people-outline', label: '그룹만 공개', description: '나의 그룹원만 볼 수 있어요' },
-  { key: 'PRIVATE', icon: 'lock-closed-outline', label: '비공개', description: '나만 볼 수 있어요' },
+  {
+    key: 'ALL',
+    Icon: IconAll,
+    label: '전체 공개',
+    description: '로고스 청년 모두에게 공개되며, 누구나 볼 수 있어요',
+  },
+  {
+    key: 'OIKOS',
+    Icon: IconOikos,
+    label: '오이코스 공개',
+    description: '오이코스원에게만 공개되며, 오이코스원만 볼 수 있어요',
+  },
+  {
+    key: 'LINK',
+    Icon: IconLink,
+    label: '링크로 공개',
+    description: '챌린지 생성 완료 후 공유한 링크를 전달받은 사람만 볼 수 있어요',
+  },
 ];
 
 // ─── 공통 확인 모달 ───────────────────────────────────────────────────────────
@@ -51,7 +71,7 @@ function ConfirmModal({ visible, title, desc, cancelLabel, confirmLabel, onCance
           <Text style={ms.desc}>{desc}</Text>
           <View style={ms.row}>
             <TouchableOpacity style={[ms.btn, ms.btnCancel]} onPress={onCancel} activeOpacity={0.7}>
-              <Text style={[ms.btnText, { color: colors.text.primary }]}>{cancelLabel}</Text>
+              <Text style={[ms.btnText, { color: colors.primary }]}>{cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[ms.btn, confirmDanger ? ms.btnDanger : ms.btnConfirm]} onPress={onConfirm} activeOpacity={0.7}>
               <Text style={[ms.btnText, { color: '#fff' }]}>{confirmLabel}</Text>
@@ -64,16 +84,26 @@ function ConfirmModal({ visible, title, desc, cancelLabel, confirmLabel, onCance
 }
 
 const ms = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: colors.overlay.default, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
-  card: { width: '100%', backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.sm },
-  title: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, textAlign: 'center' },
-  desc: { fontSize: fontSize.sm, color: colors.text.secondary, textAlign: 'center', lineHeight: 20, marginBottom: spacing.sm },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  btn: { flex: 1, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  btnCancel: { backgroundColor: colors.border },
+  overlay: { flex: 1, backgroundColor: colors.overlay.heavy, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md },
+  card: {
+    width: '100%',
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  // Figma: Title1_20_B, 좌측 정렬
+  title: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, textAlign: 'left' },
+  // Figma: Title3_16_SB, 회색, 좌측 정렬
+  desc: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.secondary, textAlign: 'left', lineHeight: 26 },
+  row: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  btn: { flex: 1, paddingVertical: 12, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  btnCancel: { backgroundColor: colors.primaryLight },
   btnConfirm: { backgroundColor: colors.primary },
   btnDanger: { backgroundColor: colors.reaction.red },
-  btnText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  btnText: { fontSize: fontSize.heading, fontWeight: fontWeight.semibold },
 });
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -101,7 +131,6 @@ export default function PublishScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={s.headerRight}>노트 작성하기</Text>
       </View>
 
       {/* 콘텐츠 */}
@@ -111,18 +140,23 @@ export default function PublishScreen() {
         <View style={s.optionList}>
           {PUBLISH_OPTIONS.map((opt) => {
             const isSel = selected === opt.key;
+            const Icon = opt.Icon;
+            const Check = isSel ? CheckCircleOn : CheckCircleOff;
             return (
-              <TouchableOpacity key={opt.key} style={[s.optionRow, isSel && s.optionRowSelected]} onPress={() => setSelected(opt.key)} activeOpacity={0.7}>
-                <View style={[s.iconBox, isSel && s.iconBoxSelected]}>
-                  <Ionicons name={opt.icon} size={20} color={isSel ? colors.primary : colors.text.secondary} />
+              <TouchableOpacity
+                key={opt.key}
+                style={s.card}
+                onPress={() => setSelected(opt.key)}
+                activeOpacity={0.7}
+              >
+                <Icon width={32} height={32} />
+                <View style={s.cardText}>
+                  <Text style={s.cardTitle}>{opt.label}</Text>
+                  <Text style={s.cardDesc} numberOfLines={1}>
+                    {opt.description}
+                  </Text>
                 </View>
-                <View style={s.textCol}>
-                  <Text style={[s.optLabel, isSel && s.optLabelSelected]}>{opt.label}</Text>
-                  <Text style={s.optDesc}>{opt.description}</Text>
-                </View>
-                <View style={[s.radio, isSel && s.radioSelected]}>
-                  {isSel && <View style={s.radioDot} />}
-                </View>
+                <Check width={24} height={24} />
               </TouchableOpacity>
             );
           })}
@@ -131,11 +165,11 @@ export default function PublishScreen() {
 
       {/* 하단 버튼 */}
       <View style={s.footer}>
-        <TouchableOpacity style={[s.footerBtn, s.footerBtnCancel]} onPress={() => setShowQuitModal(true)} activeOpacity={0.7}>
-          <Text style={[s.footerBtnText, { color: colors.text.primary }]}>이전으로</Text>
+        <TouchableOpacity style={[s.footerBtn, s.footerBtnPrev]} onPress={() => setShowQuitModal(true)} activeOpacity={0.7}>
+          <Text style={[s.footerBtnText, s.footerBtnTextPrev]}>이전으로</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.footerBtn, s.footerBtnPublish]} onPress={() => setShowCompleteModal(true)} activeOpacity={0.8}>
-          <Text style={[s.footerBtnText, { color: '#fff' }]}>완료하기</Text>
+        <TouchableOpacity style={[s.footerBtn, s.footerBtnComplete]} onPress={() => setShowCompleteModal(true)} activeOpacity={0.8}>
+          <Text style={[s.footerBtnText, s.footerBtnTextComplete]}>완료하기</Text>
         </TouchableOpacity>
       </View>
 
@@ -143,7 +177,7 @@ export default function PublishScreen() {
       <ConfirmModal
         visible={showCompleteModal}
         title={`${noteLabel} 작성을 완료하시겠어요?`}
-        desc={`작성한 ${noteLabel} 피드에 게재됩니다.\n게시 후에도 수정하거나 나눌 수 있어요.`}
+        desc={`작성한 ${noteLabel}는 피드에 게시돼요.\n게시 후에도 수정하거나 삭제할 수 있어요.`}
         cancelLabel="다시 작성하기"
         confirmLabel="완료하기"
         onCancel={() => setShowCompleteModal(false)}
@@ -169,25 +203,56 @@ export default function PublishScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.base },
-  header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, backgroundColor: colors.background.elevated },
-  headerRight: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text.accent },
-  content: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.xl, gap: spacing.lg },
-  question: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
-  optionList: { gap: spacing.sm },
-  optionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background.elevated, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 14, gap: 12, borderWidth: 1.5, borderColor: 'transparent' },
-  optionRowSelected: { borderColor: colors.primary },
-  iconBox: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  iconBoxSelected: { backgroundColor: colors.primaryLight },
-  textCol: { flex: 1, gap: 2 },
-  optLabel: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  optLabelSelected: { color: colors.primary },
-  optDesc: { fontSize: fontSize.sm, color: colors.text.secondary },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  radioSelected: { borderColor: colors.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-  footer: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.md, paddingTop: spacing.sm },
-  footerBtn: { flex: 1, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
-  footerBtnCancel: { backgroundColor: colors.border },
-  footerBtnPublish: { backgroundColor: colors.primary },
-  footerBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  header: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+  },
+  content: { flex: 1, paddingHorizontal: spacing.md },
+  // Figma: Heading2_24_B
+  question: {
+    fontSize: fontSize.title,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    lineHeight: 34,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+
+  optionList: { gap: spacing.md, paddingTop: spacing.sm },
+  // Figma: 흰 카드, rounded 16, p16, 아이콘·텍스트·체크써클 가로 배치
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  cardText: { flex: 1, gap: 2 },
+  cardTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  cardDesc: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.secondary },
+
+  // Figma: CTA — 이전으로(primary 20%) + 완료하기(primary)
+  footer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: 14,
+  },
+  footerBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerBtnPrev: { backgroundColor: colors.primaryLight },
+  footerBtnComplete: { backgroundColor: colors.primary },
+  footerBtnText: { fontSize: fontSize.heading, fontWeight: fontWeight.semibold },
+  footerBtnTextPrev: { color: colors.primary },
+  footerBtnTextComplete: { color: colors.white },
 });

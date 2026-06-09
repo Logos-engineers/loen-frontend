@@ -1,10 +1,10 @@
 import ChevronLeftIcon from '@/assets/icons/back.svg';
 import SearchIcon from '@/assets/icons/search.svg';
-import WhiteXMarkIcon from '@/assets/icons/whiteX mark.svg';
-import { SearchResultItem, SearchResult } from '@/components/bible/SearchResultItem';
+import XMarkIcon from '@/assets/icons/X mark.svg';
+import { SearchResult, SearchResultItem } from '@/components/bible/SearchResultItem';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { getAllBooks } from '@/constants/bibleLoader';
-import { colors, spacing } from '@/constants/tokens';
+import { colors, radius, spacing, fontSize } from '@/constants/tokens';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +15,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -97,14 +100,29 @@ export default function BibleSearchScreen() {
   const [query, setQuery] = useState('');
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(HISTORY_KEY).then((raw) => {
       if (raw) setHistory(JSON.parse(raw) as SearchHistoryItem[]);
     });
+    
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
     const timer = setTimeout(() => inputRef.current?.focus(), 100);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
   }, []);
 
   const groupedResults = useMemo(() => groupResults(results), [results]);
@@ -162,6 +180,7 @@ export default function BibleSearchScreen() {
   const resetSearch = () => {
     setQuery('');
     setResults([]);
+    // X 버튼 누르면 검색어를 초기화하고, 키보드가 내려가지 않도록 focus 유지
     inputRef.current?.focus();
   };
 
@@ -178,7 +197,7 @@ export default function BibleSearchScreen() {
               hitSlop={8}
               style={styles.chipCloseButton}
             >
-              <WhiteXMarkIcon width={7} height={7} />
+              <XMarkIcon width={8} height={8} />
             </TouchableOpacity>
           </View>
         ))}
@@ -187,52 +206,53 @@ export default function BibleSearchScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.topArea}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-          <ChevronLeftIcon width={24} height={24} />
-        </TouchableOpacity>
+    <KeyboardAvoidingView
+      style={styles.keyboardAvoid}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.topArea}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+            <ChevronLeftIcon width={24} height={24} />
+          </TouchableOpacity>
 
-        <View style={styles.searchField}>
-          <SearchIcon width={20} height={20} />
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            value={query}
-            onChangeText={handleSearch}
-            onSubmitEditing={handleSubmit}
-            placeholder="검색어를 입력해주세요"
-            placeholderTextColor={colors.text.secondary}
-            returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {query.length > 0 ? (
-            <TouchableOpacity onPress={resetSearch} hitSlop={8} style={styles.clearButton}>
-              <WhiteXMarkIcon width={8} height={8} />
-            </TouchableOpacity>
-          ) : null}
+          <View style={styles.searchField}>
+            <SearchIcon width={20} height={20} />
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={query}
+              onChangeText={handleSearch}
+              onSubmitEditing={handleSubmit}
+              placeholder="검색어를 입력해주세요"
+              placeholderTextColor={colors.text.secondary}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {query.length > 0 ? (
+              <TouchableOpacity onPress={resetSearch} hitSlop={8} style={styles.clearButton}>
+                <XMarkIcon width={10} height={10} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {renderHistory()}
         </View>
-
-        {renderHistory()}
-      </View>
 
       <FlatList
         data={groupedResults}
         keyExtractor={(item) => item.bookCode}
         renderItem={({ item }) => (
-          <View style={styles.groupSection}>
-            <Text style={styles.groupTitle}>{item.bookName}</Text>
-            <View style={styles.groupCards}>
-              {item.items.map((result, index) => (
-                <SearchResultItem
-                  key={`${result.bookCode}-${result.chapterNum}-${result.verseNum}-${index}`}
-                  result={result}
-                  onPress={handleResultPress}
-                  showBookName={false}
-                />
-              ))}
-            </View>
+          <View style={styles.groupCards}>
+            {item.items.map((result, index) => (
+              <SearchResultItem
+                key={`${result.bookCode}-${result.chapterNum}-${result.verseNum}-${index}`}
+                result={result}
+                onPress={handleResultPress}
+                showBookName={true}
+              />
+            ))}
           </View>
         )}
         contentContainerStyle={styles.resultList}
@@ -248,98 +268,90 @@ export default function BibleSearchScreen() {
           )
         }
       />
-    </SafeAreaView>
+
+      {query.trim().length > 0 && isKeyboardVisible ? (
+        <View style={styles.bottomCtaWrap}>
+          <TouchableOpacity style={styles.searchButton} onPress={handleSubmit} activeOpacity={0.85}>
+            <Text style={styles.searchButtonText}>검색</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   safe: {
     flex: 1,
     backgroundColor: colors.white,
   },
   topArea: {
     paddingHorizontal: spacing.md,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    marginBottom: 8,
-    marginLeft: -8,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   searchField: {
-    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: colors.background.base,
-    paddingHorizontal: 12,
-    gap: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? spacing.sm : 6,
+    gap: spacing.sm,
   },
   input: {
     flex: 1,
     paddingVertical: 0,
     fontFamily: 'Pretendard-SemiBold',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: fontSize.base,
     color: colors.text.primary,
   },
   clearButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.text.secondary,
+    padding: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
   historyWrap: {
-    paddingTop: 12,
+    paddingTop: spacing.md,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: colors.background.base,
-    paddingLeft: 14,
-    paddingRight: 8,
-    paddingVertical: 8,
+    gap: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.border,
+    paddingLeft: 12,
+    paddingRight: spacing.xs,
+    paddingVertical: 6,
   },
   chipText: {
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: 'Pretendard-Medium',
+    fontSize: fontSize.sm,
     color: colors.text.primary,
   },
   chipCloseButton: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.text.secondary,
+    padding: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
   resultList: {
     paddingHorizontal: spacing.md,
-    paddingBottom: 32,
-  },
-  groupSection: {
-    paddingTop: 16,
-  },
-  groupTitle: {
-    fontFamily: 'Pretendard-SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: colors.text.primary,
-    marginBottom: 10,
+    paddingBottom: spacing.lg,
   },
   groupCards: {
     gap: 0,
@@ -350,11 +362,29 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'Pretendard-Medium',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: fontSize.base,
     color: colors.text.secondary,
   },
   emptySpacer: {
-    height: 24,
+    height: spacing.lg,
+  },
+  bottomCtaWrap: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.white,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  searchButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchButtonText: {
+    fontFamily: 'Pretendard-SemiBold',
+    fontSize: fontSize.base,
+    color: colors.white,
   },
 });

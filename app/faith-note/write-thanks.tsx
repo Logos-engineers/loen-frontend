@@ -1,10 +1,12 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { faithNoteStore, getTodayKey } from '@/utils/faith-note-store';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,10 +19,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// ─── 색상 상수 ────────────────────────────────────────────────────────────────
-const DARK_BG = '#0D1C2D';
-const INPUT_BG = 'rgba(255,255,255,0.08)';
-const INPUT_BG_FILLED = 'rgba(255,255,255,0.14)';
+// ─── 색상 상수 (Figma: 라이트 테마) ──────────────────────────────────────────────
+const SCREEN_BG = '#F2F4F7';                  // background/fill/elevated
+const INPUT_BG = 'rgba(13,28,45,0.08)';       // 입력칸 배경
+const NUMBER_BOX_BG = '#F2F4F7';              // 번호 배지 박스
+const PLACEHOLDER_COLOR = 'rgba(13,28,45,0.3)';
+const SUBMIT_DISABLED_BG = 'rgba(101,97,255,0.4)'; // primary 40% 불투명
 
 // ─── 입력 항목 ────────────────────────────────────────────────────────────────
 const THANK_LABELS = ['첫번째 감사', '두번째 감사', '세번째 감사', '네번째 감사', '다섯번째 감사'];
@@ -118,13 +122,74 @@ const modalStyles = StyleSheet.create({
 
 export default function WriteThanksScreen() {
   const router = useRouter();
+  const { noteId } = useLocalSearchParams<{ noteId?: string }>();
+  const isEdit = !!noteId;
   const [inputs, setInputs] = useState<string[]>(['', '', '', '', '']);
-  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  // 현재 작성 중(focus)인 항목. 이 index 직전 항목이 상단 네비게이션 아래에 고정(sticky)된다.
+  const [activeIndex, setActiveIndex] = useState(0);
   const [showQuitModal, setShowQuitModal] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const rowY = useRef<number[]>([]); // 각 입력 행의 contentContainer 기준 y 위치
+  const didMountRef = useRef(false);
+
+  // activeIndex가 바뀔 때(다음 버튼 / 행 탭) 해당 입력칸 focus +
+  // 직전 항목이 상단에 고정되도록 스크롤. 첫 진입은 네비게이션 전환 후 focus.
+  useEffect(() => {
+    const delay = didMountRef.current ? 50 : 300;
+    didMountRef.current = true;
+    const timer = setTimeout(() => {
+      inputRefs.current[activeIndex]?.focus();
+      const targetY = activeIndex > 0 ? rowY.current[activeIndex - 1] ?? 0 : 0;
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [activeIndex]);
+
+  // 키보드(포커스) 노출 여부 — 필드 간 이동 시 깜빡임 없이 추적
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  // 편집 모드: 기존 노트 불러와 prefill
+  useEffect(() => {
+    if (!noteId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const detail = await apiClient<{ answers: string[] }>(`/notes/thanks/${noteId}`);
+        if (cancelled) return;
+        const filled = [...(detail.answers ?? [])];
+        while (filled.length < 5) filled.push('');
+        setInputs(filled.slice(0, 5));
+      } catch (e) {
+        Alert.alert('오류', '노트를 불러오지 못했습니다.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [noteId]);
 
   // 하나라도 입력값이 있으면 활성화
   const isSubmitEnabled = inputs.some((v) => v.trim().length > 0);
+
+  // 포커스(키보드) 상태 + 마지막 칸이 아니면 CTA를 "다음으로"로 전환
+  const isLastIndex = activeIndex === THANK_LABELS.length - 1;
+  const showNextButton = keyboardVisible && !isLastIndex;
+  const ctaLabel = showNextButton ? '다음으로' : '작성 완료하기';
+  const ctaEnabled = showNextButton ? true : isSubmitEnabled;
+  const handleCtaPress = () => {
+    if (showNextButton) {
+      setActiveIndex(activeIndex + 1);
+    } else {
+      handleSubmit();
+    }
+  };
 
   const handleChange = (index: number, value: string) => {
     setInputs((prev) => {
@@ -148,32 +213,32 @@ export default function WriteThanksScreen() {
     router.back();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isSubmitEnabled) return;
-
-    // 입력된 항목만 content 배열로 구성
-    const content = inputs.filter((v) => v.trim().length > 0);
-
-    // 스토어에 새 노트 추가
-    faithNoteStore.addNote({
-      id: `thanks-${Date.now()}`,
-      tab: 'THANKS',
-      dayKey: getTodayKey(),
-      author: { handle: 'me', name: '나', hasAvatar: false, initial: '나' },
-      timeAgo: '방금',
-      content,
-      likeCount: 0,
-      commentCount: 0,
-      isLiked: false,
-    });
-
-    router.replace('/faith-note/publish?noteType=THANKS');
+    const answers = inputs.filter((v) => v.trim().length > 0);
+    try {
+      if (isEdit) {
+        await apiClient(`/notes/thanks/${noteId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ answers }),
+        });
+        router.back();
+        return;
+      }
+      await apiClient('/notes/thanks', {
+        method: 'POST',
+        body: JSON.stringify({ answers, isFixed: false, isHidden: false }),
+      });
+      router.replace('/faith-note/publish?noteType=THANKS');
+    } catch (e) {
+      Alert.alert('오류', '노트 저장에 실패했습니다.');
+    }
   };
 
   return (
-    // Figma: 어두운 네이비 배경 (#0D1C2D)
+    // Figma: 라이트 배경 (#F2F4F7)
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* ── 헤더 */}
       <View style={styles.header}>
@@ -181,10 +246,8 @@ export default function WriteThanksScreen() {
           onPress={handleBackPress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="chevron-back" size={24} color="rgba(255,255,255,0.8)" />
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        {/* 우측 — 이 화면에서는 탭 지정 없이 라벨만 */}
-        <Text style={styles.headerRight}>노트 작성하기</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -193,89 +256,74 @@ export default function WriteThanksScreen() {
         keyboardVerticalOffset={0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          stickyHeaderIndices={[1, 2, 3, 4, 5]}
         >
-          {/* ── 타이틀 영역 */}
+          {/* index 0 — 타이틀 (스크롤되며 위로 사라짐) */}
           <View style={styles.titleSection}>
             <Text style={styles.subtitle}>감사노트 작성하기</Text>
             <Text style={styles.title}>오늘도 감사로 하루를 열어요</Text>
           </View>
 
-          {/* ── 입력 항목 목록 */}
-          <View style={styles.inputList}>
-            {THANK_LABELS.map((label, index) => {
-              const isFocused = focusedIndex === index;
-              const isFilled = inputs[index].trim().length > 0;
+          {/* index 1~5 — 입력 행. 각 행이 sticky 헤더 → 다음 행이 올라오면 교체되며 nav 아래 고정 */}
+          {THANK_LABELS.map((label, index) => {
+            const isActive = index === activeIndex;
 
-              return (
-                <View key={index}>
-                  {/* 레이블 */}
-                  <Text style={styles.inputLabel}>{label}</Text>
+            return (
+              <View
+                key={index}
+                style={styles.stickyRow}
+                onLayout={(e) => {
+                  rowY.current[index] = e.nativeEvent.layout.y;
+                }}
+              >
+                {/* 레이블 — 현재 작성 항목은 보라색 (Figma) */}
+                <Text style={[styles.inputLabel, isActive && styles.inputLabelFocused]}>
+                  {label}
+                </Text>
 
-                  {/* 입력 Row */}
-                  <View
-                    style={[
-                      styles.inputRow,
-                      isFocused && styles.inputRowFocused,
-                      isFilled && !isFocused && styles.inputRowFilled,
-                    ]}
-                  >
-                    {/* 번호 */}
-                    <Text
-                      style={[
-                        styles.inputNumber,
-                        (isFocused || isFilled) && styles.inputNumberActive,
-                      ]}
-                    >
-                      {index + 1}
-                    </Text>
-
-                    {/* TextInput */}
-                    <TextInput
-                      ref={(el) => {
-                        inputRefs.current[index] = el;
-                      }}
-                      style={styles.input}
-                      value={inputs[index]}
-                      onChangeText={(v) => handleChange(index, v)}
-                      onFocus={() => setFocusedIndex(index)}
-                      onBlur={() => setFocusedIndex(null)}
-                      placeholder={THANK_PLACEHOLDERS[index]}
-                      placeholderTextColor="rgba(255,255,255,0.3)"
-                      returnKeyType={index < 4 ? 'next' : 'done'}
-                      onSubmitEditing={() => {
-                        if (index < 4) inputRefs.current[index + 1]?.focus();
-                      }}
-                      blurOnSubmit={index === 4}
-                    />
+                {/* 입력 Row */}
+                <View style={styles.inputRow}>
+                  {/* 번호 배지 (Figma: 밝은 박스 안 숫자) */}
+                  <View style={styles.inputNumberBox}>
+                    <Text style={styles.inputNumberText}>{index + 1}</Text>
                   </View>
+
+                  {/* TextInput */}
+                  <TextInput
+                    ref={(el) => {
+                      inputRefs.current[index] = el;
+                    }}
+                    style={styles.input}
+                    value={inputs[index]}
+                    onChangeText={(v) => handleChange(index, v)}
+                    onFocus={() => setActiveIndex(index)}
+                    placeholder={THANK_PLACEHOLDERS[index]}
+                    placeholderTextColor={PLACEHOLDER_COLOR}
+                    returnKeyType={index < 4 ? 'next' : 'done'}
+                    onSubmitEditing={() => {
+                      if (index < 4) setActiveIndex(index + 1);
+                    }}
+                    blurOnSubmit={index === 4}
+                  />
                 </View>
-              );
-            })}
-          </View>
+              </View>
+            );
+          })}
 
           {/* ── 작성 완료 버튼 */}
           <View style={styles.submitWrapper}>
             <TouchableOpacity
-              style={[
-                styles.submitButton,
-                isSubmitEnabled && styles.submitButtonActive,
-              ]}
-              onPress={handleSubmit}
-              activeOpacity={isSubmitEnabled ? 0.8 : 1}
-              disabled={!isSubmitEnabled}
+              style={[styles.submitButton, ctaEnabled && styles.submitButtonActive]}
+              onPress={handleCtaPress}
+              activeOpacity={ctaEnabled ? 0.8 : 1}
+              disabled={!ctaEnabled}
             >
-              <Text
-                style={[
-                  styles.submitText,
-                  isSubmitEnabled && styles.submitTextActive,
-                ]}
-              >
-                작성 완료하기
-              </Text>
+              <Text style={styles.submitText}>{ctaLabel}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -296,7 +344,7 @@ export default function WriteThanksScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: DARK_BG,
+    backgroundColor: SCREEN_BG,
   },
   flex: { flex: 1 },
 
@@ -308,12 +356,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
   },
-  headerRight: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: colors.primary,
-  },
-
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
 
@@ -325,66 +367,72 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   subtitle: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
     fontWeight: fontWeight.medium,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.text.secondary,
   },
   title: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.title,
     fontWeight: fontWeight.bold,
-    color: '#FFFFFF',
-    lineHeight: 28,
+    color: colors.text.primary,
+    lineHeight: 34,
   },
 
-  // ── 입력 항목
-  inputList: {
+  // ── 입력 행 (각 행이 sticky 헤더 → 고정 시 뒤 내용 가리도록 불투명 배경)
+  stickyRow: {
+    backgroundColor: SCREEN_BG,
     paddingHorizontal: spacing.md,
-    gap: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
   inputLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: 'rgba(255,255,255,0.5)',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.secondary,
     marginBottom: 6,
     paddingLeft: 4,
   },
-  // Figma: 기본 — 반투명 어두운 배경
+  // Figma: focus된 항목의 라벨은 primary(#6561FF) 보라색
+  inputLabelFocused: {
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
+  },
+  // Figma: 반투명 어두운 배경 (모든 행 동일, focus 표시는 라벨 색상으로)
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: INPUT_BG,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
   },
-  // Figma: 포커스 — primary 테두리
-  inputRowFocused: {
-    borderColor: colors.primary,
-    backgroundColor: INPUT_BG_FILLED,
-  },
-  // Figma: 입력됨 — 약간 더 밝은 배경
-  inputRowFilled: {
-    backgroundColor: INPUT_BG_FILLED,
-  },
-  inputNumber: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.regular,
-    color: 'rgba(255,255,255,0.3)',
-    width: 16,
+  // Figma: 번호 배지 — 밝은 박스(24×24, rounded 8)
+  inputNumberBox: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.xs,
+    backgroundColor: NUMBER_BOX_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
-  inputNumberActive: {
-    color: 'rgba(255,255,255,0.7)',
+  inputNumberText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
   },
   input: {
     flex: 1,
-    fontSize: fontSize.md,
+    fontSize: fontSize.base,
     fontWeight: fontWeight.regular,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     padding: 0,
+    // 입력 여부와 상관없이 박스 높이 고정 (Android 폰트 패딩으로 인한 높이 변동 방지)
+    height: 24,
+    lineHeight: 20,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
 
   // ── 작성 완료 버튼
@@ -392,11 +440,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xl,
   },
-  // Figma 비활성: 반투명 회색
+  // Figma 비활성: primary 40% 불투명
   submitButton: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    height: 49,
+    borderRadius: radius.md,
+    backgroundColor: SUBMIT_DISABLED_BG,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -405,11 +453,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   submitText: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.heading,
     fontWeight: fontWeight.semibold,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  submitTextActive: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });

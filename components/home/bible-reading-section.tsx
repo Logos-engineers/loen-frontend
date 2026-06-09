@@ -17,7 +17,7 @@ const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export function BibleReadingSection() {
   const [position, setPosition] = useState<LastPosition>(FALLBACK);
-  const { planData } = useBiblePlan();
+  const { planData, getReadChaptersForBook } = useBiblePlan();
 
   const loadPosition = async () => {
     AsyncStorage.getItem(POSITION_KEY).then((raw) => {
@@ -49,7 +49,10 @@ export function BibleReadingSection() {
   const bookMeta = BIBLE_BOOKS.find((b) => b.code === position.bookCode);
   const bookName = bookMeta?.korName ?? position.bookCode;
   const totalChapters = bookMeta?.chapterCount ?? 1;
-  const progressRatio = position.chapterNum / totalChapters;
+  // 진행바는 '이어보기 위치'가 아니라 실제 '읽음 표시'한 장 수 기준
+  // (읽기 화면의 "읽음 표시하고 다음장으로" 버튼 → useBiblePlan.toggleChapter)
+  const readCount = Math.min(getReadChaptersForBook(position.bookCode).length, totalChapters);
+  const progressRatio = totalChapters > 0 ? readCount / totalChapters : 0;
   const markerPercent = progressRatio * 100;
 
   const handleContinueReading = () => {
@@ -72,7 +75,7 @@ export function BibleReadingSection() {
 
             <View style={styles.textCol}>
               <Text style={styles.chapterTitle}>
-                {bookName} {position.chapterNum}장
+                {bookName} {readCount}장
               </Text>
             </View>
 
@@ -88,20 +91,21 @@ export function BibleReadingSection() {
 
           {/* ── 프로그레스 바 섹션 ── */}
           <View style={styles.progressSection}>
-            {/* Marker 배지 */}
-            <View style={[styles.markerContainer, { left: `${markerPercent}%` as any }]}>
-              <View style={styles.markerBadge}>
-                <Text style={styles.markerText}>{position.chapterNum}장</Text>
-              </View>
-              <View style={styles.markerTail} />
-            </View>
-
-            {/* 바 행: [1장] [████░░░░░░] [N장] — 피그마 인라인 레이아웃 */}
+            {/* 바 행: [1장] [marker + ████░░░░] [N장] — 피그마 인라인 레이아웃 */}
             <View style={styles.barRow}>
               <Text style={styles.barLabel}>1장</Text>
-              <View style={styles.trackBg}>
-                <View style={[styles.trackFill, { flex: progressRatio }]} />
-                <View style={{ flex: 1 - progressRatio }} />
+              <View style={styles.trackWrap}>
+                {/* Marker 배지 — 트랙 기준 위치(0장/0%여도 카드 밖으로 안 나감) */}
+                <View style={[styles.markerContainer, { left: `${markerPercent}%` as any }]}>
+                  <View style={styles.markerBadge}>
+                    <Text style={styles.markerText}>{readCount}장</Text>
+                  </View>
+                  <View style={styles.markerTail} />
+                </View>
+                <View style={styles.trackBg}>
+                  <View style={[styles.trackFill, { flex: progressRatio }]} />
+                  <View style={{ flex: 1 - progressRatio }} />
+                </View>
               </View>
               <Text style={styles.barLabel}>{totalChapters}장</Text>
             </View>
@@ -172,9 +176,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
   },
+  // 트랙(trackWrap) 기준 절대 위치 — 트랙 바로 위에 떠 있음
   markerContainer: {
     position: 'absolute',
-    top: spacing.sm,
+    bottom: 22,                 // 트랙(높이 20) 위쪽에 배지+꼬리 배치
     alignItems: 'center',
     transform: [{ translateX: -16 }],
     zIndex: 1,
@@ -214,8 +219,13 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     flexShrink: 0,
   },
-  trackBg: {
+  // 마커를 트랙 기준으로 띄우기 위한 래퍼 (marker는 클리핑되면 안 되므로 overflow 미적용)
+  trackWrap: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  trackBg: {
+    width: '100%',
     height: 20,
     borderRadius: 6,
     backgroundColor: colors.border,
