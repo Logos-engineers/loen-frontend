@@ -18,6 +18,7 @@ export type Profile = {
 };
 
 export type UpdateProfilePayload = {
+  name?: string;
   nickname?: string;
   bio?: string;
   profileImage?: string;

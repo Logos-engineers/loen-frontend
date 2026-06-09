@@ -28,6 +28,7 @@ const NICKNAME_MAX = 10;
 export default function ProfileEditScreen() {
   const { profile, isLoading, updateProfile } = useProfile();
 
+  const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export default function ProfileEditScreen() {
   // 최초 로드 시 폼 초기값 채우기
   useEffect(() => {
     if (profile) {
+      setName(profile.name ?? '');
       setNickname(profile.nickname ?? '');
       setBio(profile.bio ?? '');
       setImageUri(profile.profileImage ?? null);
@@ -69,6 +71,10 @@ export default function ProfileEditScreen() {
   };
 
   const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert('입력 필요', '이름을 입력해 주세요.');
+      return;
+    }
     if (!nickname.trim()) {
       Alert.alert('입력 필요', '닉네임을 입력해 주세요.');
       return;
@@ -76,6 +82,7 @@ export default function ProfileEditScreen() {
     setSaving(true);
     try {
       await updateProfile({
+        name: name.trim(),
         nickname: nickname.trim(),
         bio: bio.trim(),
         ...(imageUri ? { profileImage: imageUri } : {}),
@@ -135,6 +142,19 @@ export default function ProfileEditScreen() {
                   )}
                 </View>
               </Pressable>
+            </View>
+
+            {/* 이름(본명) */}
+            <View style={styles.field}>
+              <Text style={styles.label}>이름</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="실명을 입력해주세요"
+                placeholderTextColor={colors.text.dim}
+                value={name}
+                onChangeText={setName}
+                maxLength={20}
+              />
             </View>
 
             {/* 닉네임 */}
