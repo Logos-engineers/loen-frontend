@@ -1,10 +1,11 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
@@ -30,9 +31,12 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// 단계: 0 닉네임 → 1 생일 → 2 오이코스 → 3 한줄소개(선택)
 export default function ProfileSetupScreen() {
   const { completeProfileSetup } = useAuthStore();
+  const scrollRef = useRef<ScrollView>(null);
 
+  const [step, setStep] = useState(0);
   const [nickname, setNickname] = useState('');
   const [birthday, setBirthday] = useState<Date | null>(null);
   const [bio, setBio] = useState('');
@@ -52,16 +56,30 @@ export default function ProfileSetupScreen() {
       .finally(() => setOikosLoading(false));
   }, []);
 
-  const canSubmit = useMemo(
-    () => !!nickname.trim() && !!birthday && !!selectedOikos && !loading,
-    [nickname, birthday, selectedOikos, loading],
-  );
+  // 새 필드가 나타나면 부드럽게 하단으로 스크롤
+  const advanceTo = (next: number) => {
+    setStep((s) => Math.max(s, next));
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+  };
+
+  const handleNicknameNext = () => {
+    if (!nickname.trim()) return;
+    advanceTo(1);
+  };
+
+  const handlePickDate = (date: Date) => {
+    setBirthday(date);
+    advanceTo(2);
+  };
+
+  const handlePickOikos = (o: SelectableOikos) => {
+    setSelectedOikos(o);
+    setShowOikosModal(false);
+    advanceTo(3);
+  };
 
   const handleComplete = async () => {
-    if (!nickname.trim()) return Alert.alert('입력 필요', '닉네임을 입력해주세요.');
-    if (!birthday) return Alert.alert('입력 필요', '생일을 선택해주세요.');
-    if (!selectedOikos) return Alert.alert('입력 필요', '오이코스를 선택해주세요.');
-
+    if (!nickname.trim() || !birthday || !selectedOikos) return;
     setLoading(true);
     try {
       await apiClient('/users/me/onboarding', {
@@ -73,7 +91,7 @@ export default function ProfileSetupScreen() {
           bio: bio.trim() || undefined,
         }),
       });
-      setSubmitted(true);   // 환영 화면으로 전환 (앱 진입은 '시작하기'에서)
+      setSubmitted(true);
     } catch (e: any) {
       Alert.alert('오류', e.message || '프로필 설정 중 오류가 발생했습니다.');
     } finally {
@@ -82,7 +100,7 @@ export default function ProfileSetupScreen() {
   };
 
   const handleStart = () => {
-    completeProfileSetup();   // isNewUser=false → 루트가 탭으로 이동
+    completeProfileSetup();
     router.replace('/(tabs)');
   };
 
@@ -90,14 +108,14 @@ export default function ProfileSetupScreen() {
   if (submitted) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.welcomeWrap}>
+        <Animated.View entering={FadeInDown.duration(450)} style={styles.welcomeWrap}>
           <Text style={styles.welcomeEmoji}>🎉</Text>
           <Text style={styles.welcomeTitle}>환영합니다, {nickname.trim()}님!</Text>
           <Text style={styles.welcomeSub}>
             가입이 완료되었어요.{'\n'}이제 Loen과 함께 신앙의 걸음을 시작해요.
           </Text>
-        </View>
-        <View style={[styles.footer, styles.welcomeFooter]}>
+        </Animated.View>
+        <View style={[styles.footer, styles.sidePad]}>
           <Pressable
             style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}
             onPress={handleStart}
@@ -109,82 +127,121 @@ export default function ProfileSetupScreen() {
     );
   }
 
+  // 하단 CTA: 닉네임 단계는 '다음', 마지막(한줄소개)까지 오면 '시작하기'. 중간 선택 단계는 선택 시 자동 진행.
+  const showNextButton = step === 0;
+  const showStartButton = step >= 3;
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.header}>
-            <Text style={styles.title}>프로필 설정</Text>
-            <Text style={styles.subtitle}>Loen 시작 전, 기본 정보를 입력해 주세요.</Text>
+            <Text style={styles.title}>반가워요 👋</Text>
+            <Text style={styles.subtitle}>몇 가지만 알려주시면 바로 시작할 수 있어요.</Text>
           </View>
 
           <View style={styles.form}>
-            {/* 닉네임 (필수) */}
-            <Text style={styles.label}>닉네임 <Text style={styles.req}>*</Text></Text>
-            <TextInput
-              style={styles.input}
-              placeholder="최대 10자 이내"
-              placeholderTextColor={colors.text.dim}
-              value={nickname}
-              onChangeText={setNickname}
-              maxLength={10}
-            />
+            {/* 1. 닉네임 (항상 노출) */}
+            <View style={styles.field}>
+              <Text style={styles.label}>닉네임</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="최대 10자 이내"
+                placeholderTextColor={colors.text.dim}
+                value={nickname}
+                onChangeText={setNickname}
+                maxLength={10}
+                returnKeyType="next"
+                onSubmitEditing={handleNicknameNext}
+                autoFocus
+              />
+            </View>
 
-            {/* 생일 (필수) */}
-            <Text style={styles.label}>생일 <Text style={styles.req}>*</Text></Text>
-            <Pressable style={styles.selectBox} onPress={() => setShowDatePicker(true)}>
-              <Text style={[styles.selectText, !birthday && styles.placeholder]}>
-                {birthday ? formatDate(birthday) : '생일을 선택하세요'}
-              </Text>
-            </Pressable>
+            {/* 2. 생일 */}
+            {step >= 1 && (
+              <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
+                <Text style={styles.label}>생일</Text>
+                <Pressable style={styles.selectBox} onPress={() => setShowDatePicker(true)}>
+                  <Text style={[styles.selectText, !birthday && styles.placeholder]}>
+                    {birthday ? formatDate(birthday) : '생일을 선택하세요'}
+                  </Text>
+                </Pressable>
+              </Animated.View>
+            )}
 
-            {/* 오이코스 (필수) */}
-            <Text style={styles.label}>오이코스 <Text style={styles.req}>*</Text></Text>
-            <Pressable
-              style={styles.selectBox}
-              onPress={() => (oikosList.length ? setShowOikosModal(true) : null)}
-              disabled={oikosLoading}
-            >
-              <Text style={[styles.selectText, !selectedOikos && styles.placeholder]}>
-                {oikosLoading
-                  ? '불러오는 중...'
-                  : selectedOikos
-                    ? oikosLabel(selectedOikos)
-                    : '오이코스를 선택하세요'}
-              </Text>
-            </Pressable>
+            {/* 3. 오이코스 */}
+            {step >= 2 && (
+              <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
+                <Text style={styles.label}>오이코스</Text>
+                <Pressable
+                  style={styles.selectBox}
+                  onPress={() => (oikosList.length ? setShowOikosModal(true) : null)}
+                  disabled={oikosLoading}
+                >
+                  <Text style={[styles.selectText, !selectedOikos && styles.placeholder]}>
+                    {oikosLoading
+                      ? '불러오는 중...'
+                      : selectedOikos
+                        ? oikosLabel(selectedOikos)
+                        : '오이코스를 선택하세요'}
+                  </Text>
+                </Pressable>
+              </Animated.View>
+            )}
 
-            {/* 한줄소개 (선택) */}
-            <Text style={styles.label}>한 줄 소개</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="선택 — 최대 100자"
-              placeholderTextColor={colors.text.dim}
-              value={bio}
-              onChangeText={setBio}
-              maxLength={100}
-            />
+            {/* 4. 한줄소개 (선택) */}
+            {step >= 3 && (
+              <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
+                <Text style={styles.label}>한 줄 소개 <Text style={styles.optional}>(선택)</Text></Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="나를 한 줄로 소개해보세요"
+                  placeholderTextColor={colors.text.dim}
+                  value={bio}
+                  onChangeText={setBio}
+                  maxLength={100}
+                />
+              </Animated.View>
+            )}
           </View>
+        </ScrollView>
 
-          <View style={styles.footer}>
+        <View style={[styles.footer, styles.sidePad]}>
+          {showStartButton ? (
             <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                (pressed || loading) && { opacity: 0.75 },
-                !canSubmit && styles.buttonDisabled,
-              ]}
+              style={({ pressed }) => [styles.button, (pressed || loading) && { opacity: 0.75 }]}
               onPress={handleComplete}
-              disabled={!canSubmit}
+              disabled={loading}
             >
               {loading
                 ? <ActivityIndicator color={colors.white} />
-                : <Text style={styles.buttonText}>Loen 시작하기</Text>}
+                : <Text style={styles.buttonText}>시작하기</Text>}
             </Pressable>
-          </View>
-        </ScrollView>
+          ) : showNextButton ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && { opacity: 0.75 },
+                !nickname.trim() && styles.buttonDisabled,
+              ]}
+              onPress={handleNicknameNext}
+              disabled={!nickname.trim()}
+            >
+              <Text style={styles.buttonText}>다음</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.hint}>
+              {step === 1 ? '생일을 선택해 주세요' : '오이코스를 선택해 주세요'}
+            </Text>
+          )}
+        </View>
 
         {/* 생일 picker */}
         {showDatePicker && (
@@ -195,7 +252,7 @@ export default function ProfileSetupScreen() {
             maximumDate={new Date()}
             onChange={(event, date) => {
               if (Platform.OS === 'android') setShowDatePicker(false);
-              if (event.type === 'set' && date) setBirthday(date);
+              if (event.type === 'set' && date) handlePickDate(date);
             }}
           />
         )}
@@ -207,11 +264,7 @@ export default function ProfileSetupScreen() {
               <Text style={styles.modalTitle}>오이코스 선택</Text>
               <ScrollView style={styles.modalList}>
                 {oikosList.map((o) => (
-                  <Pressable
-                    key={o.id}
-                    style={styles.modalItem}
-                    onPress={() => { setSelectedOikos(o); setShowOikosModal(false); }}
-                  >
+                  <Pressable key={o.id} style={styles.modalItem} onPress={() => handlePickOikos(o)}>
                     <Text style={styles.modalItemText}>{oikosLabel(o)}</Text>
                     {o.groupName ? <Text style={styles.modalItemSub}>{o.groupName}</Text> : null}
                   </Pressable>
@@ -236,15 +289,10 @@ const styles = StyleSheet.create({
   header: { marginBottom: spacing.xl, gap: spacing.xs },
   title: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary },
   subtitle: { fontSize: fontSize.md, color: colors.text.secondary, lineHeight: 22 },
-  form: { flex: 1, gap: spacing.sm },
-  label: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: colors.text.secondary,
-    marginLeft: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  req: { color: colors.primary },
+  form: { flex: 1, gap: spacing.lg },
+  field: { gap: spacing.sm },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.secondary, marginLeft: spacing.xs },
+  optional: { color: colors.text.dim, fontWeight: fontWeight.regular },
   input: {
     backgroundColor: colors.background.elevated,
     borderRadius: radius.md,
@@ -267,29 +315,9 @@ const styles = StyleSheet.create({
   },
   selectText: { fontSize: fontSize.base, color: colors.text.primary },
   placeholder: { color: colors.text.dim },
-  footer: { marginTop: spacing.xl },
-  welcomeWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
-  },
-  welcomeEmoji: { fontSize: 56, marginBottom: spacing.sm },
-  welcomeTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
-    textAlign: 'center',
-  },
-  welcomeSub: {
-    fontSize: fontSize.md,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginTop: spacing.xs,
-  },
-  welcomeFooter: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  footer: { paddingTop: spacing.md, paddingBottom: spacing.sm, minHeight: 72, justifyContent: 'center' },
+  sidePad: { paddingHorizontal: spacing.xl },
+  hint: { textAlign: 'center', color: colors.text.secondary, fontSize: fontSize.sm },
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
@@ -300,6 +328,10 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { backgroundColor: colors.text.dim },
   buttonText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  welcomeWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.sm },
+  welcomeEmoji: { fontSize: 56, marginBottom: spacing.sm },
+  welcomeTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary, textAlign: 'center' },
+  welcomeSub: { fontSize: fontSize.md, color: colors.text.secondary, textAlign: 'center', lineHeight: 24, marginTop: spacing.xs },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: colors.background.base,
@@ -310,18 +342,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     maxHeight: '70%',
   },
-  modalTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
+  modalTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md },
   modalList: { flexGrow: 0 },
-  modalItem: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+  modalItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   modalItemText: { fontSize: fontSize.base, color: colors.text.primary },
   modalItemSub: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: 2 },
 });
