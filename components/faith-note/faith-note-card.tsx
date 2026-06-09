@@ -16,6 +16,7 @@ export interface FaithNoteItem {
   author: {
     handle: string;
     name: string;
+    nickname: string;
     hasAvatar: boolean;
     initial: string;
     imageUri?: string | null;
@@ -63,8 +64,8 @@ export function FaithNoteCard({
   // 내 노트 + 수정/삭제 콜백이 있을 때만 ⋯ 메뉴 노출
   const showMenu = !!item.isMine && (!!onEdit || !!onDelete);
   const isWordTab = item.tab === 'WORD';
-  const primaryAuthor = item.author.handle || item.author.name;
-  const secondaryAuthor = item.author.handle && item.author.name !== primaryAuthor ? item.author.name : '';
+  const primaryAuthor = item.author.nickname || item.author.name;
+  const secondaryAuthor = item.author.nickname && item.author.nickname !== item.author.name ? item.author.name : '';
   const hasLikeCount = item.likeCount > 0;
   const hasCommentCount = item.commentCount > 0;
   const isDetailVariant = variant === 'detail';

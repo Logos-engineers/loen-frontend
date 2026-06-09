@@ -27,6 +27,7 @@ type NoteDetailParams = {
   tab?: FaithNoteTab;
   handle?: string;
   name?: string;
+  nickname?: string;
   initial?: string;
   imageUri?: string;
   timeAgo?: string;
@@ -40,6 +41,7 @@ type ApiCommentItem = {
   commentId: string;
   userId: string;
   writerName: string;
+  writerNickname: string | null;
   writerProfileImage?: string | null;
   content: string;
   createdAt: string;
@@ -54,6 +56,7 @@ type ApiCommentListResponse = {
 type ThanksDetailResponse = {
   id: string;
   writerName: string;
+  writerNickname: string | null;
   answers: string[];
   likeCount: number;
   commentCount: number;
@@ -65,6 +68,7 @@ type ThanksDetailResponse = {
 type PrayerDetailResponse = {
   id: string;
   writerName: string;
+  writerNickname: string | null;
   prayers: string[];
   commentCount: number;
   isMine: boolean;
@@ -74,6 +78,7 @@ type PrayerDetailResponse = {
 type WordDetailResponse = {
   id: string;
   writerName: string;
+  writerNickname: string | null;
   bibleName: string;
   chapter: number;
   phaseStart: number;
@@ -89,7 +94,7 @@ type WordDetailResponse = {
 
 interface CommentItem {
   id: string;
-  author: { handle: string; name: string; initial: string; imageUri?: string | null };
+  author: { handle: string; name: string; nickname: string; initial: string; imageUri?: string | null };
   timeAgo: string;
   text: string;
   isMine: boolean;
@@ -131,6 +136,7 @@ function buildFallbackNote(id?: string): FaithNoteItem {
     author: {
       handle: 'potatolov_er',
       name: '남현서',
+      nickname: '',
       hasAvatar: false,
       initial: '남',
       imageUri: null,
@@ -153,6 +159,7 @@ function toCommentItem(item: ApiCommentItem): CommentItem {
     author: {
       handle: '',
       name: item.writerName,
+      nickname: item.writerNickname ?? '',
       initial: item.writerName?.[0] ?? '?',
       imageUri: item.writerProfileImage ?? null,
     },
@@ -169,6 +176,7 @@ function toThanksNote(detail: ThanksDetailResponse, fallback: FaithNoteItem): Fa
     author: {
       handle: fallback.author.handle,
       name: detail.writerName,
+      nickname: detail.writerNickname ?? '',
       initial: detail.writerName?.[0] ?? fallback.author.initial,
       hasAvatar: Boolean(fallback.author.imageUri),
       imageUri: fallback.author.imageUri,
@@ -189,6 +197,7 @@ function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): Fa
     author: {
       handle: fallback.author.handle,
       name: detail.writerName,
+      nickname: detail.writerNickname ?? '',
       initial: detail.writerName?.[0] ?? fallback.author.initial,
       hasAvatar: Boolean(fallback.author.imageUri),
       imageUri: fallback.author.imageUri,
@@ -209,6 +218,7 @@ function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithN
     author: {
       handle: fallback.author.handle,
       name: detail.writerName,
+      nickname: detail.writerNickname ?? '',
       initial: detail.writerName?.[0] ?? fallback.author.initial,
       hasAvatar: Boolean(fallback.author.imageUri),
       imageUri: fallback.author.imageUri,
@@ -245,7 +255,7 @@ function getLikeEndpoint(tab: FaithNoteTab, noteId: string) {
 }
 
 function CommentRow({ item }: { item: CommentItem }) {
-  const primaryAuthor = item.author.handle || item.author.name;
+  const primaryAuthor = item.author.nickname || item.author.name;
   const secondaryAuthor =
     item.author.handle && item.author.name !== primaryAuthor ? item.author.name : '';
 
@@ -291,6 +301,7 @@ export default function FaithNoteDetailScreen() {
     author: {
       handle: toStringValue(params.handle) ?? fallback.author.handle,
       name: toStringValue(params.name) ?? fallback.author.name,
+      nickname: toStringValue(params.nickname) ?? fallback.author.nickname,
       initial: toStringValue(params.initial) ?? fallback.author.initial,
       hasAvatar: Boolean(toStringValue(params.imageUri)),
       imageUri: toStringValue(params.imageUri) || fallback.author.imageUri,

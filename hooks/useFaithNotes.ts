@@ -6,6 +6,7 @@ import type { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
 export type ThanksNote = {
   id: string;
   writerName: string;
+  writerNickname: string | null;
   answers: string[];
   likeCount: number;
   commentCount: number;
@@ -23,6 +24,7 @@ export type ReactionItem = {
 export type PrayerNote = {
   id: string;
   writerName: string;
+  writerNickname: string | null;
   prayers: string[];
   commentCount: number;
   isMine: boolean;
@@ -33,6 +35,7 @@ export type PrayerNote = {
 export type WordNote = {
   id: string;
   writerName: string;
+  writerNickname: string | null;
   bibleName: string;
   chapter: number;
   phaseStart: number;
@@ -67,8 +70,10 @@ function getTimeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)}일`;
 }
 
-function toAuthor(writerName: string) {
-  return { handle: '', name: writerName, hasAvatar: false, initial: writerName[0] ?? '?' };
+function toAuthor(writerName: string, writerNickname?: string | null) {
+  const nick = writerNickname?.trim() ?? '';
+  const display = nick || writerName;
+  return { handle: '', name: writerName, nickname: nick, hasAvatar: false, initial: display[0] ?? '?' };
 }
 
 export function fromThanks(note: ThanksNote): FaithNoteItem {
@@ -77,7 +82,7 @@ export function fromThanks(note: ThanksNote): FaithNoteItem {
     tab: 'THANKS',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
-    author: toAuthor(note.writerName),
+    author: toAuthor(note.writerName, note.writerNickname),
     timeAgo: getTimeAgo(note.createdAt),
     content: note.answers,
     likeCount: note.likeCount,
@@ -93,7 +98,7 @@ export function fromPrayer(note: PrayerNote): FaithNoteItem {
     tab: 'PRAYER',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
-    author: toAuthor(note.writerName),
+    author: toAuthor(note.writerName, note.writerNickname),
     timeAgo: getTimeAgo(note.createdAt),
     content: note.prayers,
     likeCount: 0,
@@ -111,7 +116,7 @@ export function fromWord(note: WordNote): FaithNoteItem {
     tab: 'WORD',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
-    author: toAuthor(note.writerName),
+    author: toAuthor(note.writerName, note.writerNickname),
     timeAgo: getTimeAgo(note.createdAt),
     content: [passageLabel, note.title, note.description].filter(Boolean),
     likeCount: note.likeCount,

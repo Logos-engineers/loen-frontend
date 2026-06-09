@@ -21,16 +21,21 @@ function PrayerCard({
   item: FaithNoteItem;
   onReact: (id: string, emoji: string) => void;
 }) {
-  const name = item.author.name || item.author.handle || '익명';
+  const display = item.author.nickname || item.author.name || '익명';
+  const realName = item.author.nickname && item.author.name && item.author.name !== item.author.nickname
+    ? item.author.name : '';
   return (
     <Card style={styles.prayerCard}>
       <View style={styles.topRow}>
         {/* Figma: 32px 원형 아바타 (회색 placeholder) */}
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{name[0]}</Text>
+          <Text style={styles.avatarText}>{display[0]}</Text>
         </View>
         <View style={styles.textCol}>
-          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.name}>
+            {display}
+            {realName ? <Text style={styles.realName}> · {realName}</Text> : null}
+          </Text>
           <Text style={styles.content}>{item.content.join('\n')}</Text>
         </View>
       </View>
@@ -125,6 +130,10 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,             // 12px Medium
     fontWeight: fontWeight.medium,
     color: colors.text.secondary,
+  },
+  realName: {
+    fontWeight: fontWeight.regular,
+    color: colors.text.dim,
   },
   content: {
     fontSize: fontSize.base,           // 16px SemiBold

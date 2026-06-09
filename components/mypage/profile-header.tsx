@@ -37,6 +37,9 @@ export function ProfileHeader({
 
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+          {nickname?.trim() && name?.trim() && nickname.trim() !== name.trim() ? (
+            <Text style={styles.realName} numberOfLines={1}>{name.trim()}</Text>
+          ) : null}
           {oikosName ? (
             <View style={styles.oikosRow}>
               <Ionicons name="people-outline" size={14} color={colors.text.secondary} />
@@ -104,6 +107,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
+  },
+  realName: {
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
+    marginTop: 1,
   },
   oikosRow: {
     flexDirection: 'row',
