@@ -31,13 +31,16 @@ export default function RootLayout() {
     if (!rootNavState?.key) return; // 네비게이터 마운트 전이면 대기
     if (!isInitialized) return;
 
-    if (!isLoggedIn) {
-      router.replace('/login');
-    } else if (isNewUser) {
-      router.replace('/profile-setup');
-    } else {
-      router.replace('/(tabs)');
-    }
+    const target = !isLoggedIn
+      ? '/login'
+      : isNewUser
+        ? '/profile-setup'
+        : '/(tabs)';
+
+    // 네비게이터 마운트 직후 navigate race 방지 — 다음 틱에 실행해야
+    // "Attempted to navigate before mounting the Root Layout" 에러를 피한다.
+    const timer = setTimeout(() => router.replace(target), 0);
+    return () => clearTimeout(timer);
   }, [isInitialized, isLoggedIn, isNewUser, rootNavState?.key]);
 
   // 앱 진입(로그인 상태) 기준 출석 체크 — 하루 1회 멱등 처리
