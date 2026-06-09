@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Loen-project",
+    "name": "Loen",
     "slug": "Loen-project",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.loen.app",
       "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "프로필 사진과 인증 이미지를 등록하기 위해 사진 보관함 접근 권한이 필요합니다.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -23,6 +24,10 @@
     },
     "android": {
       "package": "com.loen.app",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
