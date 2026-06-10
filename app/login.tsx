@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,8 +30,9 @@ if (!IS_EXPO_GO) {
 }
 
 export default function LoginScreen() {
+  const params = useLocalSearchParams<{ email?: string }>();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
   const { setTokens } = useAuthStore();
 

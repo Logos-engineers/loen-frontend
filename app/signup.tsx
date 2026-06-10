@@ -34,6 +34,22 @@ export default function SignupScreen() {
       await signupEmail(email.trim(), password);
       router.push({ pathname: '/verify-email', params: { email: email.trim() } });
     } catch (e: any) {
+      // 이미 가입된 이메일(409) → 전용 모달로 로그인 유도
+      if (e?.status === 409) {
+        Alert.alert(
+          '이미 가입된 이메일',
+          '이 이메일로 가입된 계정이 이미 있어요.\n로그인하시겠어요?',
+          [
+            {
+              text: '로그인하기',
+              onPress: () =>
+                router.replace({ pathname: '/login', params: { email: email.trim() } }),
+            },
+            { text: '취소', style: 'cancel' },
+          ],
+        );
+        return;
+      }
       Alert.alert('가입 실패', e.message ?? '잠시 후 다시 시도해주세요.');
     } finally {
       setLoading(false);
