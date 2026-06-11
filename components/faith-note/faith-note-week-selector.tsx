@@ -58,7 +58,6 @@ export function FaithNoteWeekSelector({
                 style={[
                   styles.circle,
                   isToday && styles.circleActive,
-                  showSelected && styles.circleSelected,
                   isWritten && styles.circleWritten,
                 ]}
               >
@@ -66,6 +65,8 @@ export function FaithNoteWeekSelector({
                   <Ionicons name="checkmark" size={20} color={colors.white} />
                 ) : null}
               </View>
+              {/* 선택(클릭) 표시 — 언더바. 높이 고정 슬롯이라 레이아웃이 흔들리지 않음 */}
+              <View style={[styles.underbar, showSelected && styles.underbarActive]} />
             </View>
           </TouchableOpacity>
         );
@@ -120,10 +121,15 @@ const styles = StyleSheet.create({
   circleActive: {
     backgroundColor: 'rgba(255,255,255,0.8)',
   },
-  // 선택(클릭)된 날 — 동그라미에 강조색 테두리(링)만. 검은 pill 은 쓰지 않음.
-  circleSelected: {
-    borderWidth: 2,
-    borderColor: colors.primary,
+  // 선택(클릭)된 날 — 동그라미 아래 언더바. 미선택 시 투명(높이 유지).
+  underbar: {
+    width: 18,
+    height: 3,
+    borderRadius: radius.full,
+    backgroundColor: 'transparent',
+  },
+  underbarActive: {
+    backgroundColor: colors.primary,
   },
   // 작성한 날 — 파란 원 + 흰 체크 (Figma today/y, trans/blue/a1)
   circleWritten: {

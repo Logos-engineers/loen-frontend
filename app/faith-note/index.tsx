@@ -62,10 +62,9 @@ export default function FaithNoteListScreen() {
 
   useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
+  // 단일 선택 — 같은 요일을 다시 누르면 해제(전체 보기)
   const handleToggleDate = (key: string) => {
-    setSelectedDates((prev) =>
-      prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key],
-    );
+    setSelectedDates((prev) => (prev.includes(key) ? [] : [key]));
   };
 
   const handleLikeToggle = useCallback((id: string) => {
