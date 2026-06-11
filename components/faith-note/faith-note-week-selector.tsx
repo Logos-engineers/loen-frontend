@@ -34,8 +34,7 @@ export function FaithNoteWeekSelector({
         const isSelected = selectedDates.includes(day.key);
         const isToday = day.key === todayKey;
         const isWritten = writtenDays.includes(day.key);
-        // 검은 pill 은 '오늘'에만. 선택(클릭)은 동그라미 테두리 + 라벨 색으로 가볍게 표시.
-        const showSelected = isSelected && !isToday;
+        // 검은 pill 은 '오늘'에만. 선택(클릭)은 요일 글씨 색만 바꿈(오늘 포함).
 
         return (
           <TouchableOpacity
@@ -49,7 +48,7 @@ export function FaithNoteWeekSelector({
                 style={[
                   styles.dayLabel,
                   isToday && styles.dayLabelActive,
-                  showSelected && styles.dayLabelSelected,
+                  isSelected && styles.dayLabelSelected,
                 ]}
               >
                 {day.label}
@@ -65,8 +64,6 @@ export function FaithNoteWeekSelector({
                   <Ionicons name="checkmark" size={20} color={colors.white} />
                 ) : null}
               </View>
-              {/* 선택(클릭) 표시 — 언더바. 높이 고정 슬롯이라 레이아웃이 흔들리지 않음 */}
-              <View style={[styles.underbar, showSelected && styles.underbarActive]} />
             </View>
           </TouchableOpacity>
         );
@@ -120,16 +117,6 @@ const styles = StyleSheet.create({
   },
   circleActive: {
     backgroundColor: 'rgba(255,255,255,0.8)',
-  },
-  // 선택(클릭)된 날 — 동그라미 아래 언더바. 미선택 시 투명(높이 유지).
-  underbar: {
-    width: 18,
-    height: 3,
-    borderRadius: radius.full,
-    backgroundColor: 'transparent',
-  },
-  underbarActive: {
-    backgroundColor: colors.primary,
   },
   // 작성한 날 — 파란 원 + 흰 체크 (Figma today/y, trans/blue/a1)
   circleWritten: {
