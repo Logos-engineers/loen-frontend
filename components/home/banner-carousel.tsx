@@ -56,8 +56,8 @@ export function BannerCarousel() {
     return (
       <View style={styles.wrapper}>
         <View style={[styles.banner, styles.fallbackBanner]}>
-          <Text style={styles.fallbackTitle}>loen</Text>
-          <Text style={styles.fallbackSubtitle}>말씀과 함께하는 하루</Text>
+          <Text style={styles.fallbackTitle}>등록된 배너가 없어요</Text>
+          <Text style={styles.fallbackSubtitle}>배너를 등록해 주세요</Text>
         </View>
       </View>
     );
@@ -118,13 +118,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   fallbackTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.primary,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.secondary,
   },
   fallbackSubtitle: {
     fontSize: fontSize.sm,
-    color: colors.text.secondary,
+    color: colors.text.dim,
   },
   scrim: {
     position: 'absolute',
