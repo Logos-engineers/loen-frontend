@@ -1,4 +1,4 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateWheelPicker from '@/components/challenge/DateWheelPicker';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -31,6 +31,10 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// 생일 선택 범위: 1940년부터 오늘까지. 기본값은 2000-01-01.
+const BIRTHDAY_MIN = new Date(1940, 0, 1);
+const BIRTHDAY_DEFAULT = new Date(2000, 0, 1);
+
 // 단계: 0 닉네임 → 1 본명 → 2 생일 → 3 오이코스 → 4 한줄소개(선택)
 export default function ProfileSetupScreen() {
   const { completeProfileSetup } = useAuthStore();
@@ -48,6 +52,7 @@ export default function ProfileSetupScreen() {
   const [oikosError, setOikosError] = useState(false);
   const [showOikosModal, setShowOikosModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState<Date>(BIRTHDAY_DEFAULT); // 휠 스크롤 중 임시값
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -77,6 +82,14 @@ export default function ProfileSetupScreen() {
   const handlePickDate = (date: Date) => {
     setBirthday(date);
     advanceTo(3);
+  };
+  const openDatePicker = () => {
+    setPickerDate(birthday ?? BIRTHDAY_DEFAULT);
+    setShowDatePicker(true);
+  };
+  const confirmDate = () => {
+    setShowDatePicker(false);
+    handlePickDate(pickerDate);
   };
   const handlePickOikos = (o: SelectableOikos) => {
     setSelectedOikos(o);
@@ -191,7 +204,7 @@ export default function ProfileSetupScreen() {
             {step >= 2 && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
                 <Text style={styles.label}>생일</Text>
-                <Pressable style={styles.selectBox} onPress={() => setShowDatePicker(true)}>
+                <Pressable style={styles.selectBox} onPress={openDatePicker}>
                   <Text style={[styles.selectText, !birthday && styles.placeholder]}>
                     {birthday ? formatDate(birthday) : '생일을 선택하세요'}
                   </Text>
@@ -285,19 +298,28 @@ export default function ProfileSetupScreen() {
           )}
         </View>
 
-        {/* 생일 picker */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={birthday ?? new Date(2000, 0, 1)}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={new Date()}
-            onChange={(event, date) => {
-              if (Platform.OS === 'android') setShowDatePicker(false);
-              if (event.type === 'set' && date) handlePickDate(date);
-            }}
-          />
-        )}
+        {/* 생일 picker — 우리 휠 캘린더 (바텀시트) */}
+        <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowDatePicker(false)}>
+            <Pressable style={styles.modalSheet}>
+              <Text style={styles.modalTitle}>생일 선택</Text>
+              <View style={styles.wheelWrap}>
+                <DateWheelPicker
+                  value={pickerDate}
+                  onChange={setPickerDate}
+                  minimumDate={BIRTHDAY_MIN}
+                  maximumDate={new Date()}
+                />
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}
+                onPress={confirmDate}
+              >
+                <Text style={styles.buttonText}>확인</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {/* 오이코스 선택 모달 */}
         <Modal visible={showOikosModal} transparent animationType="slide" onRequestClose={() => setShowOikosModal(false)}>
@@ -364,6 +386,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '70%',
   },
   modalTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md },
+  wheelWrap: { alignItems: 'center', paddingVertical: spacing.md, marginBottom: spacing.md },
   modalList: { flexGrow: 0 },
   modalItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   modalItemText: { fontSize: fontSize.base, color: colors.text.primary },

@@ -31,22 +31,27 @@ function toDateOnly(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-function getClampedDate(year: number, month: number, day: number, minimumDate?: Date) {
+function getClampedDate(year: number, month: number, day: number, minimumDate?: Date, maximumDate?: Date) {
   const next = new Date(year, month, Math.min(day, getDaysInMonth(year, month)));
   if (minimumDate && next.getTime() < toDateOnly(minimumDate).getTime()) {
     return toDateOnly(minimumDate);
   }
+  if (maximumDate && next.getTime() > toDateOnly(maximumDate).getTime()) {
+    return toDateOnly(maximumDate);
+  }
   return next;
 }
 
-function getYearOptions(value: Date, minimumDate?: Date) {
+function getYearOptions(value: Date, minimumDate?: Date, maximumDate?: Date) {
   const currentYear = new Date().getFullYear();
   const firstYear = Math.min(
     value.getFullYear(),
     minimumDate?.getFullYear() ?? currentYear - 1,
     currentYear - 1
   );
-  const lastYear = Math.max(value.getFullYear(), currentYear + 4);
+  // maximumDate 가 있으면 그 해까지만 (없으면 기존처럼 +4년)
+  const maxYear = maximumDate?.getFullYear() ?? currentYear + 4;
+  const lastYear = Math.max(value.getFullYear(), maxYear);
   return Array.from({ length: lastYear - firstYear + 1 }, (_, i) => firstYear + i);
 }
 
@@ -58,34 +63,42 @@ type Props = {
   value: Date;
   onChange: (date: Date) => void;
   minimumDate?: Date;
+  maximumDate?: Date;
 };
 
-export default function DateWheelPicker({ value, onChange, minimumDate }: Props) {
+export default function DateWheelPicker({ value, onChange, minimumDate, maximumDate }: Props) {
   const selectedYear = value.getFullYear();
   const selectedMonth = value.getMonth();
   const selectedDay = value.getDate();
 
-  const years = getYearOptions(value, minimumDate);
+  const years = getYearOptions(value, minimumDate, maximumDate);
   const months = Array.from({ length: 12 }, (_, i) => i);
   const days = Array.from({ length: getDaysInMonth(selectedYear, selectedMonth) }, (_, i) => i + 1);
 
   const minDate = minimumDate ? toDateOnly(minimumDate) : undefined;
+  const maxDate = maximumDate ? toDateOnly(maximumDate) : undefined;
   const update = (year: number, month: number, day: number) => {
-    onChange(getClampedDate(year, month, day, minDate));
+    onChange(getClampedDate(year, month, day, minDate, maxDate));
   };
 
   const yearIdx = Math.max(0, years.indexOf(selectedYear));
   const monthIdx = selectedMonth;
   const dayIdx = selectedDay - 1;
 
-  const isYearDisabled = (year: number) => !!minDate && year < minDate.getFullYear();
+  const isYearDisabled = (year: number) =>
+    (!!minDate && year < minDate.getFullYear()) || (!!maxDate && year > maxDate.getFullYear());
   const isMonthDisabled = (month: number) =>
-    !!minDate && selectedYear === minDate.getFullYear() && month < minDate.getMonth();
+    (!!minDate && selectedYear === minDate.getFullYear() && month < minDate.getMonth()) ||
+    (!!maxDate && selectedYear === maxDate.getFullYear() && month > maxDate.getMonth());
   const isDayDisabled = (day: number) =>
-    !!minDate &&
-    selectedYear === minDate.getFullYear() &&
-    selectedMonth === minDate.getMonth() &&
-    day < minDate.getDate();
+    (!!minDate &&
+      selectedYear === minDate.getFullYear() &&
+      selectedMonth === minDate.getMonth() &&
+      day < minDate.getDate()) ||
+    (!!maxDate &&
+      selectedYear === maxDate.getFullYear() &&
+      selectedMonth === maxDate.getMonth() &&
+      day > maxDate.getDate());
 
   return (
     <View style={styles.container}>
