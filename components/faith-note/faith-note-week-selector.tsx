@@ -34,8 +34,8 @@ export function FaithNoteWeekSelector({
         const isSelected = selectedDates.includes(day.key);
         const isToday = day.key === todayKey;
         const isWritten = writtenDays.includes(day.key);
-        // 오늘 또는 필터 선택된 날 → 어두운 pill + 흰 라벨
-        const isHighlighted = isSelected || isToday;
+        // 검은 pill 은 '오늘'에만. 선택(클릭)은 동그라미 테두리 + 라벨 색으로 가볍게 표시.
+        const showSelected = isSelected && !isToday;
 
         return (
           <TouchableOpacity
@@ -44,14 +44,21 @@ export function FaithNoteWeekSelector({
             onPress={() => onToggleDate(day.key)}
             activeOpacity={0.7}
           >
-            <View style={[styles.dayPill, isHighlighted && styles.dayPillActive]}>
-              <Text style={[styles.dayLabel, isHighlighted && styles.dayLabelActive]}>
+            <View style={[styles.dayPill, isToday && styles.dayPillActive]}>
+              <Text
+                style={[
+                  styles.dayLabel,
+                  isToday && styles.dayLabelActive,
+                  showSelected && styles.dayLabelSelected,
+                ]}
+              >
                 {day.label}
               </Text>
               <View
                 style={[
                   styles.circle,
-                  isHighlighted && styles.circleActive,
+                  isToday && styles.circleActive,
+                  showSelected && styles.circleSelected,
                   isWritten && styles.circleWritten,
                 ]}
               >
@@ -97,6 +104,11 @@ const styles = StyleSheet.create({
   dayLabelActive: {
     color: colors.white,
   },
+  // 선택(클릭)된 날 — 라벨만 강조색
+  dayLabelSelected: {
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
+  },
   circle: {
     width: 32,
     height: 32,
@@ -107,6 +119,11 @@ const styles = StyleSheet.create({
   },
   circleActive: {
     backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  // 선택(클릭)된 날 — 동그라미에 강조색 테두리(링)만. 검은 pill 은 쓰지 않음.
+  circleSelected: {
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   // 작성한 날 — 파란 원 + 흰 체크 (Figma today/y, trans/blue/a1)
   circleWritten: {
