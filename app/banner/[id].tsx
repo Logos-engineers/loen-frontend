@@ -83,23 +83,16 @@ const styles = StyleSheet.create({
   },
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
   scroll: { flex: 1 },
-  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
+  content: { paddingBottom: spacing.xxl },
   image: {
     width: '100%',
     aspectRatio: 361 / 124,   // 원래 배너 비율 고정 (cover로 잘림, 원본 비율 달라도 안 찌그러짐)
-    borderRadius: radius.lg,
     backgroundColor: colors.border,
   },
   article: {
-    backgroundColor: colors.background.elevated,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
     gap: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
   title: {
     fontSize: fontSize.xxl,
