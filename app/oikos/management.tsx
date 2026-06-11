@@ -24,13 +24,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type SearchTarget = { oikosId: string; role: 'leader' | 'sleader' | 'member' };
+type SearchTarget =
+  | { kind: 'oikos'; oikosId: string; role: 'leader' | 'sleader' | 'member' }
+  | { kind: 'groupLeader'; groupId: string };
 
-const ROLE_TITLE: Record<SearchTarget['role'], string> = {
+const OIKOS_ROLE_TITLE: Record<'leader' | 'sleader' | 'member', string> = {
   leader: '리더 지정',
   sleader: 'S리더 지정',
   member: '부원 추가',
 };
+
+function searchTitle(t: SearchTarget | null): string {
+  if (!t) return '';
+  return t.kind === 'groupLeader' ? '그룹장 지정' : OIKOS_ROLE_TITLE[t.role];
+}
 
 export default function OikosManagementScreen() {
   const {
@@ -39,6 +46,7 @@ export default function OikosManagementScreen() {
     error,
     createGroup,
     deleteGroup,
+    assignGroupLeader,
     createOikos,
     assignLeaders,
     deleteOikos,
@@ -60,16 +68,18 @@ export default function OikosManagementScreen() {
 
   const handleSelectUser = async (user: UserSearchItem) => {
     if (!searchTarget) return;
-    const { oikosId, role } = searchTarget;
+    const target = searchTarget;
     setSearchTarget(null);
     setBusy(true);
     try {
-      if (role === 'member') {
-        await addMember(oikosId, user.uid);
-      } else if (role === 'leader') {
-        await assignLeaders(oikosId, { leaderId: user.uid });
+      if (target.kind === 'groupLeader') {
+        await assignGroupLeader(target.groupId, user.uid);
+      } else if (target.role === 'member') {
+        await addMember(target.oikosId, user.uid);
+      } else if (target.role === 'leader') {
+        await assignLeaders(target.oikosId, { leaderId: user.uid });
       } else {
-        await assignLeaders(oikosId, { sleaderId: user.uid });
+        await assignLeaders(target.oikosId, { sleaderId: user.uid });
       }
     } catch (e: any) {
       Alert.alert('실패', e?.message ?? '처리하지 못했습니다.');
@@ -213,7 +223,8 @@ export default function OikosManagementScreen() {
                 canManageMembers={canManageMembers}
                 canManageGroups={canManageGroups}
                 onAddOikos={() => setCreateGroupId(group.id)}
-                onAssign={(oikosId, role) => setSearchTarget({ oikosId, role })}
+                onAssign={(oikosId, role) => setSearchTarget({ kind: 'oikos', oikosId, role })}
+                onAssignGroupLeader={(groupId) => setSearchTarget({ kind: 'groupLeader', groupId })}
                 onRemoveMember={confirmRemoveMember}
                 onDeleteOikos={confirmDeleteOikos}
                 onDeleteGroup={confirmDeleteGroup}
@@ -223,10 +234,10 @@ export default function OikosManagementScreen() {
         </ScrollView>
       )}
 
-      {/* 사용자 검색 (리더/S리더/부원 지정) */}
+      {/* 사용자 검색 (그룹장/리더/S리더/부원 지정) */}
       <UserSearchModal
         visible={searchTarget !== null}
-        title={searchTarget ? ROLE_TITLE[searchTarget.role] : ''}
+        title={searchTitle(searchTarget)}
         onClose={() => setSearchTarget(null)}
         onSelect={handleSelectUser}
       />
@@ -320,6 +331,7 @@ function GroupSection({
   canManageGroups,
   onAddOikos,
   onAssign,
+  onAssignGroupLeader,
   onRemoveMember,
   onDeleteOikos,
   onDeleteGroup,
@@ -330,6 +342,7 @@ function GroupSection({
   canManageGroups: boolean;
   onAddOikos: () => void;
   onAssign: (oikosId: string, role: 'leader' | 'sleader') => void;
+  onAssignGroupLeader: (groupId: string) => void;
   onRemoveMember: (oikosId: string, member: { uid: string; name: string }) => void;
   onDeleteOikos: (oikosId: string, name: string) => void;
   onDeleteGroup: (groupId: string, name: string) => void;
@@ -339,9 +352,20 @@ function GroupSection({
       <View style={styles.groupHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.groupName}>{group.name}</Text>
-          {group.groupLeaderName ? (
-            <Text style={styles.groupLeader}>그룹장 · {group.groupLeaderName}</Text>
-          ) : null}
+          <View style={styles.groupLeaderRow}>
+            <Text style={styles.groupLeader}>
+              그룹장 · {group.groupLeaderName ?? '미지정'}
+            </Text>
+            {canManageGroups ? (
+              <TouchableOpacity
+                style={styles.groupLeaderBtn}
+                onPress={() => onAssignGroupLeader(group.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.groupLeaderBtnText}>{group.groupLeaderName ? '변경' : '지정'}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
         {canManageGroup ? (
           <TouchableOpacity style={styles.addOikosBtn} onPress={onAddOikos} activeOpacity={0.7}>
@@ -527,7 +551,15 @@ const styles = StyleSheet.create({
   groupSection: { gap: spacing.sm },
   groupHeader: { flexDirection: 'row', alignItems: 'center' },
   groupName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  groupLeader: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: 2 },
+  groupLeader: { fontSize: fontSize.sm, color: colors.text.secondary },
+  groupLeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
+  groupLeaderBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+  },
+  groupLeaderBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.primary },
   addOikosBtn: {
     flexDirection: 'row',
     alignItems: 'center',

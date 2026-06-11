@@ -92,6 +92,18 @@ export function useOikosManagement() {
     [fetchView],
   );
 
+  // ADMIN/MANAGER: 그룹장 지정/변경
+  const assignGroupLeader = useCallback(
+    async (groupId: string, uid: string) => {
+      await apiClient<GroupNode>(`/oikos/management/groups/${groupId}/leader`, {
+        method: 'PATCH',
+        body: JSON.stringify({ groupLeaderId: uid }),
+      });
+      await fetchView();
+    },
+    [fetchView],
+  );
+
   // 그룹장/ADMIN: 오이코스 생성. ADMIN 은 그룹이 여러 개라 대상 groupId 를 함께 보낸다.
   const createOikos = useCallback(
     async (name: string, groupId?: string) => {
@@ -155,6 +167,7 @@ export function useOikosManagement() {
     refetch: fetchView,
     createGroup,
     deleteGroup,
+    assignGroupLeader,
     createOikos,
     assignLeaders,
     deleteOikos,
