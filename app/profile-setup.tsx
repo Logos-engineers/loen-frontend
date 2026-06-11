@@ -301,7 +301,7 @@ export default function ProfileSetupScreen() {
         {/* 생일 picker — 우리 휠 캘린더 (바텀시트) */}
         <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
           <Pressable style={styles.modalBackdrop} onPress={() => setShowDatePicker(false)}>
-            <Pressable style={styles.modalSheet}>
+            <Pressable style={[styles.modalSheet, styles.dateSheet]}>
               <Text style={styles.modalTitle}>생일 선택</Text>
               <View style={styles.wheelWrap}>
                 <DateWheelPicker
@@ -386,6 +386,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '70%',
   },
   modalTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md },
+  dateSheet: { backgroundColor: colors.white },
   wheelWrap: { alignItems: 'center', paddingVertical: spacing.md, marginBottom: spacing.md },
   modalList: { flexGrow: 0 },
   modalItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
