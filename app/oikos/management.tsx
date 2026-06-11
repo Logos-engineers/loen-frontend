@@ -37,7 +37,8 @@ export default function OikosManagementScreen() {
     useOikosManagement();
 
   const [searchTarget, setSearchTarget] = useState<SearchTarget | null>(null);
-  const [createVisible, setCreateVisible] = useState(false);
+  // 오이코스를 생성할 대상 그룹 id (모달 표시 여부도 겸함). null 이면 모달 닫힘.
+  const [createGroupId, setCreateGroupId] = useState<string | null>(null);
   const [newOikosName, setNewOikosName] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -67,11 +68,12 @@ export default function OikosManagementScreen() {
   const handleCreateOikos = async () => {
     const name = newOikosName.trim();
     if (!name) return;
-    setCreateVisible(false);
+    const groupId = createGroupId ?? undefined;
+    setCreateGroupId(null);
     setNewOikosName('');
     setBusy(true);
     try {
-      await createOikos(name);
+      await createOikos(name, groupId);
     } catch (e: any) {
       Alert.alert('실패', e?.message ?? '오이코스를 만들지 못했습니다.');
     } finally {
@@ -150,7 +152,7 @@ export default function OikosManagementScreen() {
                 group={group}
                 canManageGroup={canManageGroup}
                 canManageMembers={canManageMembers}
-                onAddOikos={() => setCreateVisible(true)}
+                onAddOikos={() => setCreateGroupId(group.id)}
                 onAssign={(oikosId, role) => setSearchTarget({ oikosId, role })}
                 onRemoveMember={confirmRemoveMember}
                 onDeleteOikos={confirmDeleteOikos}
@@ -168,8 +170,8 @@ export default function OikosManagementScreen() {
         onSelect={handleSelectUser}
       />
 
-      {/* 오이코스 생성 (그룹장) */}
-      <Modal visible={createVisible} transparent animationType="fade" onRequestClose={() => setCreateVisible(false)}>
+      {/* 오이코스 생성 (그룹장/ADMIN) */}
+      <Modal visible={createGroupId !== null} transparent animationType="fade" onRequestClose={() => setCreateGroupId(null)}>
         <View style={styles.dialogBackdrop}>
           <View style={styles.dialog}>
             <Text style={styles.dialogTitle}>새 오이코스</Text>
@@ -186,7 +188,7 @@ export default function OikosManagementScreen() {
               <TouchableOpacity
                 style={styles.dialogBtn}
                 onPress={() => {
-                  setCreateVisible(false);
+                  setCreateGroupId(null);
                   setNewOikosName('');
                 }}
               >

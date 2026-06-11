@@ -70,12 +70,12 @@ export function useOikosManagement() {
     fetchView();
   }, [fetchView]);
 
-  // 그룹장: 오이코스 생성
+  // 그룹장/ADMIN: 오이코스 생성. ADMIN 은 그룹이 여러 개라 대상 groupId 를 함께 보낸다.
   const createOikos = useCallback(
-    async (name: string) => {
+    async (name: string, groupId?: string) => {
       await apiClient<OikosNode>('/oikos/management/oikos', {
         method: 'POST',
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(groupId ? { name, groupId } : { name }),
       });
       await fetchView();
     },
@@ -142,6 +142,8 @@ export function useOikosManagement() {
 /** 직책 한글 라벨. */
 export function positionLabel(position: string | null | undefined): string {
   switch (position) {
+    case 'MANAGER':
+      return '관리자';
     case 'GROUP_LEADER':
       return '그룹장';
     case 'LEADER':
@@ -169,6 +171,7 @@ export function positionLabel(position: string | null | undefined): string {
 
 /** 오이코스 관리 화면에 접근(메뉴 노출) 가능한 직책. 총무/회계/부원은 제외. */
 export const OIKOS_MANAGE_POSITIONS = [
+  'MANAGER',
   'GROUP_LEADER',
   'LEADER',
   'S_LEADER',
