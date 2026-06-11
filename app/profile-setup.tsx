@@ -85,7 +85,8 @@ export default function ProfileSetupScreen() {
   };
 
   const handleComplete = async () => {
-    if (!nickname.trim() || !name.trim() || !birthday || !selectedOikos) return;
+    // 오이코스는 선택 — 미선택이어도 가입 완료 가능 (나중에 리더/관리자가 배정)
+    if (!nickname.trim() || !name.trim() || !birthday) return;
     setLoading(true);
     try {
       await apiClient('/users/me/onboarding', {
@@ -94,7 +95,7 @@ export default function ProfileSetupScreen() {
           name: name.trim(),
           nickname: nickname.trim(),
           birthday: formatDate(birthday),
-          oikosId: selectedOikos.id,
+          oikosId: selectedOikos?.id || undefined,
           bio: bio.trim() || undefined,
         }),
       });
@@ -201,7 +202,8 @@ export default function ProfileSetupScreen() {
             {/* 4. 오이코스 */}
             {step >= 3 && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
-                <Text style={styles.label}>오이코스</Text>
+                <Text style={styles.label}>오이코스 <Text style={styles.optional}>(선택)</Text></Text>
+                <Text style={styles.helper}>아직 모르면 건너뛰고 나중에 선택해도 돼요.</Text>
                 {oikosError ? (
                   <Pressable style={[styles.selectBox, styles.retryBox]} onPress={loadOikos}>
                     <Text style={styles.retryText}>목록을 불러오지 못했어요. 다시 시도</Text>
@@ -270,10 +272,16 @@ export default function ProfileSetupScreen() {
             >
               <Text style={styles.buttonText}>다음</Text>
             </Pressable>
+          ) : step === 2 ? (
+            <Text style={styles.hint}>생일을 선택해 주세요</Text>
           ) : (
-            <Text style={styles.hint}>
-              {step === 2 ? '생일을 선택해 주세요' : '오이코스를 선택해 주세요'}
-            </Text>
+            // step 3: 오이코스는 선택 — 골랐으면 '다음', 안 골랐으면 '건너뛰기'
+            <Pressable
+              style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}
+              onPress={() => advanceTo(4)}
+            >
+              <Text style={styles.buttonText}>{selectedOikos ? '다음' : '건너뛰기'}</Text>
+            </Pressable>
           )}
         </View>
 
