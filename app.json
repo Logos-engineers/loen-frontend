@@ -19,7 +19,8 @@
               "com.googleusercontent.apps.114111779962-hcpu1cde4n5c0or7rbkv4tsejdd8sslh"
             ]
           }
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
