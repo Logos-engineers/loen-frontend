@@ -13,9 +13,6 @@ import {
   View,
 } from 'react-native';
 
-// 등록된 배너가 없을 때 보여줄 기본 배너 (Figma 홈 '광고 배너' 361×124 @3x)
-const FALLBACK_BANNER = require('../../assets/images/home-banner.png');
-
 function BannerItem({ item, width }: { item: Banner; width: number }) {
   const hasText = !!(item.title || item.subtitle);
   return (
@@ -54,11 +51,11 @@ export function BannerCarousel() {
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);
 
-  // 등록된 활성 배너가 없으면 기본 배너
+  // 등록된 활성 배너가 없으면 빈 흰색 기본 배너 (실서비스엔 배너가 1개 이상 등록됨)
   if (banners.length === 0) {
     return (
       <View style={styles.wrapper}>
-        <Image source={FALLBACK_BANNER} style={styles.banner} contentFit="cover" />
+        <View style={[styles.banner, styles.fallbackBanner]} />
       </View>
     );
   }
@@ -106,6 +103,11 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 361 / 124,   // Figma 배너 카드 361×124 (≈2.91)
     borderRadius: radius.lg,
+  },
+  fallbackBanner: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   scrim: {
     position: 'absolute',
