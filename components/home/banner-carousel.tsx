@@ -51,11 +51,14 @@ export function BannerCarousel() {
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);
 
-  // 등록된 활성 배너가 없으면 빈 흰색 기본 배너 (실서비스엔 배너가 1개 이상 등록됨)
+  // 등록된 활성 배너가 없으면 흰색 기본 배너 (실서비스엔 배너가 1개 이상 등록됨)
   if (banners.length === 0) {
     return (
       <View style={styles.wrapper}>
-        <View style={[styles.banner, styles.fallbackBanner]} />
+        <View style={[styles.banner, styles.fallbackBanner]}>
+          <Text style={styles.fallbackTitle}>loen</Text>
+          <Text style={styles.fallbackSubtitle}>말씀과 함께하는 하루</Text>
+        </View>
       </View>
     );
   }
@@ -108,6 +111,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingHorizontal: spacing.md,
+  },
+  fallbackTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.primary,
+  },
+  fallbackSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
   },
   scrim: {
     position: 'absolute',
