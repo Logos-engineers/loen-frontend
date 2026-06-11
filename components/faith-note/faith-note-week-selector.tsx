@@ -34,7 +34,7 @@ export function FaithNoteWeekSelector({
         const isSelected = selectedDates.includes(day.key);
         const isToday = day.key === todayKey;
         const isWritten = writtenDays.includes(day.key);
-        // 검은 pill 은 '오늘'에만. 선택(클릭)은 요일 글씨 색만 바꿈(오늘 포함).
+        // 검은 pill 은 '오늘'에만. 선택(클릭) 표시는 pill 바깥 아래의 언더바로.
 
         return (
           <TouchableOpacity
@@ -44,13 +44,7 @@ export function FaithNoteWeekSelector({
             activeOpacity={0.7}
           >
             <View style={[styles.dayPill, isToday && styles.dayPillActive]}>
-              <Text
-                style={[
-                  styles.dayLabel,
-                  isToday && styles.dayLabelActive,
-                  isSelected && styles.dayLabelSelected,
-                ]}
-              >
+              <Text style={[styles.dayLabel, isToday && styles.dayLabelActive]}>
                 {day.label}
               </Text>
               <View
@@ -65,6 +59,8 @@ export function FaithNoteWeekSelector({
                 ) : null}
               </View>
             </View>
+            {/* 선택(클릭) 표시 — pill 바깥 아래 언더바. 미선택 시 투명(높이 유지). */}
+            <View style={[styles.underbar, isSelected && styles.underbarActive]} />
           </TouchableOpacity>
         );
       })}
@@ -102,10 +98,16 @@ const styles = StyleSheet.create({
   dayLabelActive: {
     color: colors.white,
   },
-  // 선택(클릭)된 날 — 라벨만 강조색
-  dayLabelSelected: {
-    color: colors.primary,
-    fontWeight: fontWeight.semibold,
+  // 선택(클릭)된 날 — pill 바깥 아래 언더바. 미선택 시 투명(높이 유지).
+  underbar: {
+    width: 18,
+    height: 3,
+    borderRadius: radius.full,
+    marginTop: 6,
+    backgroundColor: 'transparent',
+  },
+  underbarActive: {
+    backgroundColor: colors.primary,
   },
   circle: {
     width: 32,
