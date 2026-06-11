@@ -33,17 +33,30 @@ const ROLE_TITLE: Record<SearchTarget['role'], string> = {
 };
 
 export default function OikosManagementScreen() {
-  const { view, isLoading, error, createOikos, assignLeaders, deleteOikos, addMember, removeMember } =
-    useOikosManagement();
+  const {
+    view,
+    isLoading,
+    error,
+    createGroup,
+    deleteGroup,
+    createOikos,
+    assignLeaders,
+    deleteOikos,
+    addMember,
+    removeMember,
+  } = useOikosManagement();
 
   const [searchTarget, setSearchTarget] = useState<SearchTarget | null>(null);
   // 오이코스를 생성할 대상 그룹 id (모달 표시 여부도 겸함). null 이면 모달 닫힘.
   const [createGroupId, setCreateGroupId] = useState<string | null>(null);
   const [newOikosName, setNewOikosName] = useState('');
+  const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
   const [busy, setBusy] = useState(false);
 
   const canManageGroup = view?.canManageGroup ?? false;
   const canManageMembers = view?.canManageMembers ?? false;
+  const canManageGroups = view?.canManageGroups ?? false;
 
   const handleSelectUser = async (user: UserSearchItem) => {
     if (!searchTarget) return;
@@ -79,6 +92,42 @@ export default function OikosManagementScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleCreateGroup = async () => {
+    const name = newGroupName.trim();
+    if (!name) return;
+    setGroupModalVisible(false);
+    setNewGroupName('');
+    setBusy(true);
+    try {
+      await createGroup(name);
+    } catch (e: any) {
+      Alert.alert('실패', e?.message ?? '그룹을 만들지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDeleteGroup = (groupId: string, name: string) => {
+    Alert.alert('그룹 삭제', `'${name}' 그룹을 삭제할까요?`, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await deleteGroup(groupId);
+          } catch (e: any) {
+            // 오이코스가 남아있으면 백엔드가 막음
+            Alert.alert('삭제할 수 없어요', e?.message ?? '그룹을 삭제하지 못했습니다.');
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
   };
 
   const confirmDeleteOikos = (oikosId: string, name: string) => {
@@ -138,13 +187,23 @@ export default function OikosManagementScreen() {
         <Text style={styles.errorText}>{error}</Text>
       ) : !view ? null : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.roleBadge}>
-            <Ionicons name="ribbon-outline" size={16} color={colors.primary} />
-            <Text style={styles.roleBadgeText}>{positionLabel(view.position)}</Text>
+          <View style={styles.topRow}>
+            <View style={styles.roleBadge}>
+              <Ionicons name="ribbon-outline" size={16} color={colors.primary} />
+              <Text style={styles.roleBadgeText}>{positionLabel(view.position)}</Text>
+            </View>
+            {canManageGroups ? (
+              <TouchableOpacity style={styles.addGroupBtn} onPress={() => setGroupModalVisible(true)} activeOpacity={0.7}>
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.addGroupText}>그룹</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {view.groups.length === 0 ? (
-            <Text style={styles.emptyText}>표시할 오이코스가 없어요.</Text>
+            <Text style={styles.emptyText}>
+              {canManageGroups ? '아직 그룹이 없어요. ‘+ 그룹’으로 만들어보세요.' : '표시할 오이코스가 없어요.'}
+            </Text>
           ) : (
             view.groups.map((group) => (
               <GroupSection
@@ -152,10 +211,12 @@ export default function OikosManagementScreen() {
                 group={group}
                 canManageGroup={canManageGroup}
                 canManageMembers={canManageMembers}
+                canManageGroups={canManageGroups}
                 onAddOikos={() => setCreateGroupId(group.id)}
                 onAssign={(oikosId, role) => setSearchTarget({ oikosId, role })}
                 onRemoveMember={confirmRemoveMember}
                 onDeleteOikos={confirmDeleteOikos}
+                onDeleteGroup={confirmDeleteGroup}
               />
             ))
           )}
@@ -206,6 +267,42 @@ export default function OikosManagementScreen() {
         </View>
       </Modal>
 
+      {/* 그룹 생성 (ADMIN/MANAGER) */}
+      <Modal visible={groupModalVisible} transparent animationType="fade" onRequestClose={() => setGroupModalVisible(false)}>
+        <View style={styles.dialogBackdrop}>
+          <View style={styles.dialog}>
+            <Text style={styles.dialogTitle}>새 그룹</Text>
+            <TextInput
+              style={styles.dialogInput}
+              placeholder="그룹 이름"
+              placeholderTextColor={colors.text.dim}
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+              autoFocus
+              maxLength={30}
+            />
+            <View style={styles.dialogActions}>
+              <TouchableOpacity
+                style={styles.dialogBtn}
+                onPress={() => {
+                  setGroupModalVisible(false);
+                  setNewGroupName('');
+                }}
+              >
+                <Text style={styles.dialogBtnText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dialogBtn, styles.dialogBtnPrimary]}
+                onPress={handleCreateGroup}
+                disabled={!newGroupName.trim()}
+              >
+                <Text style={[styles.dialogBtnText, styles.dialogBtnTextPrimary]}>만들기</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {busy ? (
         <View style={styles.busyOverlay} pointerEvents="auto">
           <ActivityIndicator color={colors.primary} />
@@ -220,18 +317,22 @@ function GroupSection({
   group,
   canManageGroup,
   canManageMembers,
+  canManageGroups,
   onAddOikos,
   onAssign,
   onRemoveMember,
   onDeleteOikos,
+  onDeleteGroup,
 }: {
   group: GroupNode;
   canManageGroup: boolean;
   canManageMembers: boolean;
+  canManageGroups: boolean;
   onAddOikos: () => void;
   onAssign: (oikosId: string, role: 'leader' | 'sleader') => void;
   onRemoveMember: (oikosId: string, member: { uid: string; name: string }) => void;
   onDeleteOikos: (oikosId: string, name: string) => void;
+  onDeleteGroup: (groupId: string, name: string) => void;
 }) {
   return (
     <View style={styles.groupSection}>
@@ -246,6 +347,16 @@ function GroupSection({
           <TouchableOpacity style={styles.addOikosBtn} onPress={onAddOikos} activeOpacity={0.7}>
             <Ionicons name="add" size={16} color={colors.primary} />
             <Text style={styles.addOikosText}>오이코스</Text>
+          </TouchableOpacity>
+        ) : null}
+        {canManageGroups ? (
+          <TouchableOpacity
+            style={styles.deleteGroupBtn}
+            onPress={() => onDeleteGroup(group.id, group.name)}
+            hitSlop={8}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.text.dim} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -389,6 +500,7 @@ const styles = StyleSheet.create({
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
   emptyText: { textAlign: 'center', color: colors.text.dim, marginTop: spacing.xxl },
 
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -400,6 +512,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   roleBadgeText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
+  addGroupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  addGroupText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#fff' },
+  deleteGroupBtn: { paddingHorizontal: 4, paddingVertical: 4, marginLeft: spacing.xs },
 
   groupSection: { gap: spacing.sm },
   groupHeader: { flexDirection: 'row', alignItems: 'center' },

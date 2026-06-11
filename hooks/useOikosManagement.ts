@@ -27,9 +27,10 @@ export type GroupNode = {
 };
 
 export type ManagementView = {
-  position: string; // MEMBER | S_LEADER | LEADER | GROUP_LEADER | EXECUTIVE | COACH
-  canManageGroup: boolean; // 그룹장 → 오이코스 생성/리더 지정
-  canManageMembers: boolean; // 리더 → 부원 추가/제외
+  position: string; // MEMBER | S_LEADER | LEADER | GROUP_LEADER | MANAGER | EXECUTIVE | COACH ...
+  canManageGroup: boolean; // 그룹장/관리자 → 그룹 내 오이코스 생성/리더 지정
+  canManageMembers: boolean; // 리더/관리자 → 부원 추가/제외
+  canManageGroups: boolean; // ADMIN/MANAGER → 그룹 자체 생성/삭제
   groups: GroupNode[];
 };
 
@@ -69,6 +70,27 @@ export function useOikosManagement() {
   useEffect(() => {
     fetchView();
   }, [fetchView]);
+
+  // ADMIN/MANAGER: 그룹 생성 (이름만 — 그룹장은 나중에 지정)
+  const createGroup = useCallback(
+    async (name: string) => {
+      await apiClient<GroupNode>('/oikos/management/groups', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      await fetchView();
+    },
+    [fetchView],
+  );
+
+  // ADMIN/MANAGER: 그룹 삭제 (안에 오이코스가 있으면 백엔드가 거부)
+  const deleteGroup = useCallback(
+    async (groupId: string) => {
+      await apiClient(`/oikos/management/groups/${groupId}`, { method: 'DELETE' });
+      await fetchView();
+    },
+    [fetchView],
+  );
 
   // 그룹장/ADMIN: 오이코스 생성. ADMIN 은 그룹이 여러 개라 대상 groupId 를 함께 보낸다.
   const createOikos = useCallback(
@@ -131,6 +153,8 @@ export function useOikosManagement() {
     isLoading,
     error,
     refetch: fetchView,
+    createGroup,
+    deleteGroup,
     createOikos,
     assignLeaders,
     deleteOikos,
