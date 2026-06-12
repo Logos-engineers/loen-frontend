@@ -424,7 +424,7 @@ export default function FaithNoteDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar style="dark" />
+      <StatusBar style="dark" backgroundColor={colors.background.base} />
       <FaithNoteHeader />
 
       <KeyboardAvoidingView
@@ -510,7 +510,7 @@ export default function FaithNoteDetailScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background.base,
   },
   flex: {
     flex: 1,
