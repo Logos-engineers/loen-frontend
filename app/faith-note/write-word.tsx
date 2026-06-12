@@ -30,6 +30,10 @@ const INPUT_BG = 'rgba(13,28,45,0.08)';
 const PLACEHOLDER_COLOR = 'rgba(13,28,45,0.3)';
 const SUBMIT_DISABLED_BG = 'rgba(101,97,255,0.4)'; // primary 40% 불투명
 
+interface CreatedBibleNote {
+  id: string;
+}
+
 // ─── 선택된 구절 표시 문자열 ───────────────────────────────────────────────────
 
 function formatPassages(passages: BiblePassage[]): string {
@@ -110,7 +114,7 @@ export default function WriteWordScreen() {
         if (cancelled) return;
         if (detail.bibleName) setPassages([{ book: detail.bibleName, chapter: detail.chapter }]);
         setBodyText(detail.description ?? '');
-      } catch (e) {
+      } catch {
         Alert.alert('오류', '노트를 불러오지 못했습니다.');
       }
     })();
@@ -160,13 +164,13 @@ export default function WriteWordScreen() {
         router.back();
         return;
       }
-      await apiClient('/bible/notes', {
+      const note = await apiClient<CreatedBibleNote>('/bible/notes', {
         method: 'POST',
         body: JSON.stringify({ ...payload, isHidden: false, isOpenToOikos: false }),
       });
       clearPendingPassages();
-      router.replace('/faith-note/publish?noteType=WORD');
-    } catch (e) {
+      router.replace(`/faith-note/publish?noteType=WORD&noteId=${note.id}`);
+    } catch {
       Alert.alert('오류', '노트 저장에 실패했습니다.');
     }
   };

@@ -1,8 +1,10 @@
 import { FaithNoteCard, FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
+import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import Popup from '@/components/ui/overlay/Popup';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
+import { normalizePrayerReactions } from '@/hooks/useFaithNotes';
 import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -73,6 +75,7 @@ type PrayerDetailResponse = {
   commentCount: number;
   isMine: boolean;
   createdAt: string;
+  reactions: { emoji: string; count: number; reacted: boolean }[];
 };
 
 type WordDetailResponse = {
@@ -208,6 +211,7 @@ function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): Fa
     commentCount: detail.commentCount ?? 0,
     isLiked: false,
     isMine: detail.isMine,
+    reactions: normalizePrayerReactions(detail.reactions),
   };
 }
 
@@ -254,7 +258,11 @@ function getLikeEndpoint(tab: FaithNoteTab, noteId: string) {
   return null;
 }
 
-function CommentRow({ item }: { item: CommentItem }) {
+function getReactionEndpoint(noteId: string) {
+  return `/notes/prayers/${noteId}/reactions`;
+}
+
+function CommentRow({ item, onMenuPress }: { item: CommentItem; onMenuPress?: (item: CommentItem) => void }) {
   const primaryAuthor = item.author.nickname || item.author.name;
   const secondaryAuthor =
     item.author.handle && item.author.name !== primaryAuthor ? item.author.name : '';
@@ -270,20 +278,24 @@ function CommentRow({ item }: { item: CommentItem }) {
       )}
 
       <View style={styles.commentBody}>
-        <View style={styles.commentTopRow}>
-          <View style={styles.commentAuthorColumn}>
-            <View style={styles.authorTitleRow}>
-              <Text style={styles.authorHandle}>{primaryAuthor}</Text>
-              <Text style={styles.authorTime}>{item.timeAgo}</Text>
-            </View>
-            {secondaryAuthor ? <Text style={styles.authorName}>{secondaryAuthor}</Text> : null}
+        <View style={styles.commentAuthorColumn}>
+          <View style={styles.authorTitleRow}>
+            <Text style={styles.authorHandle}>{primaryAuthor}</Text>
+            <Text style={styles.authorTime}>{item.timeAgo}</Text>
           </View>
-          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
-          </TouchableOpacity>
+          {secondaryAuthor ? <Text style={styles.authorName}>{secondaryAuthor}</Text> : null}
         </View>
         <Text style={styles.commentText}>{item.text}</Text>
       </View>
+
+      {item.isMine ? (
+        <TouchableOpacity
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={() => onMenuPress?.(item)}
+        >
+          <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -318,6 +330,10 @@ export default function FaithNoteDetailScreen() {
   const hasText = commentText.trim().length > 0;
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // 댓글 ⋯ 메뉴 / 삭제 확인 / 수정 대상
+  const [menuComment, setMenuComment] = useState<CommentItem | null>(null);
+  const [pendingDeleteComment, setPendingDeleteComment] = useState<CommentItem | null>(null);
+  const [editingComment, setEditingComment] = useState<CommentItem | null>(null);
 
   // ⋯ → 수정: 작성 화면을 편집 모드(noteId)로 진입
   const handleEdit = () => {
@@ -334,8 +350,22 @@ export default function FaithNoteDetailScreen() {
     try {
       await apiClient(getNoteEndpoint(tab, noteId), { method: 'DELETE' });
       router.back();
-    } catch (e) {
+    } catch {
       Alert.alert('오류', '삭제에 실패했습니다.');
+    }
+  };
+
+  // 댓글 ⋯ → 삭제 확인 → 삭제 (본인 댓글만)
+  const handleDeleteCommentConfirm = async () => {
+    const target = pendingDeleteComment;
+    setPendingDeleteComment(null);
+    if (!target) return;
+    try {
+      await apiClient(`${getCommentEndpoint(tab, noteId)}/${target.id}`, { method: 'DELETE' });
+      setComments((cur) => cur.filter((c) => c.id !== target.id));
+      setNote((n) => ({ ...n, commentCount: Math.max(n.commentCount - 1, 0) }));
+    } catch {
+      Alert.alert('오류', '댓글 삭제에 실패했습니다.');
     }
   };
 
@@ -404,13 +434,78 @@ export default function FaithNoteDetailScreen() {
     }
   };
 
+  const handleReactionToggle = async (_id: string, emoji: string) => {
+    if (tab !== 'PRAYER') return;
+
+    const prev = note;
+    setNote((current) => ({
+      ...current,
+      reactions: normalizePrayerReactions(current.reactions).map((reaction) =>
+        reaction.emoji === emoji
+          ? {
+              ...reaction,
+              reacted: !reaction.reacted,
+              count: reaction.reacted ? Math.max(reaction.count - 1, 0) : reaction.count + 1,
+            }
+          : reaction,
+      ),
+    }));
+
+    try {
+      const reactions = await apiClient<{ emoji: string; count: number; reacted: boolean }[]>(
+        getReactionEndpoint(noteId),
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ emoji }),
+        },
+      );
+      setNote((current) => ({ ...current, reactions: normalizePrayerReactions(reactions) }));
+    } catch (error) {
+      setNote(prev);
+      console.warn('[faith-note-detail] reaction toggle 실패', error);
+    }
+  };
+
+  // 댓글 ⋯ → 수정: 입력창을 편집 모드로 전환
+  const handleEditComment = (comment: CommentItem) => {
+    setEditingComment(comment);
+    setCommentText(comment.text);
+    inputRef.current?.focus();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingComment(null);
+    setCommentText('');
+    inputRef.current?.blur();
+  };
+
   const handleSubmit = async () => {
     if (!hasText) return;
+    const content = commentText.trim();
+
+    // 편집 모드 → 기존 댓글 수정(PATCH)
+    if (editingComment) {
+      const target = editingComment;
+      try {
+        const updated = await apiClient<ApiCommentItem>(
+          `${getCommentEndpoint(tab, noteId)}/${target.id}`,
+          { method: 'PATCH', body: JSON.stringify({ content }) },
+        );
+        setComments((prev) => prev.map((c) => (c.id === target.id ? toCommentItem(updated) : c)));
+        setEditingComment(null);
+        setCommentText('');
+        inputRef.current?.blur();
+      } catch (error) {
+        Alert.alert('오류', '댓글 수정에 실패했습니다.');
+        console.warn('[faith-note-detail] update comment 실패', error);
+      }
+      return;
+    }
 
     try {
       const created = await apiClient<ApiCommentItem>(getCommentEndpoint(tab, noteId), {
         method: 'POST',
-        body: JSON.stringify({ content: commentText.trim() }),
+        body: JSON.stringify({ content }),
       });
 
       setComments((prev) => [...prev, toCommentItem(created)]);
@@ -424,7 +519,7 @@ export default function FaithNoteDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar style="dark" />
+      <StatusBar style="dark" backgroundColor={colors.background.base} />
       <FaithNoteHeader />
 
       <KeyboardAvoidingView
@@ -440,6 +535,7 @@ export default function FaithNoteDetailScreen() {
           <FaithNoteCard
             item={note}
             onLikeToggle={handleLikeToggle}
+            onReactionToggle={handleReactionToggle}
             onCommentPress={() => inputRef.current?.focus()}
             onEdit={handleEdit}
             onDelete={() => setShowDeleteConfirm(true)}
@@ -450,7 +546,7 @@ export default function FaithNoteDetailScreen() {
           {comments.length > 0 ? (
             <View style={styles.commentList}>
               {comments.map((item) => (
-                <CommentRow key={item.id} item={item} />
+                <CommentRow key={item.id} item={item} onMenuPress={setMenuComment} />
               ))}
             </View>
           ) : (
@@ -458,19 +554,16 @@ export default function FaithNoteDetailScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.inputBar}>
-          <TouchableOpacity
-            style={styles.inputIconButton}
-            onPress={handleLikeToggle}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name="heart"
-              size={24}
-              color={note.isLiked ? colors.reaction.red : '#C2C8D1'}
-            />
-          </TouchableOpacity>
+        {editingComment ? (
+          <View style={styles.editBanner}>
+            <Text style={styles.editBannerText}>댓글 수정 중</Text>
+            <TouchableOpacity onPress={handleCancelEdit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.editCancelText}>취소</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
+        <View style={styles.inputBar}>
           <TextInput
             ref={inputRef}
             style={styles.input}
@@ -487,7 +580,7 @@ export default function FaithNoteDetailScreen() {
             onPress={handleSubmit}
             activeOpacity={hasText ? 0.7 : 1}
           >
-            <Text style={styles.submitText}>등록</Text>
+            <Text style={styles.submitText}>{editingComment ? '수정' : '등록'}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -503,6 +596,44 @@ export default function FaithNoteDetailScreen() {
           { label: '삭제', onPress: handleDeleteConfirm, variant: 'primary' },
         ]}
       />
+
+      {/* ── 댓글 ⋯ 메뉴 — 수정 / 삭제 (본인 댓글) ── */}
+      <BottomSheet visible={!!menuComment} onClose={() => setMenuComment(null)} disableContentPadding>
+        <TouchableOpacity
+          style={styles.menuRow}
+          activeOpacity={0.7}
+          onPress={() => {
+            const target = menuComment;
+            setMenuComment(null);
+            if (target) handleEditComment(target);
+          }}
+        >
+          <Text style={styles.menuText}>수정하기</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuRow}
+          activeOpacity={0.7}
+          onPress={() => {
+            const target = menuComment;
+            setMenuComment(null);
+            setPendingDeleteComment(target);
+          }}
+        >
+          <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
+        </TouchableOpacity>
+      </BottomSheet>
+
+      {/* ── 댓글 삭제 확인 팝업 ── */}
+      <Popup
+        visible={!!pendingDeleteComment}
+        onClose={() => setPendingDeleteComment(null)}
+        title="댓글을 삭제하시겠어요?"
+        description="삭제한 댓글은 복구할 수 없어요."
+        buttons={[
+          { label: '취소', onPress: () => setPendingDeleteComment(null), variant: 'secondary' },
+          { label: '삭제', onPress: handleDeleteCommentConfirm, variant: 'primary' },
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -510,7 +641,7 @@ export default function FaithNoteDetailScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background.base,
   },
   flex: {
     flex: 1,
@@ -532,6 +663,7 @@ const styles = StyleSheet.create({
   },
   commentRow: {
     flexDirection: 'row',
+    alignItems: 'center',   // 아바타·⋯ 메뉴를 댓글 본문 기준 세로 중앙 정렬
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
@@ -552,10 +684,17 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
   },
-  commentTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  menuRow: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  menuText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  menuTextDanger: {
+    color: colors.reaction.red,
   },
   commentAuthorColumn: {
     flex: 1,
@@ -595,20 +734,32 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     color: colors.text.secondary,
   },
+  editBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.white,
+  },
+  editBannerText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  editCancelText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.accent,
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingLeft: 10,
+    paddingLeft: spacing.md,
     paddingRight: spacing.md,
     paddingVertical: spacing.md,
     backgroundColor: colors.white,
-  },
-  inputIconButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   input: {
     flex: 1,

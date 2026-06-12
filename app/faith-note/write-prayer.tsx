@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -27,14 +26,18 @@ const PLACEHOLDER_COLOR = 'rgba(13,28,45,0.3)';
 const SUBMIT_DISABLED_BG = 'rgba(101,97,255,0.4)'; // primary 40% 불투명
 
 // ─── 입력 항목 ────────────────────────────────────────────────────────────────
-const PRAYER_LABELS = ['첫번째 기도', '두번째 기도', '세번째 기도', '네번째 기도', '다섯번째 기도'];
-const PRAYER_PLACEHOLDERS = [
-  '기도제목을 입력해주세요.',
-  '기도제목을 입력해주세요.',
-  '기도제목을 입력해주세요.',
-  '기도제목을 입력해주세요.',
-  '기도제목을 입력해주세요.',
-];
+const DEFAULT_INPUT_COUNT = 5;
+const PRAYER_PLACEHOLDER = '기도제목을 입력해주세요.';
+const KOREAN_ORDINALS = ['첫번째', '두번째', '세번째', '네번째', '다섯번째', '여섯번째', '일곱번째', '여덟번째', '아홉번째', '열번째'];
+
+const getInputLabel = (index: number) => {
+  const ordinal = KOREAN_ORDINALS[index] ?? `${index + 1}번째`;
+  return `${ordinal} 기도`;
+};
+
+interface CreatedPrayerNote {
+  id: string;
+}
 
 // ─── 그만두기 모달 ─────────────────────────────────────────────────────────────
 
@@ -124,16 +127,16 @@ export default function WritePrayerScreen() {
   const router = useRouter();
   const { noteId } = useLocalSearchParams<{ noteId?: string }>();
   const isEdit = !!noteId;
-  const [inputs, setInputs] = useState<string[]>(['', '', '', '', '']);
+  const [inputs, setInputs] = useState<string[]>(Array(DEFAULT_INPUT_COUNT).fill(''));
   // 현재 작성 중(focus)인 항목. 이 index 직전 항목이 상단 네비게이션 아래에 고정(sticky)된다.
   const [activeIndex, setActiveIndex] = useState(0);
   const [showQuitModal, setShowQuitModal] = useState(false);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
   const scrollRef = useRef<ScrollView>(null);
   const rowY = useRef<number[]>([]); // 각 입력 행의 contentContainer 기준 y 위치
   const didMountRef = useRef(false);
 
-  // activeIndex가 바뀔 때(다음 버튼 / 행 탭) 해당 입력칸 focus +
+  // activeIndex가 바뀔 때(엔터 / 행 탭) 해당 입력칸 focus +
   // 직전 항목이 상단에 고정되도록 스크롤. 첫 진입은 네비게이션 전환 후 focus.
   useEffect(() => {
     const delay = didMountRef.current ? 50 : 300;
@@ -146,17 +149,6 @@ export default function WritePrayerScreen() {
     return () => clearTimeout(timer);
   }, [activeIndex]);
 
-  // 키보드(포커스) 노출 여부 — 필드 간 이동 시 깜빡임 없이 추적
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-
   // 편집 모드: 기존 노트 불러와 prefill
   useEffect(() => {
     if (!noteId) return;
@@ -166,9 +158,9 @@ export default function WritePrayerScreen() {
         const detail = await apiClient<{ prayers: string[] }>(`/notes/prayers/${noteId}`);
         if (cancelled) return;
         const filled = [...(detail.prayers ?? [])];
-        while (filled.length < 5) filled.push('');
-        setInputs(filled.slice(0, 5));
-      } catch (e) {
+        while (filled.length < DEFAULT_INPUT_COUNT) filled.push('');
+        setInputs(filled);
+      } catch {
         Alert.alert('오류', '노트를 불러오지 못했습니다.');
       }
     })();
@@ -178,18 +170,8 @@ export default function WritePrayerScreen() {
   // 하나라도 입력값이 있으면 활성화
   const isSubmitEnabled = inputs.some((v) => v.trim().length > 0);
 
-  // 포커스(키보드) 상태 + 마지막 칸이 아니면 CTA를 "다음으로"로 전환
-  const isLastIndex = activeIndex === PRAYER_LABELS.length - 1;
-  const showNextButton = keyboardVisible && !isLastIndex;
-  const ctaLabel = showNextButton ? '다음으로' : '작성 완료하기';
-  const ctaEnabled = showNextButton ? true : isSubmitEnabled;
-  const handleCtaPress = () => {
-    if (showNextButton) {
-      setActiveIndex(activeIndex + 1);
-    } else {
-      handleSubmit();
-    }
-  };
+  const ctaLabel = '작성 완료하기';
+  const ctaEnabled = isSubmitEnabled;
 
   const handleChange = (index: number, value: string) => {
     setInputs((prev) => {
@@ -197,6 +179,14 @@ export default function WritePrayerScreen() {
       next[index] = value;
       return next;
     });
+  };
+
+  const handleFocusNext = (index: number) => {
+    const nextIndex = index + 1;
+    if (nextIndex >= inputs.length) {
+      setInputs((prev) => [...prev, '']);
+    }
+    setActiveIndex(nextIndex);
   };
 
   const handleBackPress = () => {
@@ -215,7 +205,8 @@ export default function WritePrayerScreen() {
 
   const handleSubmit = async () => {
     if (!isSubmitEnabled) return;
-    const prayers = inputs.filter((v) => v.trim().length > 0);
+    const prayers = inputs.map((v) => v.trim()).filter((v) => v.length > 0);
+    let createdNoteId: string | null = null;
     try {
       if (isEdit) {
         await apiClient(`/notes/prayers/${noteId}`, {
@@ -225,14 +216,16 @@ export default function WritePrayerScreen() {
         router.back();
         return;
       }
-      await apiClient('/notes/prayers', {
+      const note = await apiClient<CreatedPrayerNote>('/notes/prayers', {
         method: 'POST',
         body: JSON.stringify({ prayers, isHidden: false, isOpenToOikos: false }),
       });
-      router.replace('/faith-note/publish?noteType=PRAYER');
-    } catch (e) {
+      createdNoteId = note.id;
+    } catch {
       Alert.alert('오류', '노트 저장에 실패했습니다.');
+      return;
     }
+    router.replace(`/faith-note/publish?noteType=PRAYER&noteId=${createdNoteId}`);
   };
 
   return (
@@ -261,7 +254,7 @@ export default function WritePrayerScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          stickyHeaderIndices={[1, 2, 3, 4, 5]}
+          stickyHeaderIndices={inputs.map((_, index) => index + 1)}
         >
           {/* index 0 — 타이틀 (스크롤되며 위로 사라짐) */}
           <View style={styles.titleSection}>
@@ -269,8 +262,8 @@ export default function WritePrayerScreen() {
             <Text style={styles.title}>하나님과의 대화를 이어가 보세요</Text>
           </View>
 
-          {/* index 1~5 — 입력 행. 각 행이 sticky 헤더 → 다음 행이 올라오면 교체되며 nav 아래 고정 */}
-          {PRAYER_LABELS.map((label, index) => {
+          {/* index 1~ — 입력 행. 각 행이 sticky 헤더 → 다음 행이 올라오면 교체되며 nav 아래 고정 */}
+          {inputs.map((_, index) => {
             const isActive = index === activeIndex;
 
             return (
@@ -283,7 +276,7 @@ export default function WritePrayerScreen() {
               >
                 {/* 레이블 — 현재 작성 항목은 보라색 (Figma) */}
                 <Text style={[styles.inputLabel, isActive && styles.inputLabelFocused]}>
-                  {label}
+                  {getInputLabel(index)}
                 </Text>
 
                 {/* 입력 Row */}
@@ -302,13 +295,11 @@ export default function WritePrayerScreen() {
                     value={inputs[index]}
                     onChangeText={(v) => handleChange(index, v)}
                     onFocus={() => setActiveIndex(index)}
-                    placeholder={PRAYER_PLACEHOLDERS[index]}
+                    placeholder={PRAYER_PLACEHOLDER}
                     placeholderTextColor={PLACEHOLDER_COLOR}
-                    returnKeyType={index < 4 ? 'next' : 'done'}
-                    onSubmitEditing={() => {
-                      if (index < 4) setActiveIndex(index + 1);
-                    }}
-                    blurOnSubmit={index === 4}
+                    returnKeyType="next"
+                    onSubmitEditing={() => handleFocusNext(index)}
+                    blurOnSubmit={false}
                   />
                 </View>
               </View>
@@ -319,7 +310,7 @@ export default function WritePrayerScreen() {
           <View style={styles.submitWrapper}>
             <TouchableOpacity
               style={[styles.submitButton, ctaEnabled && styles.submitButtonActive]}
-              onPress={handleCtaPress}
+              onPress={handleSubmit}
               activeOpacity={ctaEnabled ? 0.8 : 1}
               disabled={!ctaEnabled}
             >

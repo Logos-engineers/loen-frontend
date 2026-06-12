@@ -16,10 +16,21 @@ export type ThanksNote = {
 };
 
 export type ReactionItem = {
-  emoji: string;   // 'HEART' | 'FIRE'
+  emoji: string;   // 'HEART' | 'FIRE' | 'PRAY'
   count: number;
   reacted: boolean;
 };
+
+const PRAYER_REACTION_CODES = ['HEART', 'FIRE', 'PRAY'];
+
+export function normalizePrayerReactions(reactions?: ReactionItem[]): ReactionItem[] {
+  const byEmoji = new Map((reactions ?? []).map((reaction) => [reaction.emoji, reaction]));
+  return PRAYER_REACTION_CODES.map((emoji) => byEmoji.get(emoji) ?? {
+    emoji,
+    count: 0,
+    reacted: false,
+  });
+}
 
 export type PrayerNote = {
   id: string;
@@ -105,7 +116,7 @@ export function fromPrayer(note: PrayerNote): FaithNoteItem {
     commentCount: note.commentCount ?? 0,
     isLiked: false,
     isMine: note.isMine ?? false,
-    reactions: note.reactions ?? [],
+    reactions: normalizePrayerReactions(note.reactions),
   };
 }
 
@@ -189,7 +200,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
         n.id === id
           ? {
               ...n,
-              reactions: (n.reactions ?? []).map((r) =>
+              reactions: normalizePrayerReactions(n.reactions).map((r) =>
                 r.emoji === emoji
                   ? { ...r, reacted: !r.reacted, count: r.reacted ? r.count - 1 : r.count + 1 }
                   : r,

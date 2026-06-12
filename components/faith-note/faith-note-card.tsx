@@ -1,6 +1,6 @@
 import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -27,13 +27,20 @@ export interface FaithNoteItem {
   commentCount: number;
   isLiked: boolean;
   isMine?: boolean;            // 내 노트 여부 (true일 때만 ⋯ 수정/삭제 메뉴 노출)
-  reactions?: { emoji: string; count: number; reacted: boolean }[];  // 기도노트 이모지 반응(❤️🔥)
+  reactions?: { emoji: string; count: number; reacted: boolean }[];  // 기도노트 이모지 반응
 }
 
-// 이모지 코드 → 아이콘/활성 색상
-const REACTION_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; active: string }> = {
-  HEART: { name: 'heart', active: colors.reaction.red },
-  FIRE: { name: 'flame', active: '#FF7A00' },
+// 이모지 코드 → 아이콘(라이브러리/이름)/활성 색상.
+// 미선택 시 회색(#8F96A3), 선택 시 active 색으로 — 셋 다 벡터 아이콘으로 통일.
+const REACTION_INACTIVE = '#8F96A3';
+type ReactionIcon =
+  | { lib: 'ion'; name: keyof typeof Ionicons.glyphMap; active: string }
+  | { lib: 'fa5'; name: string; active: string };
+
+const REACTION_ICON: Record<string, ReactionIcon> = {
+  HEART: { lib: 'ion', name: 'heart', active: colors.reaction.red },
+  FIRE: { lib: 'ion', name: 'flame', active: '#FF7A00' },
+  PRAY: { lib: 'fa5', name: 'praying-hands', active: colors.primary },
 };
 
 interface FaithNoteCardProps {
@@ -149,11 +156,13 @@ export function FaithNoteCard({
 
       <View style={styles.footerRow}>
         {item.reactions && item.reactions.length > 0 ? (
-          // 기도노트: 이모지 반응 칩(❤️🔥)
+          // 기도노트: 이모지 반응 칩
           item.reactions.map((r) => {
             const icon = REACTION_ICON[r.emoji];
             if (!icon) return null;
             const counted = r.count > 0;
+            const size = counted ? 16 : 14;
+            const color = r.reacted ? icon.active : REACTION_INACTIVE;
             return (
               <TouchableOpacity
                 key={r.emoji}
@@ -161,7 +170,11 @@ export function FaithNoteCard({
                 onPress={() => onReactionToggle?.(item.id, r.emoji)}
                 activeOpacity={0.7}
               >
-                <Ionicons name={icon.name} size={counted ? 16 : 14} color={r.reacted ? icon.active : '#8F96A3'} />
+                {icon.lib === 'ion' ? (
+                  <Ionicons name={icon.name} size={size} color={color} />
+                ) : (
+                  <FontAwesome5 name={icon.name} size={size - 1} color={color} solid />
+                )}
                 {counted ? <Text style={styles.reactionCount}>{r.count}</Text> : null}
               </TouchableOpacity>
             );
@@ -182,14 +195,17 @@ export function FaithNoteCard({
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
-          style={[styles.reactionChip, hasCommentCount && styles.reactionChipCounted]}
-          onPress={handleComment}
-          activeOpacity={isDetailScreen && !onCommentPress ? 1 : 0.7}
-        >
-          <Ionicons name="chatbubble" size={hasCommentCount ? 16 : 14} color="#8F96A3" />
-          {hasCommentCount ? <Text style={styles.reactionCount}>{item.commentCount}</Text> : null}
-        </TouchableOpacity>
+        {/* 댓글(💬) 칩 — 상세 화면에서는 숨김 (이미 댓글 목록/입력창이 보임) */}
+        {isDetailVariant ? null : (
+          <TouchableOpacity
+            style={[styles.reactionChip, hasCommentCount && styles.reactionChipCounted]}
+            onPress={handleComment}
+            activeOpacity={isDetailScreen && !onCommentPress ? 1 : 0.7}
+          >
+            <Ionicons name="chatbubble" size={hasCommentCount ? 16 : 14} color="#8F96A3" />
+            {hasCommentCount ? <Text style={styles.reactionCount}>{item.commentCount}</Text> : null}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ⋯ 메뉴 — 수정 / 삭제 (내 노트일 때만) */}
@@ -300,7 +316,7 @@ const styles = StyleSheet.create({
   contentArea: {
     paddingHorizontal: spacing.md,
     paddingBottom: 0,
-    gap: spacing.xs,
+    gap: spacing.sm,   // 항목 간 간격 8 (Figma)
   },
   contentText: {
     fontSize: fontSize.md,
@@ -315,6 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
     alignItems: 'flex-start',
+    paddingVertical: spacing.nano,   // 배지 자체 상하 패딩 2 (Figma)
   },
   listNumberBadge: {
     width: 24,
