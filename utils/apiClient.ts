@@ -21,6 +21,11 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+/** 요청 과다(429) 에러인지 판별. 화면에서 쿨다운/안내 처리에 사용. */
+export function isRateLimitError(error: any): boolean {
+  return error?.status === 429;
+}
+
 function buildHeaders(token: string | null): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
