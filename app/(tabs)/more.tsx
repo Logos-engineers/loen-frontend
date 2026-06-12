@@ -1,6 +1,7 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { OIKOS_MANAGE_POSITIONS } from '@/hooks/useOikosManagement';
 import { useProfile } from '@/hooks/useProfile';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { useAuthStore } from '@/store/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -22,7 +23,8 @@ const BASE_MENU_ITEMS: MenuItem[] = [
 
 export default function MoreScreen() {
   const role = useAuthStore((s) => s.role);
-  const { profile } = useProfile();
+  const { profile, refetch } = useProfile();
+  useRefetchOnFocus(refetch);
 
   // 오이코스 관리 접근 가능 직책(그룹장/리더/S리더/임원/코치/회장/부회장/서기)이거나 ADMIN이면 노출
   // (총무/회계/부원은 제외 — 권한 없음)

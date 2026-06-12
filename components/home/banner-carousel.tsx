@@ -1,5 +1,6 @@
 import { radius, spacing, colors, fontSize, fontWeight } from '@/constants/tokens';
 import { useBanners, type Banner } from '@/hooks/useBanners';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -47,7 +48,8 @@ function BannerItem({ item, width }: { item: Banner; width: number }) {
 }
 
 export function BannerCarousel() {
-  const { banners } = useBanners();
+  const { banners, refetch } = useBanners();
+  useRefetchOnFocus(refetch);
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);
 

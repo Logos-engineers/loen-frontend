@@ -9,6 +9,7 @@
 import { ObsCard } from '@/components/obs/obs-card';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { formatKoreanDate, formatWeekLabel, useObsContents, type ObsContent } from '@/hooks/useObs';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -74,7 +75,8 @@ export default function ObsScreen() {
   const [showPicker, setShowPicker]         = useState(false);
   const [selectedDate, setSelectedDate]     = useState<Date | null>(null);
 
-  const { contents, isLoading, error } = useObsContents();
+  const { contents, isLoading, error, refetch } = useObsContents();
+  useRefetchOnFocus(refetch);
 
   // ── 정렬 + 검색 + 날짜 필터 ──────────────────────────────────────────────────
   const filteredList = useMemo(() => {

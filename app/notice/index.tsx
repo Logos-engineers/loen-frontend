@@ -1,5 +1,6 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { Notice, useNoticeList } from '@/hooks/useNotice';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -36,7 +37,8 @@ function NoticeRow({ item }: { item: Notice }) {
 }
 
 export default function NoticeListScreen() {
-  const { notices, isLoading, error, hasMore, loadMore } = useNoticeList();
+  const { notices, isLoading, error, hasMore, loadMore, refetch } = useNoticeList();
+  useRefetchOnFocus(refetch);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

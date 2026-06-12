@@ -1,5 +1,6 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useNotifications, type NotificationItem } from '@/hooks/useNotifications';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -75,7 +76,8 @@ function navigateTo(item: NotificationItem) {
 }
 
 export default function NotificationsScreen() {
-  const { items, isLoading, markRead, markAllRead } = useNotifications();
+  const { items, isLoading, markRead, markAllRead, refetch } = useNotifications();
+  useRefetchOnFocus(refetch);
 
   const handlePress = (item: NotificationItem) => {
     if (!item.isRead) markRead(item.id);

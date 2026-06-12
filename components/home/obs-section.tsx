@@ -2,13 +2,15 @@ import { ObsCard } from '@/components/obs/obs-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, spacing } from '@/constants/tokens';
 import { formatKoreanDate, formatWeekLabel, useObsContents } from '@/hooks/useObs';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 export function ObsSection() {
   const router = useRouter();
-  const { contents, isLoading, error } = useObsContents();
+  const { contents, isLoading, error, refetch } = useObsContents();
+  useRefetchOnFocus(refetch);
   const previousObs = contents[1] ?? contents[0];
 
   return (
