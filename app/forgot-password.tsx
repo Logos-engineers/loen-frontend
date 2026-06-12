@@ -1,5 +1,6 @@
 import { TextField } from '@/components/ui/text-field';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useCooldown } from '@/hooks/useCooldown';
 import { requestPasswordReset, resetPassword } from '@/utils/authApi';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -16,13 +17,16 @@ export default function ForgotPasswordScreen() {
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const resendCooldown = useCooldown(60);
 
   const handleRequest = async () => {
+    if (resendCooldown.active) return;
     if (!EMAIL_RE.test(email)) {
       Alert.alert('알림', '올바른 이메일을 입력해주세요.');
       return;
     }
     setLoading(true);
+    resendCooldown.start();
     try {
       await requestPasswordReset(email.trim());
       setStep(2);
@@ -30,6 +34,18 @@ export default function ForgotPasswordScreen() {
       Alert.alert('오류', e.message ?? '잠시 후 다시 시도해주세요.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // step 2에서 코드 재발송 — 쿨다운으로 429를 사전 차단.
+  const handleResend = async () => {
+    if (resendCooldown.active) return;
+    resendCooldown.start();
+    try {
+      await requestPasswordReset(email.trim());
+      Alert.alert('알림', '재설정 코드를 다시 보냈습니다.');
+    } catch (e: any) {
+      Alert.alert('오류', e.message ?? '재발송에 실패했습니다.');
     }
   };
 
@@ -79,13 +95,15 @@ export default function ForgotPasswordScreen() {
               autoFocus
             />
             <Pressable
-              style={({ pressed }) => [styles.button, (pressed || loading) && styles.pressed]}
+              style={({ pressed }) => [styles.button, (pressed || loading || resendCooldown.active) && styles.pressed]}
               onPress={handleRequest}
-              disabled={loading}
+              disabled={loading || resendCooldown.active}
             >
               {loading
                 ? <ActivityIndicator color={colors.white} size="small" />
-                : <Text style={styles.buttonText}>재설정 코드 받기</Text>}
+                : <Text style={styles.buttonText}>
+                    {resendCooldown.active ? `재발송 (${resendCooldown.remaining}초 후 가능)` : '재설정 코드 받기'}
+                  </Text>}
             </Pressable>
           </>
         ) : (
@@ -118,6 +136,13 @@ export default function ForgotPasswordScreen() {
                 ? <ActivityIndicator color={colors.white} size="small" />
                 : <Text style={styles.buttonText}>비밀번호 변경</Text>}
             </Pressable>
+            <Pressable onPress={handleResend} hitSlop={8} disabled={resendCooldown.active}>
+              <Text style={[styles.resendLink, resendCooldown.active && styles.linkDisabled]}>
+                {resendCooldown.active
+                  ? `코드 재발송 (${resendCooldown.remaining}초 후 가능)`
+                  : '코드를 못 받으셨나요? 재발송'}
+              </Text>
+            </Pressable>
           </>
         )}
       </View>
@@ -149,5 +174,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   buttonText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  resendLink: { color: colors.text.secondary, fontSize: fontSize.sm, textAlign: 'center', marginTop: spacing.sm },
+  linkDisabled: { opacity: 0.45 },
   pressed: { opacity: 0.75 },
 });
