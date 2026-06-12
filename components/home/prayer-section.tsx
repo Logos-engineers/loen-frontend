@@ -3,6 +3,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { FIRE_SVG, HEART_SVG } from '@/constants/icons';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { useFaithNotes, type ReactionItem } from '@/hooks/useFaithNotes';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import type { FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -65,7 +66,8 @@ function PrayerCard({
 }
 
 export function PrayerSection() {
-  const { notes, isLoading, error, toggleReaction } = useFaithNotes('PRAYER');
+  const { notes, isLoading, error, toggleReaction, refetch } = useFaithNotes('PRAYER');
+  useRefetchOnFocus(refetch);
   const prayers = notes.slice(0, 3);
 
   return (

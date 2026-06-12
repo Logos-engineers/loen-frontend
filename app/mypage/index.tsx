@@ -15,15 +15,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MyPageScreen() {
   const { profile, refetch: refetchProfile } = useProfile();
-  const { oikos } = useOikos();
+  const { oikos, refetch: refetchOikos } = useOikos();
   const { week, refetch: refetchWeek } = useAttendanceWeek();
 
-  // 프로필 수정 후 돌아왔을 때 최신 값 반영
+  // 프로필 수정·오이코스 가입 등 후 돌아왔을 때 최신 값 반영
   useFocusEffect(
     useCallback(() => {
       refetchProfile();
       refetchWeek();
-    }, [refetchProfile, refetchWeek]),
+      refetchOikos();
+    }, [refetchProfile, refetchWeek, refetchOikos]),
   );
 
   return (

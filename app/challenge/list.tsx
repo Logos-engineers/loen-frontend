@@ -1,5 +1,6 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { ChallengeItem, useChallenge } from '@/hooks/useChallenge';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -32,6 +33,9 @@ export default function ChallengeListScreen() {
   useEffect(() => {
     fetchChallenges(searchText.trim() || undefined, showOnlyActive);
   }, [fetchChallenges, searchText, showOnlyActive]);
+
+  // 화면 재진입 시 현재 검색/필터 기준으로 다시 불러온다 (등록·수정 반영).
+  useRefetchOnFocus(() => fetchChallenges(searchText.trim() || undefined, showOnlyActive));
 
   const handleBack = () => router.back();
 
