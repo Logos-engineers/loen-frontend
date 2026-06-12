@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { useAuthStore } from '@/store/auth-store';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
@@ -62,6 +63,13 @@ export default function MoreScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* 하단 탭바 위 흰색 페이드 — 홈 화면과 동일 */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0)', '#FFFFFF']}
+        style={styles.bottomFade}
+        pointerEvents="none"
+      />
     </SafeAreaView>
   );
 }
@@ -88,4 +96,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   menuLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 24,
+  },
 });
