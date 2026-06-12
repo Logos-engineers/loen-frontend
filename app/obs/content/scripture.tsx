@@ -41,12 +41,15 @@ export default function ObsScriptureScreen() {
   const reference = params.verse || '성경말씀 데이터가 없습니다';
   const scriptureVerses = parseScriptureVerses(reference);
 
+  // 좌상단 쉐브론: 단계별 뒤로가 아니라 OBS 보기 플로우 전체를 빠져나감
+  const exitFlow = () => router.dismissTo(params.preview === 'true' ? '/obs/admin' : '/obs');
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={exitFlow}>
             <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
           </TouchableOpacity>
         </View>
