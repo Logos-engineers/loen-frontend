@@ -78,6 +78,8 @@ export function BookSelectModal({
   const [selectedBookCode, setSelectedBookCode] = useState(currentBookCode);
   const [selectedChapter, setSelectedChapter] = useState(currentChapter);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+  // 단계별 컬럼 누적 노출: 책만 → 책+장 → 책+장+절
+  const [step, setStep] = useState<'book' | 'chapter' | 'verse'>('book');
 
   useEffect(() => {
     if (!visible) return;
@@ -85,6 +87,7 @@ export function BookSelectModal({
     setSelectedBookCode(currentBookCode);
     setSelectedChapter(currentChapter);
     setSelectedVerse(null);
+    setStep('book');
   }, [visible, currentBookCode, currentChapter]);
 
   const filteredBooks = useMemo(() => {
@@ -154,12 +157,14 @@ export function BookSelectModal({
     setSelectedChapter(safeChapter);
     const firstVerse = nextBook?.chapters.find((chapter) => chapter.chapter === safeChapter)?.verses[0]?.verse ?? 1;
     setSelectedVerse(firstVerse);
+    setStep('chapter'); // 책을 고르면 다시 장 선택 단계로
   };
 
   const handleChapterPress = (chapter: number) => {
     setSelectedChapter(chapter);
     const firstVerse = selectedBookDoc?.chapters.find((item) => item.chapter === chapter)?.verses[0]?.verse ?? 1;
     setSelectedVerse(firstVerse);
+    setStep('verse'); // 장을 고르면 절 선택 단계로 전환
   };
 
   const handleVersePress = (verse: number) => {
@@ -223,7 +228,8 @@ export function BookSelectModal({
                     <Text style={styles.sectionHeaderText}>{section.title}</Text>
                   </View>
                   {section.books.map((book) => {
-                    const isSelected = book.code === selectedBook?.code;
+                    // 디폴트(책만) 단계에선 선택 강조 없음 — 책을 골라야 강조 + 우측에 장 노출
+                    const isSelected = step !== 'book' && book.code === selectedBook?.code;
                     return (
                       <TouchableOpacity
                         key={book.code}
@@ -247,45 +253,51 @@ export function BookSelectModal({
             </ScrollView>
           </View>
 
-          <View style={[styles.column, styles.chapterColumn]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.columnContent}>
-              {chapters.map((chapter) => {
-                const isSelected = chapter.chapter === selectedChapter;
-                return (
-                  <TouchableOpacity
-                    key={chapter.chapter}
-                    activeOpacity={0.7}
-                    onPress={() => handleChapterPress(chapter.chapter)}
-                    style={[styles.numberRow, isSelected && styles.numberRowSelected]}
-                  >
-                    <Text style={[styles.numberText, isSelected && styles.numberTextSelected]}>
-                      {chapter.chapter}장
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
+          {/* 장 컬럼 — 책 선택 후 노출 */}
+          {step !== 'book' && (
+            <View style={[styles.column, styles.numColumn, step === 'chapter' && styles.lastColumn]}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.columnContent}>
+                {chapters.map((chapter) => {
+                  const isSelected = chapter.chapter === selectedChapter;
+                  return (
+                    <TouchableOpacity
+                      key={chapter.chapter}
+                      activeOpacity={0.7}
+                      onPress={() => handleChapterPress(chapter.chapter)}
+                      style={[styles.numberRow, isSelected && styles.numberRowSelected]}
+                    >
+                      <Text style={[styles.numberText, isSelected && styles.numberTextSelected]}>
+                        {chapter.chapter}장
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
-          <View style={[styles.column, styles.verseColumn]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.columnContent}>
-              {verses.map((verse) => {
-                const isSelected = verse.verse === selectedVerse;
-                return (
-                  <TouchableOpacity
-                    key={verse.verse}
-                    activeOpacity={0.7}
-                    onPress={() => handleVersePress(verse.verse)}
-                    style={[styles.numberRow, isSelected && styles.numberRowSelected]}
-                  >
-                    <Text style={[styles.numberText, isSelected && styles.numberTextSelected]}>
-                      {verse.verse}절
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
+          {/* 절 컬럼 — 장 선택 후 노출 */}
+          {step === 'verse' && (
+            <View style={[styles.column, styles.numColumn, styles.lastColumn]}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.columnContent}>
+                {verses.map((verse) => {
+                  const isSelected = verse.verse === selectedVerse;
+                  return (
+                    <TouchableOpacity
+                      key={verse.verse}
+                      activeOpacity={0.7}
+                      onPress={() => handleVersePress(verse.verse)}
+                      style={[styles.numberRow, isSelected && styles.numberRowSelected]}
+                    >
+                      <Text style={[styles.numberText, isSelected && styles.numberTextSelected]}>
+                        {verse.verse}절
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
         </View>
 
         <View style={styles.fixedBottomWrap} pointerEvents="box-none">
@@ -363,14 +375,13 @@ const styles = StyleSheet.create({
     width: '36%',
     backgroundColor: colors.background.base,
   },
-  chapterColumn: {
-    width: '32%',
+  // 장/절 컬럼 — 남은 폭을 균등 분할 (장만: 64% / 장+절: 각 32%)
+  numColumn: {
+    flex: 1,
     backgroundColor: colors.white,
   },
-  verseColumn: {
-    width: '32%',
+  lastColumn: {
     borderRightWidth: 0,
-    backgroundColor: colors.white,
   },
   columnContent: {
     paddingBottom: 96,
@@ -449,9 +460,9 @@ const styles = StyleSheet.create({
     minHeight: 42,
     paddingHorizontal: 24,
     borderRadius: 999,
+    backgroundColor: '#E0DFFF',          // 불투명 라벤더 — 비침 없이 또렷 (Figma)
     borderWidth: 1,
     borderColor: 'rgba(101,97,255,0.3)',
-    backgroundColor: 'rgba(101,97,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },

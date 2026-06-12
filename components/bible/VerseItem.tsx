@@ -6,6 +6,7 @@
  */
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants/tokens';
 
 type VerseItemProps = {
@@ -43,13 +44,20 @@ export function VerseItem({ verseNum, text, isHighlighted = false }: VerseItemPr
         <Animated.View
           pointerEvents="none"
           style={[
-            styles.highlightBlur,
+            styles.highlight,
             {
               opacity: highlightOpacity,
               transform: [{ scale: highlightScale }],
             },
           ]}
-        />
+        >
+          {/* 위·아래로 부드럽게 퍼지는 그라데이션 (단색 블록 대신) */}
+          <LinearGradient
+            colors={['rgba(101,97,255,0)', 'rgba(101,97,255,0.22)', 'rgba(101,97,255,0.22)', 'rgba(101,97,255,0)']}
+            locations={[0, 0.32, 0.68, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
       ) : null}
 
       <View style={styles.countCol}>
@@ -59,12 +67,6 @@ export function VerseItem({ verseNum, text, isHighlighted = false }: VerseItemPr
       </View>
 
       <View style={styles.textCol}>
-        {isHighlighted && (
-          <Animated.View
-            style={[StyleSheet.absoluteFill, styles.highlightBg, { opacity: highlightOpacity }]}
-            pointerEvents="none"
-          />
-        )}
         <Text style={styles.verseText}>{text}</Text>
       </View>
     </View>
@@ -78,13 +80,13 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
   },
-  highlightBlur: {
+  // 절 이동 하이라이트 — 좌우 끝까지 꽉 차게, 위아래로 페이드되는 글로우
+  highlight: {
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 2,
-    bottom: 2,
-    backgroundColor: 'rgba(101,97,255,0)',
+    top: -6,
+    bottom: -6,
   },
   countCol: {
     width: 48,
@@ -112,12 +114,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 16,
     paddingVertical: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  highlightBg: {
-    backgroundColor: 'rgba(101,97,255,0.2)',
-    borderRadius: 16,
   },
   verseText: {
     fontFamily: 'Pretendard-Medium',

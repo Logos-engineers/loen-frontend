@@ -9,7 +9,7 @@ import LeftArrowIcon from '@/assets/icons/LeftArrow.svg';
 import RightArrowIcon from '@/assets/icons/RightArrow.svg';
 import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadow } from '@/constants/tokens';
+import { colors } from '@/constants/tokens';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,7 +64,7 @@ export function ChapterNav({ onPrev, onNext, hasPrev, hasNext, isChapterRead, on
             {isChapterRead ? '이미 읽은 장이에요' : '읽음 표시하고 다음장으로'}
           </Text>
           {isChapterRead ? (
-            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Ionicons name="checkmark-circle" size={20} color={colors.correct} />
           ) : (
             <CheckCircleIcon width={20} height={20} color={colors.text.dim} />
           )}
@@ -102,15 +102,10 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   arrowBtn: {
-    // Figma: bg rgba(255,255,255,0.7), rounded-full, shadow, p 5
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    // 불투명 흰색 원형, 그림자 없음 (Figma — 플로팅 버튼 그림자 제거)
+    backgroundColor: colors.white,
     borderRadius: 1248,
     padding: 5,
-    shadowColor: shadow.color,
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
   },
   arrowDisabled: {
     opacity: 0.3,
@@ -129,11 +124,6 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     gap: 8,
-    shadowColor: shadow.color,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   readCheckPlaceholder: {
     width: 1, // 빈 공간일 때 좌우 화살표 간격 유지를 위한 최소 너비
