@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import {
@@ -504,7 +505,11 @@ export default function ObsSummaryScreen() {
         )}
 
         <View style={styles.bottomCta}>
-          <View style={styles.bottomBlur} />
+          <LinearGradient
+            colors={['rgba(242,244,247,0)', '#F2F4F7']}
+            style={styles.bottomGradient}
+            pointerEvents="none"
+          />
           <TouchableOpacity style={[styles.ctaButton, styles.prevButton]} activeOpacity={0.85} onPress={() => router.back()}>
             <Text style={styles.prevButtonText}>이전으로</Text>
           </TouchableOpacity>
@@ -726,13 +731,12 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     backgroundColor: colors.background.base,
   },
-  bottomBlur: {
+  bottomGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: -20,
     height: 20,
-    backgroundColor: 'rgba(242,244,247,0.88)',
   },
   ctaButton: {
     flex: 1,

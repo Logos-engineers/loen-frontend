@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
@@ -88,7 +89,11 @@ export default function ObsScriptureScreen() {
         </ScrollView>
 
         <View style={styles.bottomCta}>
-          <View style={styles.bottomBlur} />
+          <LinearGradient
+            colors={['rgba(242,244,247,0)', '#F2F4F7']}
+            style={styles.bottomGradient}
+            pointerEvents="none"
+          />
           <TouchableOpacity
             style={styles.nextButton}
             activeOpacity={0.85}
@@ -224,13 +229,12 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     backgroundColor: colors.background.base,
   },
-  bottomBlur: {
+  bottomGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: -20,
     height: 20,
-    backgroundColor: 'rgba(242,244,247,0.88)',
   },
   nextButton: {
     height: 50,
