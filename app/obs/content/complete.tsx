@@ -1,13 +1,34 @@
 import { Stack, router } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
 
+// 완료 이모지 등장 인터랙션 — 작게 시작해 살짝 오버슈트 후 안착(팝업 + 바운스)
+const POP_IN = {
+  animationName: {
+    '0%': { transform: [{ scale: 0 }, { rotate: '-8deg' }] },
+    '55%': { transform: [{ scale: 1.15 }, { rotate: '4deg' }] },
+    '75%': { transform: [{ scale: 0.96 }, { rotate: '-2deg' }] },
+    '100%': { transform: [{ scale: 1 }, { rotate: '0deg' }] },
+  },
+  animationDuration: '700ms',
+  animationTimingFunction: 'ease-out',
+} as const;
+
 export default function ObsCompleteScreen() {
   const { width, height } = useWindowDimensions();
+
+  // 완료 화면을 1.5초간 보여준 뒤 OBS 모아보기로 자동 이동 (별도 CTA 없음)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.replace('/obs');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <>
@@ -45,24 +66,13 @@ export default function ObsCompleteScreen() {
             <Text style={styles.title}>OBS 완료</Text>
           </View>
 
-          {/* 일러스트 */}
+          {/* 일러스트 — 등장 시 팝업 + 살짝 바운스(완료 축하 인터랙션) */}
           <View style={styles.illustrationContainer}>
-            <Image
+            <Animated.Image
               source={require('@/assets/icons/obs/obs_complete_book.png')}
-              style={styles.illustration}
+              style={[styles.illustration, POP_IN]}
               resizeMode="contain"
             />
-          </View>
-
-          {/* 홈으로 버튼 */}
-          <View style={styles.bottomArea}>
-            <TouchableOpacity
-              style={styles.homeButton}
-              activeOpacity={0.85}
-              onPress={() => router.replace('/')}
-            >
-              <Text style={styles.homeButtonText}>홈으로</Text>
-            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
@@ -102,34 +112,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   illustrationContainer: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 10,
-    paddingVertical: 6,
   },
   illustration: {
     width: '100%',
     height: 360,
-  },
-  bottomArea: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 14,
-  },
-  homeButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  homeButtonText: {
-    fontSize: 18,
-    lineHeight: 18 * 1.4,
-    fontWeight: fontWeight.semibold,
-    color: colors.white,
-    textAlign: 'center',
   },
 });

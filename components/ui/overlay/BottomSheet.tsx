@@ -7,8 +7,8 @@
 
 import Handle from '@/components/ui/overlay/Handle';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import React, { ReactNode } from 'react';
-import { Modal, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Modal, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
@@ -37,15 +37,101 @@ export default function BottomSheet({
   disableContentPadding = false,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const [renderVisible, setRenderVisible] = useState(visible);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(40)).current;
+  const closingRef = useRef(false);
+  const openedRef = useRef(false);
+
+  useEffect(() => {
+    if (visible) {
+      if (!renderVisible) {
+        setRenderVisible(true);
+        return;
+      }
+      if (openedRef.current) return;
+      openedRef.current = true;
+      closingRef.current = false;
+      backdropOpacity.setValue(0);
+      sheetTranslateY.setValue(40);
+      requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOpacity, {
+            toValue: 1,
+            duration: 240,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: 240,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+      return;
+    }
+
+    if (renderVisible && !closingRef.current) {
+      openedRef.current = false;
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 160,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 40,
+          duration: 160,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => setRenderVisible(false));
+    }
+  }, [backdropOpacity, renderVisible, sheetTranslateY, visible]);
+
+  const handleClose = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    openedRef.current = false;
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 160,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 40,
+        duration: 160,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setRenderVisible(false);
+      closingRef.current = false;
+      onClose();
+    });
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={renderVisible} transparent animationType="none" statusBarTranslucent onRequestClose={handleClose}>
       <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={dismissOnBackdrop ? onClose : undefined}>
-          <View style={styles.backdrop} />
+        <TouchableWithoutFeedback onPress={dismissOnBackdrop ? handleClose : undefined}>
+          <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
         </TouchableWithoutFeedback>
 
-        <View style={[styles.sheet, { marginBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              marginBottom: Math.max(insets.bottom, spacing.md),
+              transform: [{ translateY: sheetTranslateY }],
+            },
+          ]}
+        >
           <Handle />
           {(title || subtitle) && (
             <View style={styles.header}>
@@ -57,7 +143,7 @@ export default function BottomSheet({
             <View style={disableContentPadding ? undefined : styles.content}>{children}</View>
           )}
           {!!footer && <View style={styles.footer}>{footer}</View>}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
@@ -40,12 +41,15 @@ export default function ObsScriptureScreen() {
   const reference = params.verse || '성경말씀 데이터가 없습니다';
   const scriptureVerses = parseScriptureVerses(reference);
 
+  // 좌상단 쉐브론: 단계별 뒤로가 아니라 OBS 보기 플로우 전체를 빠져나감
+  const exitFlow = () => router.dismissTo(params.preview === 'true' ? '/obs/admin' : '/obs');
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={exitFlow}>
             <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
           </TouchableOpacity>
         </View>
@@ -88,7 +92,11 @@ export default function ObsScriptureScreen() {
         </ScrollView>
 
         <View style={styles.bottomCta}>
-          <View style={styles.bottomBlur} />
+          <LinearGradient
+            colors={['rgba(242,244,247,0)', '#F2F4F7']}
+            style={styles.bottomGradient}
+            pointerEvents="none"
+          />
           <TouchableOpacity
             style={styles.nextButton}
             activeOpacity={0.85}
@@ -224,13 +232,12 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     backgroundColor: colors.background.base,
   },
-  bottomBlur: {
+  bottomGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: -20,
     height: 20,
-    backgroundColor: 'rgba(242,244,247,0.88)',
   },
   nextButton: {
     height: 50,

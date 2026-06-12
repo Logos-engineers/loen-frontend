@@ -1,14 +1,16 @@
 /**
  * BibleHeader.tsx
- * Figma: top navigator (glassmorphism)
+ * Figma: top navigator
  * - Back button (chevron-left)
  * - Center: "Book N장" title + 역본 tag (static)
  * - Right: search icon
- * Note: Using rgba background instead of BlurView (expo-blur not installed)
+ * 불투명 배경 + 하단 그라데이션 페이드(홈 헤더 패턴) — 스크롤 본문이 헤더 밑으로
+ * 자연스럽게 사라지게. (반투명 글래스 대신)
  */
 import SearchIcon from '@/assets/icons/search.svg';
 import ChevronLeftIcon from '@/assets/icons/back.svg';
-import { colors, shadow } from '@/constants/tokens';
+import { colors } from '@/constants/tokens';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
 import {
@@ -55,6 +57,13 @@ export function BibleHeader({ bookName, chapterNum, onSearchPress, onTitlePress 
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* 헤더 아래 흰색 페이드 — 스크롤 본문이 헤더 밑으로 자연스럽게 사라지게 (홈 헤더와 동일) */}
+      <LinearGradient
+        colors={['#FFFFFF', 'rgba(255,255,255,0)']}
+        style={styles.fade}
+        pointerEvents="none"
+      />
     </View>
   );
 }
@@ -65,15 +74,18 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: colors.white,
     zIndex: 10,
     paddingBottom: 12,
     paddingHorizontal: 12,
-    shadowColor: shadow.color,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+  },
+  // 헤더 바로 아래로 이어지는 흰색→투명 페이드 (full-bleed: 좌우 패딩 12 상쇄)
+  fade: {
+    position: 'absolute',
+    left: -12,
+    right: -12,
+    bottom: -16,
+    height: 16,
   },
   bar: {
     flexDirection: 'row',

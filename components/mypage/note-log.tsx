@@ -3,6 +3,7 @@ import { FaithNoteTabBar, type FaithNoteTab } from '@/components/faith-note/fait
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useMyFaithNotes } from '@/hooks/useMyFaithNotes';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -14,7 +15,8 @@ interface NoteLogProps {
 /** 마이페이지 최하단 신앙노트 로그 — 본인 작성 노트 최신 5개 + 더보기. */
 export function NoteLog({ uid }: NoteLogProps) {
   const [tab, setTab] = useState<FaithNoteTab>('THANKS');
-  const { notes, isLoading } = useMyFaithNotes(tab, uid, 5);
+  const { notes, isLoading, refetch } = useMyFaithNotes(tab, uid, 5);
+  useRefetchOnFocus(refetch);
 
   return (
     <View style={styles.container}>

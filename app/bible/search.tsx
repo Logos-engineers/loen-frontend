@@ -1,6 +1,6 @@
 import ChevronLeftIcon from '@/assets/icons/back.svg';
 import SearchIcon from '@/assets/icons/search.svg';
-import XMarkIcon from '@/assets/icons/X mark.svg';
+import { Ionicons } from '@expo/vector-icons';
 import { SearchResult, SearchResultItem } from '@/components/bible/SearchResultItem';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { getAllBooks } from '@/constants/bibleLoader';
@@ -136,19 +136,21 @@ export default function BibleSearchScreen() {
     await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
   }, [history]);
 
+  // 입력만으로는 검색하지 않음 — 비웠을 때 결과만 정리
   const handleSearch = useCallback((nextQuery: string) => {
     setQuery(nextQuery);
     if (nextQuery.trim().length < 1) {
       setResults([]);
-      return;
     }
-    setResults(searchBible(nextQuery.trim()));
   }, []);
 
+  // 검색 CTA(또는 키보드 검색키) — 이때 실제 검색 실행 + 키보드 내림(→ CTA 사라짐)
   const handleSubmit = useCallback(() => {
-    if (query.trim().length > 0) {
-      saveHistory(query.trim());
-    }
+    const trimmed = query.trim();
+    if (trimmed.length < 1) return;
+    setResults(searchBible(trimmed));
+    saveHistory(trimmed);
+    inputRef.current?.blur();
   }, [query, saveHistory]);
 
   const handleResultPress = useCallback((result: SearchResult) => {
@@ -169,7 +171,9 @@ export default function BibleSearchScreen() {
   const handleHistoryPress = useCallback((nextQuery: string) => {
     setQuery(nextQuery);
     setResults(searchBible(nextQuery.trim()));
-  }, []);
+    saveHistory(nextQuery.trim());
+    inputRef.current?.blur();
+  }, [saveHistory]);
 
   const removeHistory = useCallback(async (nextQuery: string) => {
     const updated = history.filter((item) => item.query !== nextQuery);
@@ -197,7 +201,7 @@ export default function BibleSearchScreen() {
               hitSlop={8}
               style={styles.chipCloseButton}
             >
-              <XMarkIcon width={8} height={8} />
+              <Ionicons name="close" size={14} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
         ))}
@@ -232,7 +236,7 @@ export default function BibleSearchScreen() {
             />
             {query.length > 0 ? (
               <TouchableOpacity onPress={resetSearch} hitSlop={8} style={styles.clearButton}>
-                <XMarkIcon width={10} height={10} />
+                <Ionicons name="close" size={22} color={colors.text.secondary} />
               </TouchableOpacity>
             ) : null}
           </View>

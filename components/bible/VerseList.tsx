@@ -67,9 +67,16 @@ const VerseList = forwardRef<VerseListHandle, VerseListProps>(
           item.type === 'section' ? `section-${index}` : `verse-${item.verseNum}`
         }
         contentContainerStyle={[styles.container, { paddingTop }]}
-        onScrollToIndexFailed={() => {
-          // Graceful fallback: scroll to end
-          listRef.current?.scrollToEnd({ animated: true });
+        onScrollToIndexFailed={(info) => {
+          // 갓 마운트되어 아직 레이아웃되지 않은 경우(예: 검색으로 진입) — 잠시 후 해당 절로 재시도.
+          // (맨 끝으로 보내면 하이라이트한 절이 화면 밖에 떠버림)
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({
+              index: info.index,
+              animated: true,
+              viewPosition: 0.3,
+            });
+          }, 120);
         }}
         onScroll={onScroll}
         scrollEventThrottle={16}

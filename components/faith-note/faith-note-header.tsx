@@ -31,9 +31,7 @@ export function FaithNoteHeader({ onWritePress }: FaithNoteHeaderProps) {
           <Text style={styles.writeLabel}>노트 작성하기</Text>
         </TouchableOpacity>
       ) : (
-        <View style={styles.writeButton}>
-          <Text style={styles.writeLabel}>노트 작성하기</Text>
-        </View>
+        <View style={styles.writeButton} />
       )}
     </View>
   );
@@ -42,7 +40,7 @@ export function FaithNoteHeader({ onWritePress }: FaithNoteHeaderProps) {
 const styles = StyleSheet.create({
   container: {
     height: 46,
-    backgroundColor: 'rgba(242,244,247,0.72)',
+    backgroundColor: colors.background.base,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

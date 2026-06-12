@@ -4,6 +4,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useChallenge } from '@/hooks/useChallenge';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -11,7 +12,8 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 
 export function ChallengeSection() {
   const router = useRouter();
-  const { challenges, isLoading, error } = useChallenge();
+  const { challenges, isLoading, error, fetchChallenges } = useChallenge();
+  useRefetchOnFocus(fetchChallenges);
   const challenge = challenges[0];
 
   return (

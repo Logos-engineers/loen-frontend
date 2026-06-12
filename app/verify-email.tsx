@@ -1,11 +1,12 @@
 import { TextField } from '@/components/ui/text-field';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { useCooldown } from '@/hooks/useCooldown';
 import { useAuthStore } from '@/store/auth-store';
 import { resendVerification, verifyEmail } from '@/utils/authApi';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,6 +15,13 @@ export default function VerifyEmailScreen() {
   const { setTokens } = useAuthStore();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  // 진입 시점에 이미 코드가 1통 발송된 상태이므로 재발송 쿨다운을 바로 시작한다.
+  const resendCooldown = useCooldown(60);
+  useEffect(() => {
+    resendCooldown.start();
+    // 최초 진입 시 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleVerify = async () => {
     if (!email) {
@@ -41,7 +49,9 @@ export default function VerifyEmailScreen() {
   };
 
   const handleResend = async () => {
-    if (!email) return;
+    if (!email || resendCooldown.active) return;
+    // 낙관적으로 쿨다운 시작 — 연타로 429를 맞는 것을 막는다.
+    resendCooldown.start();
     try {
       await resendVerification(email);
       Alert.alert('알림', '인증 코드를 다시 보냈습니다.');
@@ -86,8 +96,12 @@ export default function VerifyEmailScreen() {
             : <Text style={styles.buttonText}>인증 완료</Text>}
         </Pressable>
 
-        <Pressable onPress={handleResend} hitSlop={8}>
-          <Text style={styles.link}>코드를 못 받으셨나요? 재발송</Text>
+        <Pressable onPress={handleResend} hitSlop={8} disabled={resendCooldown.active}>
+          <Text style={[styles.link, resendCooldown.active && styles.linkDisabled]}>
+            {resendCooldown.active
+              ? `재발송 (${resendCooldown.remaining}초 후 가능)`
+              : '코드를 못 받으셨나요? 재발송'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -119,5 +133,6 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
   link: { color: colors.text.secondary, fontSize: fontSize.sm, textAlign: 'center', marginTop: spacing.sm },
+  linkDisabled: { opacity: 0.45 },
   pressed: { opacity: 0.75 },
 });
