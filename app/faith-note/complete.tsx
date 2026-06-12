@@ -1,7 +1,7 @@
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop, SvgXml } from 'react-native-svg';
@@ -42,6 +42,15 @@ export default function CompleteScreen() {
   const { noteType } = useLocalSearchParams<{ noteType?: string }>();
   const noteLabel = noteType === 'PRAYER' ? '기도노트' : noteType === 'WORD' ? '말씀노트' : '감사노트';
   const today = getKoreanDate();
+
+  // 작성 완료 화면을 1.5초간 보여준 뒤 메인(홈)으로 자동 이동.
+  // (이 화면엔 별도 네비게이션이 없어, 없으면 사용자가 갇혀 저장이 안 된 것처럼 보임)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.replace('/(tabs)');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
   // 컨테이너 실측 크기 + 책 중심 측정 → 그라데이션을 책 중심에 정확히 정렬 (좌표 압축 방지, 반응형)
   const [{ w, h }, setLayout] = useState({ w: 0, h: 0 });
   const [bookCenterY, setBookCenterY] = useState<number | null>(null);
