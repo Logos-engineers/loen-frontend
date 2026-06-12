@@ -337,6 +337,8 @@ export default function ObsSummaryScreen() {
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string }>();
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
+  // 좌상단 쉐브론: OBS 보기 플로우 전체를 빠져나감 (단계 뒤로는 하단 '이전으로'가 담당)
+  const exitFlow = () => router.dismissTo(isPreview ? '/obs/admin' : '/obs');
   const initialReviewId = params.reviewId ? Number(params.reviewId) : null;
   const [introText, setIntroText] = useState('');
   const [questionCards, setQuestionCards] = useState<QuestionCardData[]>([]);
@@ -456,7 +458,7 @@ export default function ObsSummaryScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <OBSHeader />
+        <OBSHeader onBack={exitFlow} />
 
         {isLoading ? (
           <View style={styles.centerState}>

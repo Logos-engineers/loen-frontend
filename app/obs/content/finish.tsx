@@ -56,6 +56,8 @@ export default function ObsFinishScreen() {
   const isViewFlow = params.flow === 'view';
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
+  // 좌상단 쉐브론: OBS 보기 플로우 전체를 빠져나감 (단계 뒤로는 하단 '이전으로'가 담당)
+  const exitFlow = () => router.dismissTo(isPreview ? '/obs/admin' : '/obs');
   const [reviewId, setReviewId] = useState<number | null>(params.reviewId ? Number(params.reviewId) : null);
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function ObsFinishScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.navBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={exitFlow}>
             <SvgXml xml={BACK_SVG} width={24} height={24} />
           </TouchableOpacity>
         </View>
