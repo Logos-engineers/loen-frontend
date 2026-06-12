@@ -4,11 +4,12 @@ import IconAll from '@/assets/icons/icon-public-all.svg';
 import IconLink from '@/assets/icons/icon-public-link.svg';
 import IconOikos from '@/assets/icons/icon-public-oikos.svg';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── noteType → 한글 라벨 ────────────────────────────────────────────────────
@@ -22,6 +23,19 @@ function getNoteLabel(noteType: string | undefined) {
 // ─── 공개 옵션 ────────────────────────────────────────────────────────────────
 
 type PublishOption = 'ALL' | 'OIKOS' | 'LINK';
+
+function getVisibilityPayload(selected: PublishOption) {
+  return {
+    isHidden: selected === 'LINK',
+    isOpenToOikos: selected === 'OIKOS',
+  };
+}
+
+function getVisibilityEndpoint(noteType: string | undefined, noteId: string) {
+  if (noteType === 'PRAYER') return `/notes/prayers/${noteId}/visibility`;
+  if (noteType === 'WORD') return `/bible/notes/${noteId}/visibility`;
+  return `/notes/thanks/${noteId}/visibility`;
+}
 
 const PUBLISH_OPTIONS: {
   key: PublishOption;
@@ -110,15 +124,31 @@ const ms = StyleSheet.create({
 
 export default function PublishScreen() {
   const router = useRouter();
-  const { noteType } = useLocalSearchParams<{ noteType?: string }>();
+  const { noteType, noteId } = useLocalSearchParams<{ noteType?: string; noteId?: string }>();
   const noteLabel = getNoteLabel(noteType);
 
   const [selected, setSelected] = useState<PublishOption>('ALL');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showQuitModal, setShowQuitModal] = useState(false);
 
-  const handleConfirmComplete = () => {
+  const handleConfirmComplete = async () => {
     setShowCompleteModal(false);
+    if (noteId) {
+      try {
+        const visibility = getVisibilityPayload(selected);
+        await apiClient(getVisibilityEndpoint(noteType, noteId), {
+          method: 'PATCH',
+          body: JSON.stringify(
+            noteType === 'THANKS' || !noteType
+              ? { ...visibility, isFixed: false }
+              : visibility,
+          ),
+        });
+      } catch {
+        Alert.alert('오류', '공개 범위 설정에 실패했습니다.');
+        return;
+      }
+    }
     router.replace(`/faith-note/complete?noteType=${noteType ?? 'THANKS'}`);
   };
 

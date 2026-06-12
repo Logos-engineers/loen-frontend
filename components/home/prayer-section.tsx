@@ -8,10 +8,14 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-// 이모지 코드 → SVG 아이콘 (홈 고정 셋: ❤️🔥)
+// 이모지 코드 → SVG/텍스트 아이콘
 const REACTION_SVG: Record<string, string> = {
   HEART: HEART_SVG,
   FIRE: FIRE_SVG,
+};
+
+const REACTION_EMOJI: Record<string, string> = {
+  PRAY: '🙏🏻',
 };
 
 function PrayerCard({
@@ -44,7 +48,8 @@ function PrayerCard({
       <View style={styles.reactionRow}>
         {(item.reactions ?? []).map((r: ReactionItem) => {
           const svg = REACTION_SVG[r.emoji];
-          if (!svg) return null;
+          const emoji = REACTION_EMOJI[r.emoji];
+          if (!svg && !emoji) return null;
           return (
             <TouchableOpacity
               key={r.emoji}
@@ -52,7 +57,11 @@ function PrayerCard({
               onPress={() => onReact(item.id, r.emoji)}
               activeOpacity={0.7}
             >
-              <SvgXml xml={svg} width={16} height={16} />
+              {svg ? (
+                <SvgXml xml={svg} width={16} height={16} />
+              ) : (
+                <Text style={[styles.reactionEmoji, !r.reacted && styles.reactionEmojiDefault]}>{emoji}</Text>
+              )}
               {r.count > 0 && (
                 <Text style={[styles.reactionCount, r.reacted && styles.reactionCountActive]}>{r.count}</Text>
               )}
@@ -171,6 +180,13 @@ const styles = StyleSheet.create({
   },
   reactionCountActive: {
     color: '#FFFFFF',
+  },
+  reactionEmoji: {
+    fontSize: 15,
+    lineHeight: 18,
+  },
+  reactionEmojiDefault: {
+    opacity: 0.55,
   },
   emptyText: {
     color: colors.text.secondary,
