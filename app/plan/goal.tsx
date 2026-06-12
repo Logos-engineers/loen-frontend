@@ -569,12 +569,12 @@ const s = StyleSheet.create({
   addAlarmText: { fontSize: 16, fontWeight: '600', color: 'rgba(13,28,45,0.8)', lineHeight: 25.6 },
 
   // 하단 CTA
-  cta: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32, backgroundColor: '#f2f4f7' },
+  cta: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, backgroundColor: '#f2f4f7' },
   ctaBtn: { flex: 1, height: 54, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  ctaBtnCancel: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
+  ctaBtnCancel: { backgroundColor: colors.primaryLight },
   ctaBtnConfirm: { backgroundColor: '#6561FF' },
   ctaBtnDisabled: { opacity: 0.6 },
-  ctaBtnText: { fontSize: 16, fontWeight: 'bold' },
-  ctaBtnTextCancel: { color: 'rgba(13,28,45,0.5)' },
+  ctaBtnText: { fontSize: 18, fontWeight: fontWeight.semibold },
+  ctaBtnTextCancel: { color: colors.primary },
   ctaBtnTextConfirm: { color: '#FFFFFF' },
 });
