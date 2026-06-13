@@ -6,7 +6,7 @@
 import ChapterSelectModal from '@/components/BiblePlan/ChapterSelectModal';
 import BookCard from '@/components/BiblePlan/BookCard';
 import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
+import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
 import { useBibleHistory } from '@/hooks/useBibleHistory';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,16 +21,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Testament = 'old' | 'new';
 
-const BOTTOM_TABS = ['말씀강해', '성경통독', '성경읽기'];
+const BOTTOM_TABS = ['성경통독', '성경읽기'];
 const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
 type LastPosition = { bookCode: string; chapterNum: number };
 const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export default function PlanScreen() {
+  const insets = useSafeAreaInsets();
   const { isLoading, stats, planData, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
   const { history, checkChapters, uncheckChapters } = useBibleHistory();
   const [activeTestament, setActiveTestament] = useState<Testament>('old');
@@ -183,8 +184,8 @@ export default function PlanScreen() {
         </View>
       </ScrollView>
 
-      {/* ── 하단 플로팅 세그먼트 바 ── */}
-      <View style={styles.floatingBar}>
+      {/* ── 하단 플로팅 세그먼트 바 ── (푸터 제거 → 안전영역 위 맨 아래 고정) */}
+      <View style={[styles.floatingBar, { bottom: insets.bottom + spacing.sm }]}>
         {BOTTOM_TABS.map(tab => {
           const isActive = activeBottomTab === tab;
           return (
@@ -344,11 +345,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     paddingVertical: spacing.xs,  // 4px — spacing.xs
     paddingHorizontal: spacing.xs,
-    shadowColor: shadow.color,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
     gap: 2,                     // 일회성: 탭 사이 미세 간격
   },
   floatingTabBtn: {

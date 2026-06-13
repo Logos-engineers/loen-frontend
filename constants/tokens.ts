@@ -66,7 +66,7 @@ export const colors = {
   //   비활성 텍스트 → colors.text.secondary 직접 사용
   readingPlan: {
     chapter: {
-      read: 'rgba(101,97,255,0.75)',     // 읽은 장 배경 — primary 75% 불투명
+      read: '#6561FF',                   // 읽은 장 배경 — primary 진보라 (100%)
       unread: '#F2F4F7',                 // 안 읽은 장 배경 — Figma count #F2F4F7 (bg/basic/subtlest)
       unreadText: 'rgba(13,28,45,0.8)',  // 안 읽은 장 숫자 — Figma 12/600 fg/basic/stronger
     },
