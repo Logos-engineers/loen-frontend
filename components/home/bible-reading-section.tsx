@@ -3,62 +3,52 @@ import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
-import { useFocusEffect } from '@react-navigation/native';
-
-const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
-type LastPosition = { bookCode: string; chapterNum: number };
-
-const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export function BibleReadingSection() {
-  const [position, setPosition] = useState<LastPosition>(FALLBACK);
   const { planData, getReadChaptersForBook } = useBiblePlan();
 
-  const loadPosition = async () => {
-    AsyncStorage.getItem(POSITION_KEY).then((raw) => {
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw) as LastPosition;
-          setPosition(parsed);
-        } catch {
-          setPosition(FALLBACK);
+  // 순차 통독 포인터: 창세기 1장부터 책 순서대로 훑어 "처음 만나는 안 읽은 장"이
+  // 곧 '현재 읽고 있는 장'이다. (순서대로 읽어야 전진 — 중간에 건너뛴 장은 공백으로 남아 거기서 멈춤)
+  // 1189장 전부 읽었으면 첫 공백이 없으므로 마지막 책 마지막 장 + 완독 상태.
+  const current = useMemo(() => {
+    for (const book of BIBLE_BOOKS) {
+      const readSet = new Set(getReadChaptersForBook(book.code));
+      for (let ch = 1; ch <= book.chapterCount; ch++) {
+        if (!readSet.has(ch)) {
+          return {
+            bookCode: book.code,
+            bookName: book.korName,
+            chapterNum: ch,
+            totalChapters: book.chapterCount,
+            done: false,
+          };
         }
       }
-    });
-  };
+    }
+    const last = BIBLE_BOOKS[BIBLE_BOOKS.length - 1];
+    return {
+      bookCode: last.code,
+      bookName: last.korName,
+      chapterNum: last.chapterCount,
+      totalChapters: last.chapterCount,
+      done: true,
+    };
+    // planData가 바뀌면(읽음 토글) 재계산 — getReadChaptersForBook는 planData 기반
+  }, [planData, getReadChaptersForBook]);
 
-  useEffect(() => {
-    loadPosition();
-  }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      loadPosition();
-    }, [])
-  );
-
-  useEffect(() => {
-    loadPosition();
-  }, [planData.lastModified]);
-
-  const bookMeta = BIBLE_BOOKS.find((b) => b.code === position.bookCode);
-  const bookName = bookMeta?.korName ?? position.bookCode;
-  const totalChapters = bookMeta?.chapterCount ?? 1;
-  // 진행바는 '이어보기 위치'가 아니라 실제 '읽음 표시'한 장 수 기준
-  // (읽기 화면의 "읽음 표시하고 다음장으로" 버튼 → useBiblePlan.toggleChapter)
-  const readCount = Math.min(getReadChaptersForBook(position.bookCode).length, totalChapters);
-  const progressRatio = totalChapters > 0 ? readCount / totalChapters : 0;
+  const progressRatio = current.totalChapters > 0
+    ? Math.min(current.chapterNum / current.totalChapters, 1)
+    : 0;
   const markerPercent = progressRatio * 100;
 
   const handleContinueReading = () => {
     router.push({
       pathname: '/bible/read',
-      params: { book: position.bookCode, chapter: String(position.chapterNum) },
+      params: { book: current.bookCode, chapter: String(current.chapterNum) },
     });
   };
 
@@ -74,14 +64,13 @@ export function BibleReadingSection() {
             <BookmarkIcon width={32} height={32} />
 
             <View style={styles.textCol}>
-              {/* 제목: 이어읽을 위치 (= '이어읽기' 버튼이 이동하는 마지막 본 장) */}
+              {/* 현재 읽고 있는 장 (= 다음에 읽을 장) */}
               <Text style={styles.chapterTitle}>
-                {bookName} {position.chapterNum}장
+                {current.bookName} {current.chapterNum}장
               </Text>
-              {/* 부제: 읽음 표시 진행도 (읽은 장 수 / 전체 장 수) */}
-              <Text style={styles.date}>
-                {readCount}/{totalChapters}장 읽음
-              </Text>
+              {current.done && (
+                <Text style={styles.date}>통독을 모두 마쳤어요 🎉</Text>
+              )}
             </View>
 
             {/* Figma: 이어읽기 py:10 px:16 */}
@@ -100,10 +89,10 @@ export function BibleReadingSection() {
             <View style={styles.barRow}>
               <Text style={styles.barLabel}>1장</Text>
               <View style={styles.trackWrap}>
-                {/* Marker 배지 — 트랙 기준 위치(0장/0%여도 카드 밖으로 안 나감) */}
+                {/* Marker 배지 — '현재 읽고 있는 장'을 가리킴 */}
                 <View style={[styles.markerContainer, { left: `${markerPercent}%` as any }]}>
                   <View style={styles.markerBadge}>
-                    <Text style={styles.markerText}>{readCount}장</Text>
+                    <Text style={styles.markerText}>{current.chapterNum}장</Text>
                   </View>
                   <View style={styles.markerTail} />
                 </View>
@@ -112,7 +101,7 @@ export function BibleReadingSection() {
                   <View style={{ flex: 1 - progressRatio }} />
                 </View>
               </View>
-              <Text style={styles.barLabel}>{totalChapters}장</Text>
+              <Text style={styles.barLabel}>{current.totalChapters}장</Text>
             </View>
           </View>
 
