@@ -15,7 +15,6 @@ export function FaithNoteCard() {
       {/* OBS 모아보기와 동일한 섹션 헤더 */}
       <SectionHeader
         title="신앙노트"
-        showArrow
         onPress={() => router.push('/faith-note')}
       />
       <View style={styles.wrapper}>
