@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/utils/apiClient';
 import type { FaithNoteItem } from '@/components/faith-note/faith-note-card';
 import type { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
@@ -143,35 +143,70 @@ const ENDPOINTS: Record<FaithNoteTab, string> = {
   WORD: '/bible/notes?scope=ALL',
 };
 
+const PAGE_SIZE = 10;
+
 export function useFaithNotes(activeTab: FaithNoteTab) {
   const [notes, setNotes] = useState<FaithNoteItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);       // 초기/refetch 로딩
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // 추가 페이지 로딩
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotes = useCallback(async (tab: FaithNoteTab) => {
-    setIsLoading(true);
+  const pageRef = useRef(0);
+  const loadedCountRef = useRef(0);
+  const hasMoreRef = useRef(true);
+  const loadingRef = useRef(false);   // 중복 호출 가드 (onEndReached 연타 방지)
+
+  // 한 페이지 로드. append=false면 초기/새로고침(0페이지부터), true면 다음 페이지 누적.
+  const load = useCallback(async (tab: FaithNoteTab, pageNum: number, append: boolean) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    if (append) setIsLoadingMore(true);
+    else setIsLoading(true);
     setError(null);
     try {
+      const url = `${ENDPOINTS[tab]}&page=${pageNum}&size=${PAGE_SIZE}`;
+      let mapped: FaithNoteItem[] = [];
+      let total = 0;
       if (tab === 'THANKS') {
-        const raw = await apiClient<NoteListResponse<ThanksNote>>(ENDPOINTS.THANKS);
-        setNotes((raw.content ?? []).map(fromThanks));
+        const raw = await apiClient<NoteListResponse<ThanksNote>>(url);
+        mapped = (raw.content ?? []).map(fromThanks);
+        total = raw.totalElements ?? 0;
       } else if (tab === 'PRAYER') {
-        const raw = await apiClient<NoteListResponse<PrayerNote>>(ENDPOINTS.PRAYER);
-        setNotes((raw.content ?? []).map(fromPrayer));
+        const raw = await apiClient<NoteListResponse<PrayerNote>>(url);
+        mapped = (raw.content ?? []).map(fromPrayer);
+        total = raw.totalElements ?? 0;
       } else {
-        const raw = await apiClient<NoteListResponse<WordNote>>(ENDPOINTS.WORD);
-        setNotes((raw.content ?? []).map(fromWord));
+        const raw = await apiClient<NoteListResponse<WordNote>>(url);
+        mapped = (raw.content ?? []).map(fromWord);
+        total = raw.totalElements ?? 0;
       }
+      pageRef.current = pageNum;
+      loadedCountRef.current = append ? loadedCountRef.current + mapped.length : mapped.length;
+      hasMoreRef.current = loadedCountRef.current < total && mapped.length > 0;
+      setNotes((cur) => (append ? [...cur, ...mapped] : mapped));
     } catch (e: any) {
-      setError(e?.message ?? '불러오기 실패');
+      if (!append) setError(e?.message ?? '불러오기 실패');
+      else console.warn('[useFaithNotes] loadMore 실패', e);
     } finally {
-      setIsLoading(false);
+      if (append) setIsLoadingMore(false);
+      else setIsLoading(false);
+      loadingRef.current = false;
     }
   }, []);
 
+  // 탭 변경/마운트 → 0페이지부터 새로 로드
   useEffect(() => {
-    fetchNotes(activeTab);
-  }, [activeTab, fetchNotes]);
+    pageRef.current = 0;
+    loadedCountRef.current = 0;
+    hasMoreRef.current = true;
+    load(activeTab, 0, false);
+  }, [activeTab, load]);
+
+  // 다음 페이지 로드 (FlatList onEndReached)
+  const loadMore = useCallback(() => {
+    if (loadingRef.current || !hasMoreRef.current) return;
+    load(activeTab, pageRef.current + 1, true);
+  }, [activeTab, load]);
 
   const toggleLike = useCallback(async (id: string, tab: FaithNoteTab) => {
     const prev = [...notes];
@@ -229,7 +264,12 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     setNotes((cur) => cur.filter((n) => n.id !== id));
   }, []);
 
-  const refetch = useCallback(() => fetchNotes(activeTab), [activeTab, fetchNotes]);
+  const refetch = useCallback(() => {
+    pageRef.current = 0;
+    loadedCountRef.current = 0;
+    hasMoreRef.current = true;
+    load(activeTab, 0, false);
+  }, [activeTab, load]);
 
-  return { notes, isLoading, error, toggleLike, toggleReaction, deleteNote, refetch };
+  return { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch };
 }

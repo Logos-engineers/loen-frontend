@@ -57,7 +57,7 @@ export default function FaithNoteListScreen() {
   const [selectedTab, setSelectedTab] = useState<FaithNoteTab>('THANKS');
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const { notes, isLoading, error, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
+  const { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
   const [pendingDelete, setPendingDelete] = useState<FaithNoteItem | null>(null);
 
   useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
@@ -154,6 +154,13 @@ export default function FaithNoteListScreen() {
             filteredNotes.length === 0 && styles.listContentEmpty,
           ]}
           showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <ActivityIndicator color={colors.primary} style={styles.listFooter} />
+            ) : null
+          }
           ListEmptyComponent={
             <FaithNoteEmpty tabLabel={TAB_LABELS[selectedTab]} />
           }
@@ -213,6 +220,9 @@ const styles = StyleSheet.create({
   },
   listContentEmpty: {
     flex: 1,
+  },
+  listFooter: {
+    paddingVertical: spacing.md,
   },
 
   dropdownOverlay: {
