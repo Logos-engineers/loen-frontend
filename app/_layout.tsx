@@ -123,6 +123,7 @@ export default function RootLayout() {
           <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
+          <Stack.Screen name="mypage/bug-report" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/index" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/write-thanks" options={{ headerShown: false }} />
