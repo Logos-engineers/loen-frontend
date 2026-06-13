@@ -40,32 +40,42 @@ export default function BannerDetailScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Image
-            source={{ uri: banner.imageUrl }}
-            style={styles.image}
-            contentFit="cover"
-            contentPosition="center"
-          />
-          <View style={styles.article}>
-            {banner.title ? <Text style={styles.title}>{banner.title}</Text> : null}
-            {banner.subtitle ? <Text style={styles.subtitle}>{banner.subtitle}</Text> : null}
+          {/* 히어로 이미지 — 둥근 카드로 띄움 */}
+          <View style={styles.heroWrap}>
+            <Image
+              source={{ uri: banner.imageUrl }}
+              style={styles.image}
+              contentFit="cover"
+              contentPosition="center"
+            />
+          </View>
+
+          {/* 본문 카드 */}
+          <View style={styles.card}>
+            <View style={styles.headerGroup}>
+              {banner.title ? <Text style={styles.title}>{banner.title}</Text> : null}
+              {banner.subtitle ? <Text style={styles.subtitle}>{banner.subtitle}</Text> : null}
+            </View>
+
             <View style={styles.divider} />
+
             {banner.content ? (
               <Text style={styles.body}>{banner.content}</Text>
             ) : (
               <Text style={styles.bodyEmpty}>세부 내용이 없습니다.</Text>
             )}
-            {banner.linkUrl ? (
-              <TouchableOpacity
-                style={styles.linkBtn}
-                activeOpacity={0.8}
-                onPress={() => banner.linkUrl && Linking.openURL(banner.linkUrl)}
-              >
-                <Text style={styles.linkBtnText}>자세히 보기</Text>
-                <Ionicons name="open-outline" size={16} color={colors.white} />
-              </TouchableOpacity>
-            ) : null}
           </View>
+
+          {banner.linkUrl ? (
+            <TouchableOpacity
+              style={styles.linkBtn}
+              activeOpacity={0.85}
+              onPress={() => banner.linkUrl && Linking.openURL(banner.linkUrl)}
+            >
+              <Text style={styles.linkBtnText}>자세히 보기</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.white} />
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -84,35 +94,58 @@ const styles = StyleSheet.create({
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
   scroll: { flex: 1 },
   content: { paddingBottom: spacing.xxl },
+
+  // 히어로 이미지 — 둥근 카드
+  heroWrap: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    borderRadius: radius.xl,       // 20
+    overflow: 'hidden',
+  },
   image: {
     width: '100%',
-    aspectRatio: 361 / 124,   // 원래 배너 비율 고정 (cover로 잘림, 원본 비율 달라도 안 찌그러짐)
+    aspectRatio: 361 / 124,        // 원래 배너 비율 고정
     backgroundColor: colors.border,
   },
-  article: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    gap: spacing.sm,
+
+  // 본문 카드 (화이트 라운드, 그림자 없음 — 라운드+여백으로 깊이)
+  card: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.xl,       // 20
+    padding: spacing.lg,           // 20
+    gap: spacing.md,
   },
+  headerGroup: { gap: spacing.xs },
   title: {
-    fontSize: fontSize.xxl,
+    fontSize: fontSize.xxl,        // 28
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
-    lineHeight: 32,
+    lineHeight: 36,
+    letterSpacing: -0.4,
   },
-  subtitle: { fontSize: fontSize.base, color: colors.text.secondary, lineHeight: 22 },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
-  body: { fontSize: fontSize.base, color: colors.text.primary, lineHeight: 24 },
-  bodyEmpty: { fontSize: fontSize.base, color: colors.text.dim, lineHeight: 24 },
+  subtitle: {
+    fontSize: fontSize.md,         // 14
+    fontWeight: fontWeight.medium,
+    color: colors.text.secondary,
+    lineHeight: 22,
+  },
+  divider: { height: 1, backgroundColor: colors.border },
+  body: { fontSize: fontSize.base, color: colors.text.primary, lineHeight: 26 },
+  bodyEmpty: { fontSize: fontSize.base, color: colors.text.dim, lineHeight: 26 },
+
+  // CTA — 풀폭 알약 버튼
   linkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: colors.primary,
-    height: 48,
-    borderRadius: radius.md,
-    marginTop: spacing.md,
+    height: 52,
+    borderRadius: radius.lg,       // 16
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
   },
   linkBtnText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
 });
