@@ -6,47 +6,53 @@
 import ChapterSelectModal from '@/components/BiblePlan/ChapterSelectModal';
 import BookCard from '@/components/BiblePlan/BookCard';
 import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
-import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
+import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
 import { useBibleHistory } from '@/hooks/useBibleHistory';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Testament = 'old' | 'new';
 
-const BOTTOM_TABS = ['말씀강해', '성경통독', '성경읽기'];
+const BOTTOM_TABS = ['성경통독', '성경읽기'];
 const POSITION_KEY = 'LOEN_BIBLE_POSITION_v1';
 type LastPosition = { bookCode: string; chapterNum: number };
 const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 
 export default function PlanScreen() {
+  const insets = useSafeAreaInsets();
   const { isLoading, stats, planData, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
-  const { history, checkChapters, uncheckChapters } = useBibleHistory();
+  const { history, goal, refetch, checkChapters, uncheckChapters } = useBibleHistory();
+  // 화면 재진입 시 서버 목표/히스토리 갱신 (목표 설정 직후·매주 리셋 반영)
+  useRefetchOnFocus(refetch);
   const [activeTestament, setActiveTestament] = useState<Testament>('old');
   const [activeBottomTab, setActiveBottomTab] = useState('성경통독');
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
 
   const bookList = BIBLE_BOOKS.filter(b => b.testament === activeTestament);
 
-  // 목표 설정 플로우 완료 시 selectedBookCode가 저장됨 → 미설정 판별
-  const isGoalSet = planData.selectedBookCode !== null;
+  // 목표 설정 여부: 서버 이번 주 목표(goal) 단일 출처
+  const isGoalSet = goal != null;
 
   // 서버 통계로 로컬 stats를 덮어씀 (서버 데이터 없으면 로컬 fallback)
   const mergedStats = {
     ...stats,
     todayRead: history?.todayReadCount ?? stats.todayRead,
     totalRead: history?.accruedReadCount ?? stats.totalRead,
+    // 주간 목표 장수: 서버 weeklyTarget (목표 단일 출처)
+    weeklyGoal: goal?.weeklyTarget ?? 0,
   };
 
   const handleBookPress = (book: BibleBook) => setSelectedBook(book);
@@ -108,83 +114,95 @@ export default function PlanScreen() {
         <View style={styles.headerBack} />
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── 진척도 카드 ── */}
-        <View style={styles.statsCard}>
-          <View style={styles.statsRow}>
-            <View style={styles.statsItem}>
-              <Text style={styles.statsLabel}>이번주 목표</Text>
-              {isGoalSet ? (
-                <Text style={styles.statsValue}>
-                  {mergedStats.weekRead} / {mergedStats.weeklyGoal}장
-                </Text>
-              ) : (
-                // 미설정: + 버튼 → 이번주 목표 설정 플로우
+      {/*
+        책 단위 가상화 — ScrollView+map은 구약 39권/900+장 셀을 한 번에 렌더해
+        탭 전환 시 멈칫거림이 있었음. FlatList로 화면에 보이는 책만 렌더.
+        key={activeTestament}로 탭 전환 시 목록을 새로 마운트해 스크롤도 상단으로 초기화.
+      */}
+      <FlatList
+        key={activeTestament}
+        data={bookList}
+        keyExtractor={book => book.code}
+        renderItem={({ item }) => (
+          <BookCard
+            book={item}
+            readChapters={getReadChaptersForBook(item.code)}
+            onPress={() => handleBookPress(item)}
+          />
+        )}
+        ListHeaderComponent={
+          <>
+            {/* ── 진척도 카드 ── */}
+            <View style={styles.statsCard}>
+              <View style={styles.statsRow}>
+                {/* 탭 → 목표 설정/수정 화면. 라벨 옆 쉐브론으로 터치 가능 표시 */}
                 <TouchableOpacity
-                  style={styles.addGoalBtn}
+                  style={styles.statsItem}
                   activeOpacity={0.7}
                   onPress={() => router.push('/plan/goal')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="add" size={18} color={colors.primary} />
+                  <View style={styles.statsLabelRow}>
+                    <Text style={styles.statsLabel}>이번주 목표</Text>
+                    <Ionicons name="chevron-forward" size={11} color={colors.text.secondary} />
+                  </View>
+                  {isGoalSet ? (
+                    <Text style={styles.statsValue}>
+                      {mergedStats.weekRead} / {mergedStats.weeklyGoal}장
+                    </Text>
+                  ) : (
+                    // 미설정: + 버튼 (항목 전체가 탭 가능하므로 시각 표시용 View)
+                    <View style={styles.addGoalBtn}>
+                      <Ionicons name="add" size={18} color={colors.primary} />
+                    </View>
+                  )}
                 </TouchableOpacity>
-              )}
+                <View style={styles.statsDivider} />
+                <View style={styles.statsItem}>
+                  <Text style={styles.statsLabel}>오늘</Text>
+                  <Text style={styles.statsValue}>{mergedStats.todayRead}장</Text>
+                </View>
+                <View style={styles.statsDivider} />
+                <View style={styles.statsItem}>
+                  <Text style={styles.statsLabel}>전체</Text>
+                  <Text style={styles.statsValue}>
+                    {mergedStats.totalRead} / {mergedStats.totalChapters}장
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.statsDivider} />
-            <View style={styles.statsItem}>
-              <Text style={styles.statsLabel}>오늘</Text>
-              <Text style={styles.statsValue}>{mergedStats.todayRead}장</Text>
+
+            {/* ── 언더라인 탭 ── */}
+            <View style={styles.tabRow}>
+              {(['old', 'new'] as Testament[]).map(t => {
+                const label = t === 'old' ? '구약성경' : '신약성경';
+                const isActive = activeTestament === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={styles.tabBtn}
+                    activeOpacity={0.8}
+                    onPress={() => setActiveTestament(t)}
+                  >
+                    <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
+                      {label}
+                    </Text>
+                    {isActive && <View style={styles.tabUnderline} />}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <View style={styles.statsDivider} />
-            <View style={styles.statsItem}>
-              <Text style={styles.statsLabel}>전체</Text>
-              <Text style={styles.statsValue}>
-                {mergedStats.totalRead} / {mergedStats.totalChapters}장
-              </Text>
-            </View>
-          </View>
-        </View>
+          </>
+        }
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
+      />
 
-        {/* ── 언더라인 탭 ── */}
-        <View style={styles.tabRow}>
-          {(['old', 'new'] as Testament[]).map(t => {
-            const label = t === 'old' ? '구약성경' : '신약성경';
-            const isActive = activeTestament === t;
-            return (
-              <TouchableOpacity
-                key={t}
-                style={styles.tabBtn}
-                activeOpacity={0.8}
-                onPress={() => setActiveTestament(t)}
-              >
-                <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
-                  {label}
-                </Text>
-                {isActive && <View style={styles.tabUnderline} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* ── 책 목록 ── (Figma: 흰 배경 위에 회색 제목 밴드를 가진 책 섹션을 풀폭으로 쌓음) */}
-        <View style={styles.bookList}>
-          {bookList.map(book => (
-            <BookCard
-              key={book.code}
-              book={book}
-              readChapters={getReadChaptersForBook(book.code)}
-              onPress={() => handleBookPress(book)}
-            />
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* ── 하단 플로팅 세그먼트 바 ── */}
-      <View style={styles.floatingBar}>
+      {/* ── 하단 플로팅 세그먼트 바 ── (푸터 제거 → 안전영역 위 맨 아래 고정) */}
+      <View style={[styles.floatingBar, { bottom: insets.bottom + spacing.sm }]}>
         {BOTTOM_TABS.map(tab => {
           const isActive = activeBottomTab === tab;
           return (
@@ -248,7 +266,6 @@ const styles = StyleSheet.create({
   },
 
   // ── 스크롤
-  scroll: { flex: 1 },
   scrollContent: { paddingBottom: 80 }, // 플로팅 바 고정 높이 확보
 
   // ── 통계 카드 (Figma: container 361x76, r16, bg #F2F4F7, 그림자 없음)
@@ -267,6 +284,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 3,                     // 일회성: 라벨↔숫자 미세 간격
+  },
+  // 라벨 + 쉐브론(터치 가능 표시) 가로 정렬
+  statsLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   // Figma: 라벨 12/600 rgba(13,28,45,0.5)
   statsLabel: {
@@ -299,8 +322,8 @@ const styles = StyleSheet.create({
   // ── 언더라인 탭
   tabRow: {
     flexDirection: 'row',
-    marginHorizontal: spacing.md,
     marginTop: spacing.md,      // 16px — spacing.md
+    // 좌우 여백 없이 전체 폭 — 활성 언더라인이 화면 끝까지 닿도록
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -329,10 +352,6 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
 
-  // ── 책 목록 (Figma: 풀폭, 책마다 회색 제목 밴드 — 흰 카드 래퍼/구분선 없음)
-  // 탭과 첫 책 사이 공백 없음
-  bookList: {},
-
   // ── 하단 플로팅 세그먼트 바
   floatingBar: {
     position: 'absolute',
@@ -344,11 +363,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     paddingVertical: spacing.xs,  // 4px — spacing.xs
     paddingHorizontal: spacing.xs,
-    shadowColor: shadow.color,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
     gap: 2,                     // 일회성: 탭 사이 미세 간격
   },
   floatingTabBtn: {

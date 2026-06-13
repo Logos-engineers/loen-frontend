@@ -767,6 +767,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(13,28,45,0.08)',
     paddingHorizontal: spacing.md,
+    paddingVertical: 0,             // 고정 높이 단일라인 — 세로 패딩 제거(텍스트 잘림 방지)
+    textAlignVertical: 'center',    // Android 세로 중앙 정렬
+    includeFontPadding: false,      // Android 폰트 상하 여백 제거(플레이스홀더 흔들림/잘림 방지)
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,

@@ -282,25 +282,8 @@ export function useBiblePlan() {
     [planData, save]
   );
 
-  // ── 목표 + 알림 통합 저장 (완료 시 한 번에) ─────────────────────
-  const saveGoalAndAlarms = useCallback(
-    async (
-      days: number,
-      chaptersPerDay: number,
-      bookCode: string | null,
-      alarms: AlarmItem[]
-    ) => {
-      await save({
-        ...planData,
-        weeklyGoal: days * chaptersPerDay,
-        weeklyGoalDays: days,
-        weeklyGoalChapters: chaptersPerDay,
-        selectedBookCode: bookCode,
-        alarms,
-      });
-    },
-    [planData, save]
-  );
+  // 목표(weeklyGoal/selectedBookCode)는 서버 단일 출처로 이관됨 → 로컬 저장 함수 제거.
+  // 이 훅의 목표 관련 필드(BiblePlanData.weeklyGoal* / selectedBookCode)는 더 이상 기록되지 않음(휴면).
 
   // ── 통계 계산 ─────────────────────────────────────────────────────
   const stats = buildStats(planData);
@@ -327,7 +310,6 @@ export function useBiblePlan() {
     addAlarm,
     removeAlarm,
     toggleAlarm,
-    saveGoalAndAlarms,
     getReadChaptersForBook,
   };
 }

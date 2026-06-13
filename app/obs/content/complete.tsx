@@ -1,4 +1,4 @@
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -21,14 +21,18 @@ const POP_IN = {
 
 export default function ObsCompleteScreen() {
   const { width, height } = useWindowDimensions();
+  const params = useLocalSearchParams<{ origin?: string }>();
+  const isFromHome = params.origin === 'home';
 
-  // 완료 화면을 1.5초간 보여준 뒤 OBS 모아보기로 자동 이동 (별도 CTA 없음)
+  // 완료 화면을 1.5초간 보여준 뒤 자동 이동 (별도 CTA 없음)
+  // 홈에서 시작한 플로우면 플로우를 모두 닫고 홈(탭)으로, 아니면 OBS 모아보기로
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/obs');
+      if (isFromHome) router.dismissAll();
+      else router.replace('/obs');
     }, 1500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isFromHome]);
 
   return (
     <>

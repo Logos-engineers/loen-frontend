@@ -66,7 +66,7 @@ export const colors = {
   //   비활성 텍스트 → colors.text.secondary 직접 사용
   readingPlan: {
     chapter: {
-      read: 'rgba(101,97,255,0.75)',     // 읽은 장 배경 — primary 75% 불투명
+      read: '#6561FF',                   // 읽은 장 배경 — primary 진보라 (100%)
       unread: '#F2F4F7',                 // 안 읽은 장 배경 — Figma count #F2F4F7 (bg/basic/subtlest)
       unreadText: 'rgba(13,28,45,0.8)',  // 안 읽은 장 숫자 — Figma 12/600 fg/basic/stronger
     },
@@ -77,11 +77,11 @@ export const colors = {
 // shadowColor에 colors.text.primary 등 의미 불일치 값 사용 방지
 export const shadow = {
   color: '#000000',                      // 그림자 기준색 (항상 순수 검정)
-  card: {                               // 카드 그림자
-    offset: { width: 0, height: 1 },
-    opacity: 0.04,
-    radius: 6,
-    elevation: 1,
+  card: {                               // 카드 그림자 — 디자인 결정: 모든 카드 그림자 제거 (flat)
+    offset: { width: 0, height: 0 },
+    opacity: 0,
+    radius: 0,
+    elevation: 0,
   },
   floating: {                           // 플로팅 UI 그림자
     offset: { width: 0, height: 4 },

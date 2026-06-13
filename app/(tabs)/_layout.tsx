@@ -68,6 +68,8 @@ export default function TabLayout() {
         options={{
           href: null,
           title: '성경통독표',
+          // 통독표는 자체 플로팅 세그먼트 바를 가지므로 하단 탭 바(푸터)를 숨김
+          tabBarStyle: { display: 'none' },
           tabBarIcon: ({ color }) => (
             <SvgXml xml={getTabIcon(PLAN_SVG, color)} width={24} height={24} />
           ),

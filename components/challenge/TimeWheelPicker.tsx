@@ -11,8 +11,7 @@ import {
 import { TimePeriod } from './challengeTypes';
 
 const ITEM_HEIGHT = 36;
-const VISIBLE_ITEMS = 7;
-const HALF = 3; // Math.floor(VISIBLE_ITEMS / 2)
+const DEFAULT_VISIBLE_ITEMS = 7; // 위아래 3개씩 + 선택 1
 
 // 거리별 텍스트 스타일 (Figma 시간 휠 메타데이터: 23/#16191C → 18/#AEAEAE → 14/#C2C2C2 → 12/#D7D7D7)
 const DISTANCE_STYLES = [
@@ -53,9 +52,14 @@ function buildDate(base: Date, hour12: number, minute: number, period: TimePerio
 type Props = {
   value: Date;
   onChange: (date: Date) => void;
+  /** 전체 보이는 항목 수(홀수). 기본 7 = 위아래 3개씩. 5로 주면 위아래 2개씩 */
+  visibleItems?: number;
 };
 
-export default function TimeWheelPicker({ value, onChange }: Props) {
+export default function TimeWheelPicker({ value, onChange, visibleItems = DEFAULT_VISIBLE_ITEMS }: Props) {
+  const half = Math.floor(visibleItems / 2);
+  const wheelHeight = ITEM_HEIGHT * visibleItems;
+  const padVertical = ITEM_HEIGHT * half;
   const { hour12, minute, period } = getTimeParts(value);
   const hourIdx = hour12 - 1;
   const minuteIdx = minute;
@@ -65,11 +69,11 @@ export default function TimeWheelPicker({ value, onChange }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.wheel}>
+      <View style={[styles.wheel, { height: wheelHeight }]}>
         {/* 시 */}
         <ScrollView
-          style={styles.numberColumn}
-          contentContainerStyle={styles.columnContent}
+          style={[styles.numberColumn, { height: wheelHeight }]}
+          contentContainerStyle={[styles.columnContent, { paddingVertical: padVertical }]}
           contentOffset={{ x: 0, y: hourIdx * ITEM_HEIGHT }}
           decelerationRate="fast"
           disableIntervalMomentum
@@ -90,8 +94,8 @@ export default function TimeWheelPicker({ value, onChange }: Props) {
 
         {/* 분 */}
         <ScrollView
-          style={styles.numberColumn}
-          contentContainerStyle={styles.columnContent}
+          style={[styles.numberColumn, { height: wheelHeight }]}
+          contentContainerStyle={[styles.columnContent, { paddingVertical: padVertical }]}
           contentOffset={{ x: 0, y: minuteIdx * ITEM_HEIGHT }}
           decelerationRate="fast"
           disableIntervalMomentum
@@ -114,8 +118,8 @@ export default function TimeWheelPicker({ value, onChange }: Props) {
 
         {/* AM/PM */}
         <ScrollView
-          style={styles.periodColumn}
-          contentContainerStyle={styles.columnContent}
+          style={[styles.periodColumn, { height: wheelHeight }]}
+          contentContainerStyle={[styles.columnContent, { paddingVertical: padVertical }]}
           contentOffset={{ x: 0, y: periodIdx * ITEM_HEIGHT }}
           decelerationRate="fast"
           disableIntervalMomentum
@@ -135,8 +139,8 @@ export default function TimeWheelPicker({ value, onChange }: Props) {
         </ScrollView>
       </View>
 
-      <View style={[styles.separator, { top: ITEM_HEIGHT * HALF }]} pointerEvents="none" />
-      <View style={[styles.separator, { top: ITEM_HEIGHT * (HALF + 1) }]} pointerEvents="none" />
+      <View style={[styles.separator, { top: ITEM_HEIGHT * half }]} pointerEvents="none" />
+      <View style={[styles.separator, { top: ITEM_HEIGHT * (half + 1) }]} pointerEvents="none" />
     </View>
   );
 }
@@ -163,13 +167,12 @@ const styles = StyleSheet.create({
   },
   wheel: {
     width: WHEEL_WIDTH,
-    height: ITEM_HEIGHT * VISIBLE_ITEMS,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  numberColumn: { width: COL_WIDTH, height: ITEM_HEIGHT * VISIBLE_ITEMS },
-  periodColumn: { width: COL_WIDTH, height: ITEM_HEIGHT * VISIBLE_ITEMS },
-  columnContent: { paddingVertical: ITEM_HEIGHT * HALF },
+  numberColumn: { width: COL_WIDTH },
+  periodColumn: { width: COL_WIDTH },
+  columnContent: {},
   item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
   itemText: { fontWeight: '400' },
 });

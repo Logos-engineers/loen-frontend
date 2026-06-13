@@ -217,11 +217,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.elevated,
     borderRadius: radius.lg,
     padding: spacing.xl,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   section: {
     marginBottom: spacing.xxl,

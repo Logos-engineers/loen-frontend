@@ -334,7 +334,7 @@ function QuestionCard({
 }
 
 export default function ObsSummaryScreen() {
-  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string }>();
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string; origin?: string }>();
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
   // 좌상단 쉐브론: OBS 보기 플로우 전체를 빠져나감 (단계 뒤로는 하단 '이전으로'가 담당)
@@ -450,6 +450,7 @@ export default function ObsSummaryScreen() {
         verse: params.verse,
         flow: 'view',
         ...(isPreview ? { preview: 'true' } : {}),
+        ...(params.origin ? { origin: params.origin } : {}),
       },
     });
   };
