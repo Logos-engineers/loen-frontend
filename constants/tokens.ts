@@ -77,11 +77,11 @@ export const colors = {
 // shadowColor에 colors.text.primary 등 의미 불일치 값 사용 방지
 export const shadow = {
   color: '#000000',                      // 그림자 기준색 (항상 순수 검정)
-  card: {                               // 카드 그림자
-    offset: { width: 0, height: 1 },
-    opacity: 0.04,
-    radius: 6,
-    elevation: 1,
+  card: {                               // 카드 그림자 — 디자인 결정: 모든 카드 그림자 제거 (flat)
+    offset: { width: 0, height: 0 },
+    opacity: 0,
+    radius: 0,
+    elevation: 0,
   },
   floating: {                           // 플로팅 UI 그림자
     offset: { width: 0, height: 4 },
