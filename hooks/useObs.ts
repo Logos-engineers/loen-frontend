@@ -4,6 +4,7 @@ export type { ObsQuiz } from './useObsContent';
 export {
   fetchObsQuizzes,
   fetchObsContent,
+  fetchCurrentObsContent,
   startObsReview,
   completeObsReview,
   saveObsSummaryAnswers,
