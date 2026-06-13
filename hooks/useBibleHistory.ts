@@ -37,27 +37,26 @@ export function useBibleHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [histResult, goalResult] = await Promise.allSettled([
-          apiClient<BibleHistory>('/bible/history'),
-          apiClient<BibleGoal>('/bible/goal'),
-        ]);
-        if (!mounted) return;
-        if (histResult.status === 'fulfilled') {
-          setHistory({ ...histResult.value, readCheckList: histResult.value.readCheckList ?? {} });
-        }
-        if (goalResult.status === 'fulfilled') setGoal(goalResult.value);
-      } catch (e: any) {
-        if (mounted) setError(e?.message ?? '불러오기 실패');
-      } finally {
-        if (mounted) setIsLoading(false);
+  // 히스토리 + 이번 주 목표를 다시 불러온다. (화면 복귀 시 useRefetchOnFocus로 호출)
+  const refetch = useCallback(async () => {
+    try {
+      const [histResult, goalResult] = await Promise.allSettled([
+        apiClient<BibleHistory>('/bible/history'),
+        apiClient<BibleGoal>('/bible/goal'),
+      ]);
+      if (histResult.status === 'fulfilled') {
+        setHistory({ ...histResult.value, readCheckList: histResult.value.readCheckList ?? {} });
       }
-    })();
-    return () => { mounted = false; };
+      // 이번 주 목표가 없으면(BIBLE_004 → rejected) goal=null. 매주 월요일 리셋이 그대로 반영됨.
+      setGoal(goalResult.status === 'fulfilled' ? goalResult.value : null);
+    } catch (e: any) {
+      setError(e?.message ?? '불러오기 실패');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { refetch(); }, [refetch]);
 
   const checkChapters = useCallback(async (bookCode: string, chapters: number[]) => {
     try {
@@ -101,5 +100,5 @@ export function useBibleHistory() {
     return updated;
   }, []);
 
-  return { history, goal, isLoading, error, checkChapters, uncheckChapters, createGoal, updateGoal };
+  return { history, goal, isLoading, error, refetch, checkChapters, uncheckChapters, createGoal, updateGoal };
 }

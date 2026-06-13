@@ -18,7 +18,7 @@
  */
 
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import { BIBLE_BOOKS, WEEKLY_GOAL_DAYS, WEEKLY_GOAL_CHAPTERS_PER_DAY } from '@/constants/BibleMeta';
 import { AlarmItem, useBiblePlan } from '@/hooks/useBiblePlan';
 import { useBibleHistory } from '@/hooks/useBibleHistory';
 import { useAlarms } from '@/hooks/useAlarms';
@@ -134,29 +134,38 @@ const sp = StyleSheet.create({
 
 // ─── 메인 ──────────────────────────────────────────────────────────────
 export default function GoalScreen() {
-  const { planData, isLoading, saveGoalAndAlarms, addAlarm, removeAlarm, toggleAlarm } = useBiblePlan();
-  const { goal: existingGoal, createGoal, updateGoal } = useBibleHistory();
+  // 목표는 서버 단일 출처. 로컬 useBiblePlan은 알람(기기 알림)만 사용.
+  // 알람 편집은 드래프트(로컬 state)로만 두고, '완료' 시에만 saveAlarms로 일괄 영속.
+  const { planData, isLoading, saveAlarms } = useBiblePlan();
+  const { goal: existingGoal, isLoading: isGoalLoading, createGoal, updateGoal } = useBibleHistory();
   const { requestPermission, scheduleAlarm, cancelAlarm } = useAlarms();
 
-  // 로컬 편집 상태
-  const [days, setDays] = useState(planData.weeklyGoalDays);
-  const [chaptersPerDay, setChaptersPerDay] = useState(planData.weeklyGoalChapters);
-  const [selectedBook, setSelectedBook] = useState<string | null>(planData.selectedBookCode);
+  // 목표 편집 상태 — 서버 목표(existingGoal)에서 prefill, 없으면 기본값
+  const [days, setDays] = useState(existingGoal?.daysPerWeek ?? WEEKLY_GOAL_DAYS);
+  const [chaptersPerDay, setChaptersPerDay] = useState(existingGoal?.chaptersPerDay ?? WEEKLY_GOAL_CHAPTERS_PER_DAY);
+  const [selectedBook, setSelectedBook] = useState<string | null>(existingGoal?.bookCode ?? null);
+  // 알람만 로컬 (기기 알림 스케줄)
   const [alarms, setAlarms] = useState<AlarmItem[]>(planData.alarms ?? []);
 
   // 관리 상태
   const [isManageMode, setIsManageMode] = useState(false);
   const [selectedAlarmIds, setSelectedAlarmIds] = useState<string[]>([]);
 
-  // [버그 수정] AsyncStorage 로딩 완료 시 데이터를 한 번 UI State로 싱크
-  // 컴포넌트 마운트 시 isLoading=true라 빈 배열([])로 초기화되던 현상 방지. 이게 고스트 알람의 주 원인.
+  // 서버 목표 로딩 완료 시 폼 prefill (편집 시작 전 1회 — 사용자 입력 덮어쓰기 방지)
+  const goalSyncedRef = useRef(false);
   useEffect(() => {
-    if (!isLoading) {
-      setDays(planData.weeklyGoalDays);
-      setChaptersPerDay(planData.weeklyGoalChapters);
-      setSelectedBook(planData.selectedBookCode);
-      setAlarms(planData.alarms ?? []);
+    if (isGoalLoading || goalSyncedRef.current) return;
+    goalSyncedRef.current = true;
+    if (existingGoal) {
+      setDays(existingGoal.daysPerWeek);
+      setChaptersPerDay(existingGoal.chaptersPerDay);
+      setSelectedBook(existingGoal.bookCode);
     }
+  }, [isGoalLoading, existingGoal]);
+
+  // 알람: 로컬 로딩 완료 시 1회 싱크 (고스트 알람 방지)
+  useEffect(() => {
+    if (!isLoading) setAlarms(planData.alarms ?? []);
   }, [isLoading]);  // planData 의존성 제외(사용자 인라인 편집 덮어쓰기 방지)
 
   // 다이얼로그/시트 표시
@@ -164,13 +173,6 @@ export default function GoalScreen() {
   const [showAlarmSheet,   setShowAlarmSheet]   = useState(false);
   const [showCancelModal,  setShowCancelModal]  = useState(false);
   const [isSaving,         setIsSaving]         = useState(false);
-
-  // 변경 감지
-  const isDirty =
-    days !== planData.weeklyGoalDays ||
-    chaptersPerDay !== planData.weeklyGoalChapters ||
-    selectedBook !== planData.selectedBookCode ||
-    JSON.stringify(alarms) !== JSON.stringify(planData.alarms ?? []);
 
   // Swipeable ref 관리
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -201,63 +203,46 @@ export default function GoalScreen() {
     setShowAlarmSheet(true);
   }, [requestPermission]);
 
-  // ── AlarmTimeSheet 확정 ───────────────────────────────────────────
+  // ── AlarmTimeSheet 확정 ── (드래프트: 로컬 state에만 추가, 실제 스케줄·영속은 '완료' 시)
   const handleAlarmConfirm = useCallback(
-    async (hour: number, minute: number, selectedDays: number[]) => {
+    (hour: number, minute: number, selectedDays: number[]) => {
       setShowAlarmSheet(false);
-      try {
-        const id = Date.now().toString();
-        const newAlarm = { id, hour, minute, days: selectedDays, enabled: true, notificationIds: [] as string[] };
-        const notificationIds = await scheduleAlarm(newAlarm);
-        newAlarm.notificationIds = notificationIds;
-        
-        setAlarms(prev => [...prev, newAlarm]);
-        await addAlarm(newAlarm); 
-      } catch (e) {
-        console.warn('[GoalScreen] 알림 등록 실패', e);
-        Alert.alert('알림 등록 실패', '알림을 등록하지 못했습니다. 다시 시도해 주세요.');
-      }
+      const id = Date.now().toString();
+      setAlarms(prev => [...prev, { id, hour, minute, days: selectedDays, enabled: true, notificationIds: [] }]);
     },
-    [scheduleAlarm, addAlarm]
+    []
   );
 
-  // ── 알림 삭제 ─────────────────────────────────────────────────────
-  const handleDeleteAlarm = useCallback(
-    async (alarm: AlarmItem) => {
-      await cancelAlarm(alarm.notificationIds);
-      setAlarms(prev => prev.filter(a => a.id !== alarm.id));
-      await removeAlarm(alarm.id);
-    },
-    [cancelAlarm, removeAlarm]
-  );
+  // ── 알림 삭제 ── (드래프트: 로컬 state에서만 제거)
+  const handleDeleteAlarm = useCallback((alarm: AlarmItem) => {
+    setAlarms(prev => prev.filter(a => a.id !== alarm.id));
+  }, []);
 
-  // ── 알림 토글 ─────────────────────────────────────────────────────
-  const handleToggleAlarm = useCallback(
-    async (alarm: AlarmItem, enabled: boolean) => {
-      if (enabled) {
-        if (alarm.notificationIds && alarm.notificationIds.length > 0) {
-          await cancelAlarm(alarm.notificationIds);
-        }
-        const notificationIds = await scheduleAlarm({ ...alarm, enabled });
-        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notificationIds } : a));
-        await toggleAlarm(alarm.id, enabled, notificationIds);
-      } else {
-        await cancelAlarm(alarm.notificationIds);
-        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notificationIds: [] } : a));
-        await toggleAlarm(alarm.id, enabled, []);
-      }
-    },
-    [scheduleAlarm, cancelAlarm, toggleAlarm]
-  );
+  // ── 알림 토글 ── (드래프트: 로컬 state에서만 변경)
+  const handleToggleAlarm = useCallback((alarm: AlarmItem, enabled: boolean) => {
+    setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled } : a));
+  }, []);
 
   // ── 저장 (완료 버튼) ──────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     if (isSaving) return;
     setIsSaving(true);
     try {
-      await saveGoalAndAlarms(days, chaptersPerDay, selectedBook, alarms);
-
+      // 책 미선택 시 기본 GEN. 목표는 서버에만 저장(단일 출처).
       const bookCode = selectedBook ?? 'GEN';
+
+      // 알람 드래프트 커밋: 기존 OS 알림 전부 취소 → 활성 드래프트만 재스케줄 → 로컬 영속.
+      // (편집 중엔 아무것도 영속하지 않으므로 취소/이전 시 자동으로 원상복구됨)
+      for (const a of planData.alarms) {
+        if (a.notificationIds?.length) await cancelAlarm(a.notificationIds);
+      }
+      const committedAlarms: AlarmItem[] = [];
+      for (const a of alarms) {
+        const notificationIds = a.enabled ? await scheduleAlarm(a) : [];
+        committedAlarms.push({ ...a, notificationIds });
+      }
+      await saveAlarms(committedAlarms);
+
       const notificationEnabled = alarms.length > 0 && alarms.some(a => a.enabled);
       const firstAlarm = alarms.find(a => a.enabled) ?? alarms[0];
       const notificationDays = firstAlarm?.days.map(d => DAY_MAP[d]) ?? [];
@@ -285,7 +270,7 @@ export default function GoalScreen() {
       Alert.alert('오류', '목표 저장에 실패했습니다.');
       setIsSaving(false);
     }
-  }, [days, chaptersPerDay, selectedBook, alarms, saveGoalAndAlarms, existingGoal, createGoal, updateGoal, isSaving]);
+  }, [days, chaptersPerDay, selectedBook, alarms, planData.alarms, scheduleAlarm, cancelAlarm, saveAlarms, existingGoal, createGoal, updateGoal, isSaving]);
 
   // ── 스와이프 우측 삭제 버튼 ──────────────────────────────────────
   const renderRightActions = useCallback(

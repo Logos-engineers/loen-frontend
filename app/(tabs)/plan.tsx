@@ -9,6 +9,7 @@ import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
 import { useBibleHistory } from '@/hooks/useBibleHistory';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,21 +34,25 @@ const FALLBACK: LastPosition = { bookCode: 'GEN', chapterNum: 1 };
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const { isLoading, stats, planData, getReadChaptersForBook, saveSelectedChapters } = useBiblePlan();
-  const { history, checkChapters, uncheckChapters } = useBibleHistory();
+  const { history, goal, refetch, checkChapters, uncheckChapters } = useBibleHistory();
+  // 화면 재진입 시 서버 목표/히스토리 갱신 (목표 설정 직후·매주 리셋 반영)
+  useRefetchOnFocus(refetch);
   const [activeTestament, setActiveTestament] = useState<Testament>('old');
   const [activeBottomTab, setActiveBottomTab] = useState('성경통독');
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
 
   const bookList = BIBLE_BOOKS.filter(b => b.testament === activeTestament);
 
-  // 목표 설정 플로우 완료 시 selectedBookCode가 저장됨 → 미설정 판별
-  const isGoalSet = planData.selectedBookCode !== null;
+  // 목표 설정 여부: 서버 이번 주 목표(goal) 단일 출처
+  const isGoalSet = goal != null;
 
   // 서버 통계로 로컬 stats를 덮어씀 (서버 데이터 없으면 로컬 fallback)
   const mergedStats = {
     ...stats,
     todayRead: history?.todayReadCount ?? stats.todayRead,
     totalRead: history?.accruedReadCount ?? stats.totalRead,
+    // 주간 목표 장수: 서버 weeklyTarget (목표 단일 출처)
+    weeklyGoal: goal?.weeklyTarget ?? 0,
   };
 
   const handleBookPress = (book: BibleBook) => setSelectedBook(book);
@@ -130,24 +135,27 @@ export default function PlanScreen() {
             {/* ── 진척도 카드 ── */}
             <View style={styles.statsCard}>
               <View style={styles.statsRow}>
-                <View style={styles.statsItem}>
-                  <Text style={styles.statsLabel}>이번주 목표</Text>
+                {/* 탭 → 목표 설정/수정 화면. 라벨 옆 쉐브론으로 터치 가능 표시 */}
+                <TouchableOpacity
+                  style={styles.statsItem}
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/plan/goal')}
+                >
+                  <View style={styles.statsLabelRow}>
+                    <Text style={styles.statsLabel}>이번주 목표</Text>
+                    <Ionicons name="chevron-forward" size={11} color={colors.text.secondary} />
+                  </View>
                   {isGoalSet ? (
                     <Text style={styles.statsValue}>
                       {mergedStats.weekRead} / {mergedStats.weeklyGoal}장
                     </Text>
                   ) : (
-                    // 미설정: + 버튼 → 이번주 목표 설정 플로우
-                    <TouchableOpacity
-                      style={styles.addGoalBtn}
-                      activeOpacity={0.7}
-                      onPress={() => router.push('/plan/goal')}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
+                    // 미설정: + 버튼 (항목 전체가 탭 가능하므로 시각 표시용 View)
+                    <View style={styles.addGoalBtn}>
                       <Ionicons name="add" size={18} color={colors.primary} />
-                    </TouchableOpacity>
+                    </View>
                   )}
-                </View>
+                </TouchableOpacity>
                 <View style={styles.statsDivider} />
                 <View style={styles.statsItem}>
                   <Text style={styles.statsLabel}>오늘</Text>
@@ -276,6 +284,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 3,                     // 일회성: 라벨↔숫자 미세 간격
+  },
+  // 라벨 + 쉐브론(터치 가능 표시) 가로 정렬
+  statsLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   // Figma: 라벨 12/600 rgba(13,28,45,0.5)
   statsLabel: {
