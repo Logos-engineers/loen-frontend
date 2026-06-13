@@ -17,6 +17,7 @@ export default function ObsIntroScreen() {
     verse?: string;
     weekLabel?: string;
     preview?: string;
+    origin?: string;
   }>();
   const [isStarting, setIsStarting] = useState(false);
   const isPreview = params.preview === 'true';
@@ -31,6 +32,7 @@ export default function ObsIntroScreen() {
       title: params.title,
       verse: params.verse,
       ...(isPreview ? { preview: 'true' } : {}),
+      ...(params.origin ? { origin: params.origin } : {}),
     };
 
     if (isPreview) {

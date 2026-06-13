@@ -47,7 +47,7 @@ const TAG_TO_EMOTION: Record<string, string> = {
 };
 
 export default function ObsFinishScreen() {
-  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string; reviewId?: string }>();
+  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string; reviewId?: string; origin?: string }>();
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [goalText, setGoalText] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -56,8 +56,14 @@ export default function ObsFinishScreen() {
   const isViewFlow = params.flow === 'view';
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
+  const isFromHome = params.origin === 'home';
   // 좌상단 쉐브론: OBS 보기 플로우 전체를 빠져나감 (단계 뒤로는 하단 '이전으로'가 담당)
-  const exitFlow = () => router.dismissTo(isPreview ? '/obs/admin' : '/obs');
+  // 홈에서 시작했으면 플로우를 모두 닫고 홈(탭)으로, 아니면 OBS 목록으로 복귀
+  const exitFlow = () => {
+    if (isPreview) { router.dismissTo('/obs/admin'); return; }
+    if (isFromHome) { router.dismissAll(); return; }
+    router.dismissTo('/obs');
+  };
   const [reviewId, setReviewId] = useState<number | null>(params.reviewId ? Number(params.reviewId) : null);
 
   useEffect(() => {
@@ -259,7 +265,14 @@ export default function ObsFinishScreen() {
                       }
                     }
                     setShowModal(false);
-                    router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
+                    if (isPreview) {
+                      router.replace('/obs/admin');
+                    } else {
+                      router.replace({
+                        pathname: '/obs/content/complete',
+                        params: isFromHome ? { origin: 'home' } : {},
+                      });
+                    }
                   }}
                 >
                   <Text style={styles.modalBtnPrimaryText}>{isSaving ? '저장 중...' : '완료하기'}</Text>

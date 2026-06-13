@@ -37,7 +37,7 @@ function parseScriptureVerses(reference: string): { number: number; text: string
 }
 
 export default function ObsScriptureScreen() {
-  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string }>();
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string; origin?: string }>();
   const reference = params.verse || '성경말씀 데이터가 없습니다';
   const scriptureVerses = parseScriptureVerses(reference);
 
@@ -100,7 +100,7 @@ export default function ObsScriptureScreen() {
           <TouchableOpacity
             style={styles.nextButton}
             activeOpacity={0.85}
-            onPress={() => router.push({ pathname: '/obs/content/summary', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}) } })}
+            onPress={() => router.push({ pathname: '/obs/content/summary', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}), ...(params.origin ? { origin: params.origin } : {}) } })}
           >
             <Text style={styles.nextButtonText}>다음으로</Text>
           </TouchableOpacity>
