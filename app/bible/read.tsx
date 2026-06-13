@@ -124,17 +124,33 @@ export default function BibleReadScreen() {
     listRef.current?.scrollToVerse(verse ?? 1);
   }, []);
 
+  // 이전/다음 장 대상 — 책 경계를 넘어 인접 책으로 이어진다.
+  //   prev: 책 첫 장이면 이전 책의 마지막 장으로 (창세기 1장에서만 null → 막힘)
+  //   next: 책 마지막 장이면 다음 책의 1장으로 (요한계시록 마지막 장에서만 null → 막힘)
+  const bookIndex = useMemo(
+    () => BIBLE_BOOKS.findIndex((b) => b.code === bookCode),
+    [bookCode]
+  );
+
+  const prevTarget = useMemo<LastPosition | null>(() => {
+    if (chapterNum > 1) return { bookCode, chapterNum: chapterNum - 1 };
+    const prevBook = bookIndex > 0 ? BIBLE_BOOKS[bookIndex - 1] : null;
+    return prevBook ? { bookCode: prevBook.code, chapterNum: prevBook.chapterCount } : null;
+  }, [bookCode, chapterNum, bookIndex]);
+
+  const nextTarget = useMemo<LastPosition | null>(() => {
+    if (chapterNum < totalChapters) return { bookCode, chapterNum: chapterNum + 1 };
+    const nextBook = bookIndex >= 0 && bookIndex < BIBLE_BOOKS.length - 1 ? BIBLE_BOOKS[bookIndex + 1] : null;
+    return nextBook ? { bookCode: nextBook.code, chapterNum: 1 } : null;
+  }, [bookCode, chapterNum, totalChapters, bookIndex]);
+
   const handlePrev = useCallback(() => {
-    if (chapterNum > 1) {
-      goToChapter(bookCode, chapterNum - 1);
-    }
-  }, [bookCode, chapterNum, goToChapter]);
+    if (prevTarget) goToChapter(prevTarget.bookCode, prevTarget.chapterNum);
+  }, [prevTarget, goToChapter]);
 
   const handleNext = useCallback(() => {
-    if (chapterNum < totalChapters) {
-      goToChapter(bookCode, chapterNum + 1);
-    }
-  }, [bookCode, chapterNum, totalChapters, goToChapter]);
+    if (nextTarget) goToChapter(nextTarget.bookCode, nextTarget.chapterNum);
+  }, [nextTarget, goToChapter]);
 
   const handleBookSelect = useCallback((newBook: string, chapter: number, verse?: number) => {
     setShowBookModal(false);
@@ -149,12 +165,12 @@ export default function BibleReadScreen() {
       return;
     }
     
-    // 아직 읽지 않은 상태일 때 -> 읽음 처리 후 다음 장으로 이동
+    // 아직 읽지 않은 상태일 때 -> 읽음 처리 후 다음 장으로 이동 (책 경계 넘어 다음 책 1장까지)
     await toggleChapter(bookCode, chapterNum);
-    if (chapterNum < totalChapters) {
-      goToChapter(bookCode, chapterNum + 1);
+    if (nextTarget) {
+      goToChapter(nextTarget.bookCode, nextTarget.chapterNum);
     }
-  }, [bookCode, chapterNum, goToChapter, isChapterRead, toggleChapter, totalChapters]);
+  }, [bookCode, chapterNum, goToChapter, isChapterRead, toggleChapter, nextTarget]);
 
   // ── scroll ───────────────────────────────────────────────────────────────
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -202,8 +218,8 @@ export default function BibleReadScreen() {
       <ChapterNav
         onPrev={handlePrev}
         onNext={handleNext}
-        hasPrev={chapterNum > 1}
-        hasNext={chapterNum < totalChapters}
+        hasPrev={!!prevTarget}
+        hasNext={!!nextTarget}
         isChapterRead={isChapterRead}
         onReadCheck={handleReadCheck}
         showReadCheck={isAtBottom}
