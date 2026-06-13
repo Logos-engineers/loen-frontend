@@ -74,8 +74,13 @@ export function BibleReadingSection() {
             <BookmarkIcon width={32} height={32} />
 
             <View style={styles.textCol}>
+              {/* 제목: 이어읽을 위치 (= '이어읽기' 버튼이 이동하는 마지막 본 장) */}
               <Text style={styles.chapterTitle}>
-                {bookName} {readCount}장
+                {bookName} {position.chapterNum}장
+              </Text>
+              {/* 부제: 읽음 표시 진행도 (읽은 장 수 / 전체 장 수) */}
+              <Text style={styles.date}>
+                {readCount}/{totalChapters}장 읽음
               </Text>
             </View>
 
