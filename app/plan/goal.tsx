@@ -22,6 +22,8 @@ import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { AlarmItem, useBiblePlan } from '@/hooks/useBiblePlan';
 import { useBibleHistory } from '@/hooks/useBibleHistory';
 import { useAlarms } from '@/hooks/useAlarms';
+import { overlay } from '@/components/ui/overlay';
+import { formatWeekLabel } from '@/utils/date';
 import BibleSelectSheet from '@/components/plan/BibleSelectSheet';
 import AlarmTimeSheet from '@/components/plan/AlarmTimeSheet';
 import CancelModal from '@/components/plan/CancelModal';
@@ -265,13 +267,19 @@ export default function GoalScreen() {
 
       const payload = { bookCode, daysPerWeek: days, chaptersPerDay, notificationEnabled, notificationDays, notificationTime };
 
-      if (existingGoal?.id) {
-        await updateGoal(existingGoal.id, payload);
-      } else {
-        await createGoal(payload);
-      }
+      const saved = existingGoal?.id
+        ? await updateGoal(existingGoal.id, payload)
+        : await createGoal(payload);
 
-      router.replace('/plan/goal-success');
+      // 완료 화면에 실제 설정값 전달 (하드코딩 제거)
+      router.replace({
+        pathname: '/plan/goal-success',
+        params: {
+          bookName: saved.bookName,
+          chapters: String(saved.weeklyTarget),
+          weekLabel: formatWeekLabel(saved.weekStartDate),
+        },
+      });
     } catch (e) {
       console.warn('[GoalScreen] 저장 실패', e);
       Alert.alert('오류', '목표 저장에 실패했습니다.');
@@ -283,9 +291,9 @@ export default function GoalScreen() {
   const renderRightActions = useCallback(
     (_: unknown, __: unknown, alarm: AlarmItem) => (
       <View style={{ paddingLeft: 8, height: '100%' }}>
-        <TouchableOpacity style={s.swipeDel} onPress={() => { 
-          handleDeleteAlarm(alarm); 
-          Alert.alert('', '1개의 알람을 삭제했어요');
+        <TouchableOpacity style={s.swipeDel} onPress={() => {
+          handleDeleteAlarm(alarm);
+          overlay.toast('1개의 알람을 삭제했어요');
         }} activeOpacity={0.8}>
           <Text style={s.swipeDelTxt}>삭제</Text>
         </TouchableOpacity>
@@ -318,21 +326,34 @@ export default function GoalScreen() {
             <View style={s.cardInnerRow}>
               <TouchableOpacity style={s.bookRow} activeOpacity={0.7} onPress={() => setShowBibleSheet(true)}>
                 <View style={s.bookRowTextWrap}>
-                  <Text style={selectedBook ? s.bookName : s.bookPlaceholder}>{selectedBookName ?? '창세기'}</Text>
+                  <Text style={s.bookName}>{selectedBookName ?? '창세기'}</Text>
                 </View>
                 <DownButtonIcon width={24} height={24} />
               </TouchableOpacity>
             </View>
 
-            {/* 스텝퍼 자연어 문장 */}
+            {/* 스텝퍼 2개 나란히 (라벨 위) — 주 N일 × 하루 M장 = 주 N×M장 */}
             <View style={s.stepperRowArea}>
-              <View style={s.naturalLine}>
-                <Stepper value={days} min={MIN_DAYS} max={MAX_DAYS} onDec={() => setDays(v => Math.max(MIN_DAYS, v - 1))} onInc={() => setDays(v => Math.min(MAX_DAYS, v + 1))} />
-                <Text style={s.naturalText}>일에</Text>
-                <Stepper value={chaptersPerDay} min={MIN_CH} max={MAX_CH} onDec={() => setChaptersPerDay(v => Math.max(MIN_CH, v - 1))} onInc={() => setChaptersPerDay(v => Math.min(MAX_CH, v + 1))} />
-                <Text style={s.naturalText}>장씩 읽을게요</Text>
+              <View style={s.stepperColumns}>
+                <View style={s.stepperCol}>
+                  <Text style={s.stepperColLabel}>읽는 날</Text>
+                  <View style={s.stepperColControl}>
+                    <Stepper value={days} min={MIN_DAYS} max={MAX_DAYS} onDec={() => setDays(v => Math.max(MIN_DAYS, v - 1))} onInc={() => setDays(v => Math.min(MAX_DAYS, v + 1))} />
+                    <Text style={s.naturalText}>일</Text>
+                  </View>
+                </View>
+                <View style={s.stepperCol}>
+                  <Text style={s.stepperColLabel}>하루 분량</Text>
+                  <View style={s.stepperColControl}>
+                    <Stepper value={chaptersPerDay} min={MIN_CH} max={MAX_CH} onDec={() => setChaptersPerDay(v => Math.max(MIN_CH, v - 1))} onInc={() => setChaptersPerDay(v => Math.min(MAX_CH, v + 1))} />
+                    <Text style={s.naturalText}>장</Text>
+                  </View>
+                </View>
               </View>
             </View>
+
+            {/* 입력 ↔ 결과 구분선 */}
+            <View style={s.summaryDivider} />
 
             {/* 요약 */}
             <View style={s.summaryBox}>
@@ -446,7 +467,7 @@ export default function GoalScreen() {
               }
               setIsManageMode(false);
               setSelectedAlarmIds([]);
-              Alert.alert('', `${count}개의 알람을 삭제했어요`);
+              overlay.toast(`${count}개의 알람을 삭제했어요`);
             }}
             disabled={selectedAlarmIds.length === 0}
           >
@@ -530,13 +551,17 @@ const s = StyleSheet.create({
   bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: 'rgba(13,28,45,0.16)', paddingBottom: 12 },
   bookRowTextWrap: { flex: 1 },
   bookName: { fontSize: 24, fontWeight: '700', color: '#1B1E26', lineHeight: 36 },
-  bookPlaceholder: { fontSize: 24, fontWeight: '700', color: 'rgba(13,28,45,0.5)', lineHeight: 36 },
 
-  stepperRowArea: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
-  naturalLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepperRowArea: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   naturalText: { fontSize: 16, fontWeight: '600', color: 'rgba(13,28,45,0.8)' },
+  // 스텝퍼 2열 (라벨 위 / 스텝퍼+단위 아래)
+  stepperColumns: { flexDirection: 'row', gap: 16 },
+  stepperCol: { flex: 1, gap: 8 },
+  stepperColLabel: { fontSize: 14, fontWeight: '600', color: 'rgba(13,28,45,0.5)' },
+  stepperColControl: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
-  summaryBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 },
+  summaryDivider: { height: 1, backgroundColor: colors.border, marginHorizontal: 16, marginTop: 16 },
+  summaryBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
   summaryTextContainer: { flex: 1, justifyContent: 'center', paddingLeft: 8, paddingRight: 8 },
   summaryText: { fontSize: 16, fontWeight: '600', color: 'rgba(13,28,45,0.8)', lineHeight: 25.6, textAlign: 'left' },
 
