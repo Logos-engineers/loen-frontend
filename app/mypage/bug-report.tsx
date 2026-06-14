@@ -24,7 +24,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 문의 수신 이메일 — 운영 이메일로 교체해서 사용
-const SUPPORT_EMAIL = 'namhyunseo0224@gmail.com';
+const SUPPORT_EMAIL = 'contact@loenstudio.dev';
 
 export default function BugReportScreen() {
   const [text, setText] = useState('');
