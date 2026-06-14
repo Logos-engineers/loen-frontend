@@ -25,6 +25,7 @@
     },
     "android": {
       "package": "com.loen.app",
+      "googleServicesFile": "./google-services.json",
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WRITE_EXTERNAL_STORAGE"

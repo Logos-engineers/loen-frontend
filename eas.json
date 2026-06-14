@@ -16,6 +16,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -28,6 +29,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://loen-backend-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114111779962-0ven8nlf8cq1k3c60ghrd4ijua5tkbh6.apps.googleusercontent.com",
