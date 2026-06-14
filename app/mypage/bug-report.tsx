@@ -85,21 +85,33 @@ export default function BugReportScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.lead}>불편을 드려 죄송해요.</Text>
-          <Text style={styles.sub}>어떤 상황에서 무슨 문제가 있었는지 적어주시면 빠르게 확인할게요.</Text>
+          <Text
+            style={styles.sub}
+            lineBreakStrategyIOS="hangul-word"
+            textBreakStrategy="balanced"
+          >
+            무슨 문제가 있었는지 적어주시면 빠르게 확인할게요.
+          </Text>
 
           <TextInput
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder={'예) 성경 통독표에서 다음 장으로 넘어갈 때 앱이 멈춰요.\n언제, 어디서, 어떻게 발생했는지 적어주세요.'}
+            placeholder={'예) 통독표에서 다음 장으로 넘어갈 때 앱이 멈춰요.\n언제·어디서·어떻게 생겼는지 적어주세요.'}
             placeholderTextColor={colors.text.secondary}
             multiline
             textAlignVertical="top"
+            lineBreakStrategyIOS="hangul-word"
+            textBreakStrategy="balanced"
           />
 
           <View style={styles.metaRow}>
             <Ionicons name="information-circle-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.metaText}>{`진단을 위해 ${deviceMeta} 정보가 함께 전송돼요.`}</Text>
+            <Text
+              style={styles.metaText}
+              lineBreakStrategyIOS="hangul-word"
+              textBreakStrategy="balanced"
+            >{`진단을 위해 ${deviceMeta} 정보가 함께 전송돼요.`}</Text>
           </View>
         </ScrollView>
 
