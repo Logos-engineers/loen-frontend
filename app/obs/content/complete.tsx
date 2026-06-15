@@ -29,7 +29,9 @@ export default function ObsCompleteScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isFromHome) router.dismissAll();
-      else router.replace('/obs');
+      // replace는 완료 화면만 교체해 플로우 화면들이 스택에 남는다 → 모아보기 뒤로가기가
+      // 플로우로 되돌아감. dismissTo로 플로우 전체를 닫고 기존 /obs로 복귀해야 [홈, 모아보기]가 됨.
+      else router.dismissTo('/obs');
     }, 1500);
     return () => clearTimeout(timer);
   }, [isFromHome]);
