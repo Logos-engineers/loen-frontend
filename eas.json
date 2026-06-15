@@ -16,6 +16,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -28,6 +29,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://loen-backend-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114111779962-0ven8nlf8cq1k3c60ghrd4ijua5tkbh6.apps.googleusercontent.com",
@@ -37,6 +39,14 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6779048910",
+        "ascApiKeyPath": "./credentials/asc_api_key.p8",
+        "ascApiKeyId": "AVBL59R2N8",
+        "ascApiKeyIssuerId": "b49b1289-2617-4fea-8e38-8fb415f3d4a0",
+        "appleTeamId": "N2WKYKZBUX"
+      }
+    }
   }
 }

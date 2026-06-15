@@ -25,6 +25,7 @@
     },
     "android": {
       "package": "com.loen.app",
+      "googleServicesFile": "./google-services.json",
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -66,7 +67,8 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "./plugins/withGoogleModularHeaders"
     ],
     "experiments": {
       "typedRoutes": true,
