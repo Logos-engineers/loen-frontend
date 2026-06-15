@@ -386,16 +386,22 @@ const styles = StyleSheet.create({
   inputField: {
     backgroundColor: colors.border,
     borderRadius: 12,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
     minHeight: 130,
   },
   textInput: {
-    flex: 1,
+    // flex:1 을 주면 iOS 멀티라인 입력이 박스를 꽉 채우며 텍스트를 세로 가운데로
+    // 정렬해버린다. minHeight 로 박스 높이는 유지하되 상단 정렬되게 한다.
+    minHeight: 90,
+    paddingTop: 0,
     fontSize: 15,
     lineHeight: 15 * 1.6,
     fontWeight: fontWeight.medium,
     color: colors.text.primary,
     textAlignVertical: 'top',
+    includeFontPadding: false,
   },
   bottomCta: {
     position: 'absolute',

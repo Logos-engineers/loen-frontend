@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Dimensions,
+  Easing,
   LayoutAnimation,
   Modal,
   Platform,
@@ -348,6 +351,38 @@ export default function ObsSummaryScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [biblePopup, setBiblePopup] = useState<BiblePopup>(null);
+  // 바텀시트: 백드롭은 페이드, 시트는 슬라이드 업으로 분리 애니메이션.
+  // 닫힘 애니메이션을 끝까지 보여주기 위해 Modal 마운트(sheetMounted)와 내용(biblePopup)을 분리한다.
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(0);
+  const sheetAnim = useRef(new Animated.Value(0)).current;
+
+  const openBibleSheet = (popup: BiblePopup) => {
+    if (!popup) return;
+    setBiblePopup(popup);
+    setSheetMounted(true);
+    sheetAnim.setValue(0);
+    Animated.timing(sheetAnim, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeBibleSheet = () => {
+    Animated.timing(sheetAnim, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setSheetMounted(false);
+        setBiblePopup(null);
+      }
+    });
+  };
 
   useEffect(() => {
     let active = true;
@@ -415,7 +450,7 @@ export default function ObsSummaryScreen() {
   const hasContent = useMemo(() => !!introText || questionCards.length > 0, [introText, questionCards.length]);
 
   const handleBibleRefPress = (ref: string) => {
-    setBiblePopup(getVersesForRef(ref));
+    openBibleSheet(getVersesForRef(ref));
   };
 
   const handleNext = async () => {
@@ -521,31 +556,50 @@ export default function ObsSummaryScreen() {
           </TouchableOpacity>
         </View>
 
-        <Modal visible={!!biblePopup} transparent animationType="slide" onRequestClose={() => setBiblePopup(null)}>
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setBiblePopup(null)}>
-            <TouchableOpacity style={styles.biblePopup} activeOpacity={1}>
-              <View style={styles.popupHeader}>
-                <Text style={styles.popupTitle}>{biblePopup?.ref}</Text>
-                <TouchableOpacity style={styles.popupClose} onPress={() => setBiblePopup(null)}>
-                  <Ionicons name="close" size={20} color={colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.popupBody} showsVerticalScrollIndicator={false}>
-                {biblePopup?.verses.length ? (
-                  biblePopup.verses.map((verse) => (
-                    <View style={styles.popupVerseRow} key={verse.number}>
-                      <View style={styles.popupVerseBadge}>
-                        <Text style={styles.popupVerseNum}>{verse.number}</Text>
+        <Modal visible={sheetMounted} transparent animationType="none" statusBarTranslucent onRequestClose={closeBibleSheet}>
+          <View style={styles.modalRoot}>
+            <Animated.View style={[styles.modalBackdrop, { opacity: sheetAnim }]} pointerEvents="none" />
+            <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closeBibleSheet} />
+            <View style={styles.sheetContainer} pointerEvents="box-none">
+              <Animated.View
+                style={[
+                  styles.biblePopup,
+                  {
+                    transform: [
+                      {
+                        translateY: sheetAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [sheetHeight || Dimensions.get('window').height * 0.6, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+                onLayout={(e) => setSheetHeight(e.nativeEvent.layout.height)}
+              >
+                <View style={styles.popupHeader}>
+                  <Text style={styles.popupTitle}>{biblePopup?.ref}</Text>
+                  <TouchableOpacity style={styles.popupClose} onPress={closeBibleSheet}>
+                    <Ionicons name="close" size={20} color={colors.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.popupBody} showsVerticalScrollIndicator={false}>
+                  {biblePopup?.verses.length ? (
+                    biblePopup.verses.map((verse) => (
+                      <View style={styles.popupVerseRow} key={verse.number}>
+                        <View style={styles.popupVerseBadge}>
+                          <Text style={styles.popupVerseNum}>{verse.number}</Text>
+                        </View>
+                        <Text style={styles.popupVerseText}>{verse.text}</Text>
                       </View>
-                      <Text style={styles.popupVerseText}>{verse.text}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.popupEmpty}>본문을 불러올 수 없습니다.</Text>
-                )}
-              </ScrollView>
-            </TouchableOpacity>
-          </TouchableOpacity>
+                    ))
+                  ) : (
+                    <Text style={styles.popupEmpty}>본문을 불러올 수 없습니다.</Text>
+                  )}
+                </ScrollView>
+              </Animated.View>
+            </View>
+          </View>
         </Modal>
       </SafeAreaView>
     </>
@@ -766,9 +820,15 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     fontWeight: fontWeight.semibold,
   },
-  modalOverlay: {
+  modalRoot: {
     flex: 1,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheetContainer: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
   biblePopup: {
