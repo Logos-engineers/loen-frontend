@@ -40,7 +40,8 @@ type ReactionIcon =
 const REACTION_ICON: Record<string, ReactionIcon> = {
   HEART: { lib: 'ion', name: 'heart', active: colors.reaction.red },
   FIRE: { lib: 'ion', name: 'flame', active: '#FF7A00' },
-  PRAY: { lib: 'fa5', name: 'praying-hands', active: colors.primary },
+  // PRAY는 보라(브랜드색) 대신 회색조 — 클릭 전엔 회색(REACTION_INACTIVE), 클릭 시 진한 회색으로만 구분
+  PRAY: { lib: 'fa5', name: 'praying-hands', active: colors.text.primary },
 };
 
 interface FaithNoteCardProps {

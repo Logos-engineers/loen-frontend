@@ -14,7 +14,6 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -524,7 +523,9 @@ export default function FaithNoteDetailScreen() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // edge-to-edge(Android)에선 창 자동 리사이즈가 안 되므로 양 플랫폼 모두 padding 처리.
+        // KAV가 자기 화면 위치(헤더 아래)를 이미 측정하므로 offset은 0 — 더 주면 그만큼 회색 공백이 생긴다.
+        behavior="padding"
       >
         <ScrollView
           style={styles.scroll}
