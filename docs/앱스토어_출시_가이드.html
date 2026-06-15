@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loen 앱스토어 출시 가이드</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --ink: #1a1c20;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --brand: #6561FF;
+    --brand-soft: #eef0ff;
+    --warn-bg: #fff7ed;
+    --warn-border: #fdba74;
+    --warn-ink: #9a3412;
+    --ok: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+  header.hero {
+    background: linear-gradient(135deg, var(--brand) 0%, #8b88ff 100%);
+    color: #fff;
+    border-radius: 20px;
+    padding: 36px 32px;
+    margin-bottom: 32px;
+  }
+  header.hero h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.5px; }
+  header.hero p { margin: 0; opacity: 0.92; font-size: 15px; }
+  .meta-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 18px; font-size: 13px; }
+  .meta-row span { background: rgba(255,255,255,0.18); padding: 4px 12px; border-radius: 999px; }
+
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 28px;
+    margin-bottom: 22px;
+  }
+  h2 {
+    font-size: 20px;
+    margin: 0 0 18px;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .num {
+    flex: none;
+    width: 30px; height: 30px;
+    background: var(--brand-soft);
+    color: var(--brand);
+    border-radius: 9px;
+    display: grid; place-items: center;
+    font-size: 15px; font-weight: 700;
+  }
+  h3 { font-size: 15px; margin: 22px 0 10px; color: var(--brand); }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code {
+    background: #f1f2f5;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    color: #c026d3;
+  }
+  pre {
+    background: #1e2128;
+    color: #e6e8eb;
+    padding: 16px 18px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 14px;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  pre .cmt { color: #7b8190; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #fafbfc; font-weight: 600; color: var(--muted); font-size: 13px; }
+  td strong { color: var(--brand); }
+
+  .callout {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-ink);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 0 0 14px;
+    font-size: 14px;
+  }
+  .callout b { color: #7c2d12; }
+  .callout::before { content: "⚠️  "; }
+
+  .check { list-style: none; padding-left: 0; }
+  .check li { padding-left: 30px; position: relative; }
+  .check li::before {
+    content: "☐";
+    position: absolute; left: 0; top: 0;
+    color: var(--brand); font-size: 16px;
+  }
+
+  .muted { color: var(--muted); font-size: 13px; }
+  a { color: var(--brand); text-decoration: none; border-bottom: 1px solid var(--brand-soft); }
+  a:hover { border-bottom-color: var(--brand); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>📱 Loen 앱스토어 출시 가이드</h1>
+    <p>모바일 앱(loen-frontend / Expo)을 App Store · Play Store에 등록하는 전체 과정</p>
+    <div class="meta-row">
+      <span>iOS 번들: com.loen.app</span>
+      <span>Android 패키지: com.loen.app</span>
+      <span>EAS owner: namhyunseo</span>
+      <span>작성: 2026-06-15</span>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2><span class="num">0</span> 사전 준비 — 개발자 계정 (먼저, 한 번만)</h2>
+    <table>
+      <tr><th></th><th>Apple</th><th>Google</th></tr>
+      <tr>
+        <td>가입</td>
+        <td><a href="https://developer.apple.com">Apple Developer Program</a></td>
+        <td><a href="https://play.google.com/console">Play Console</a></td>
+      </tr>
+      <tr><td>비용</td><td><strong>연 $99</strong></td><td><strong>1회 $25</strong></td></tr>
+      <tr>
+        <td>승인</td>
+        <td>즉시~며칠 (개인은 빠름, 법인은 D-U-N-S 필요)</td>
+        <td>신규 개인 계정은 <strong>테스터 20명 / 14일 비공개 테스트</strong> 의무</td>
+      </tr>
+    </table>
+    <div class="callout">
+      Google은 신규 개인 개발자 계정에 <b>"출시 전 20명 비공개 테스트 14일"</b> 요건이 있습니다.
+      가장 큰 일정 변수이니 <b>계정부터 지금 만들어 두세요.</b>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">1</span> 공통 — 출시 빌드 준비</h2>
+    <p>이미 EAS가 구성돼 있어 거의 완료 상태입니다. 확인·보완할 항목:</p>
+    <ul>
+      <li><b><code>eas.json</code>의 <code>submit.production</code>이 비어 있음</b> → 스토어 자동 제출을 쓰려면 채워야 함
+        (Apple <code>appleId</code>/<code>ascAppId</code>/<code>appleTeamId</code>, Google <code>serviceAccountKeyPath</code>).
+        안 채우면 빌드만 EAS로 하고 업로드는 수동으로도 가능.</li>
+      <li><b>Android 키스토어</b>: 레포에 <code>@namhyunseo__Loen-project.jks</code>(+<code>_OLD_1</code>)가 있음.
+        EAS 빌드는 보통 EAS가 키 관리(<code>eas credentials</code>). <b>둘 중 실제 서명키가 무엇인지 확정</b>할 것.
+        키 분실·교체 시 Play 업로드가 영구 거부됩니다.</li>
+      <li>버전: <code>eas.json</code>에 <code>autoIncrement: true</code> 설정돼 빌드넘버 자동 증가. OK.</li>
+      <li><code>ITSAppUsesNonExemptEncryption: false</code> 이미 설정 → 암호화 수출 신고 면제. OK.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">2</span> iOS — App Store Connect</h2>
+    <ol>
+      <li><a href="https://appstoreconnect.apple.com">App Store Connect</a> → 앱 → <b>+</b> : 번들 ID <code>com.loen.app</code> 선택, 앱 이름 "Loen" 등록</li>
+      <li>빌드 업로드:
+        <pre><code>cd loen-frontend
+eas build --platform ios --profile production
+eas submit --platform ios --latest   <span class="cmt"># 또는 Transporter로 수동 업로드</span></code></pre>
+      </li>
+      <li>App Store Connect 입력:
+        <ul>
+          <li>스크린샷 (6.7" / 6.5" 필수 · iPad 지원 켜놨으니 iPad용도)</li>
+          <li>설명, 키워드, 지원 URL</li>
+          <li><b>개인정보처리방침 URL</b> = <code>https://legal-eight-eta.vercel.app/privacy.html</code></li>
+          <li><b>App Privacy</b>(데이터 수집 항목) 설문 — 구글 로그인/이메일 수집하므로 정직하게 체크</li>
+          <li>연령 등급</li>
+        </ul>
+      </li>
+      <li>TestFlight 내부 테스트 → "심사 제출"</li>
+    </ol>
+    <div class="callout">
+      <b>Sign in with Apple 필수 가능성:</b> 소셜 로그인(구글)을 쓰는 앱은 Apple 로그인도 제공해야 심사 통과(가이드라인 4.8).
+      현재 구글 로그인만 있으면 <b>거의 확실히 리젝</b>됩니다 — 미리 확인·대응 필요.
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">3</span> Android — Play Console</h2>
+    <ol>
+      <li><a href="https://play.google.com/console">Play Console</a> → 앱 만들기 : 패키지 <code>com.loen.app</code></li>
+      <li>빌드(AAB):
+        <pre><code>eas build --platform android --profile production   <span class="cmt"># aab 생성</span>
+eas submit --platform android --latest</code></pre>
+      </li>
+      <li>입력:
+        <ul>
+          <li>스토어 등록정보: 아이콘, 그래픽 이미지, 스크린샷, 설명</li>
+          <li><b>개인정보처리방침 URL</b> = <code>.../privacy.html</code></li>
+          <li><b>데이터 안전(Data Safety)</b> 설문</li>
+          <li><b>계정 삭제 URL</b> = <code>https://legal-eight-eta.vercel.app/account-deletion.html</code> <span style="color:var(--ok)">(준비됨 ✓)</span></li>
+          <li>콘텐츠 등급 설문, 타겟 고객층, 광고 포함 여부</li>
+        </ul>
+      </li>
+      <li><b>비공개 테스트(20명·14일)</b> 통과 → 프로덕션 트랙 승급 → 심사 제출</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">4</span> 출시 전 체크리스트</h2>
+    <ul class="check">
+      <li><code>settings.tsx</code>의 <code>PRIVACY_POLICY_URL</code>/<code>TERMS_URL</code>이 배포 URL로 들어가 있는지</li>
+      <li><b>Apple 로그인 추가 여부 결정</b> (4.8 리젝 방지 — 가장 큰 리스크)</li>
+      <li>Android 서명키 어느 <code>.jks</code>가 진짜인지 확정 + <code>.jks</code> git 커밋 상태 → <code>.gitignore</code> 처리 권장(키 유출 위험)</li>
+      <li>프로덕션 API(<code>loen-backend-production.up.railway.app</code>)가 심사 기간 내내 떠 있는지 (심사원이 실제 로그인 테스트)</li>
+      <li>심사용 <b>데모 계정</b> 준비 (구글 로그인이면 테스트 계정 정보 제공)</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">!</span> 지금 먼저 확정할 2가지</h2>
+    <ol>
+      <li><b>Apple 로그인 필요 여부</b> — 막판 리젝 1순위</li>
+      <li><b>Android 서명키 정리</b> — 분실 시 복구 불가</li>
+    </ol>
+    <p class="muted">둘 다 막판에 발목 잡히는 항목입니다. 그다음 <code>eas.json submit</code> 자동제출 설정을 채우면 됩니다.</p>
+  </section>
+
+  <footer>Loen · 앱스토어 출시 가이드 · 최종 갱신 2026-06-15</footer>
+
+</div>
+</body>
+</html>
