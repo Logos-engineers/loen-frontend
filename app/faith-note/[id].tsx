@@ -8,6 +8,8 @@ import { normalizePrayerReactions } from '@/hooks/useFaithNotes';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
 import { getBibleBook } from '@/constants/bibleLoader';
 import { apiClient } from '@/utils/apiClient';
+import { blockUser, getBlockedUsers, reportContent } from '@/utils/moderation';
+import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -58,6 +60,7 @@ type ApiCommentListResponse = {
 
 type ThanksDetailResponse = {
   id: string;
+  writerId: string;
   writerName: string;
   writerNickname: string | null;
   answers: string[];
@@ -70,6 +73,7 @@ type ThanksDetailResponse = {
 
 type PrayerDetailResponse = {
   id: string;
+  writerId: string;
   writerName: string;
   writerNickname: string | null;
   prayers: string[];
@@ -81,6 +85,7 @@ type PrayerDetailResponse = {
 
 type WordDetailResponse = {
   id: string;
+  writerId: string;
   writerName: string;
   writerNickname: string | null;
   bibleName: string;
@@ -98,6 +103,7 @@ type WordDetailResponse = {
 
 interface CommentItem {
   id: string;
+  userId: string;
   author: { handle: string; name: string; nickname: string; initial: string; imageUri?: string | null };
   timeAgo: string;
   text: string;
@@ -160,6 +166,7 @@ function buildFallbackNote(id?: string): FaithNoteItem {
 function toCommentItem(item: ApiCommentItem): CommentItem {
   return {
     id: item.commentId,
+    userId: item.userId,
     author: {
       handle: '',
       name: item.writerName,
@@ -176,6 +183,7 @@ function toCommentItem(item: ApiCommentItem): CommentItem {
 function toThanksNote(detail: ThanksDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
   return {
     id: detail.id,
+    writerId: detail.writerId,
     tab: 'THANKS',
     author: {
       handle: fallback.author.handle,
@@ -197,6 +205,7 @@ function toThanksNote(detail: ThanksDetailResponse, fallback: FaithNoteItem): Fa
 function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
   return {
     id: detail.id,
+    writerId: detail.writerId,
     tab: 'PRAYER',
     author: {
       handle: fallback.author.handle,
@@ -238,6 +247,7 @@ function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithN
 
   return {
     id: detail.id,
+    writerId: detail.writerId,
     tab: 'WORD',
     author: {
       handle: fallback.author.handle,
@@ -304,14 +314,12 @@ function CommentRow({ item, onMenuPress }: { item: CommentItem; onMenuPress?: (i
         <Text style={styles.commentText}>{item.text}</Text>
       </View>
 
-      {item.isMine ? (
-        <TouchableOpacity
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={() => onMenuPress?.(item)}
-        >
-          <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
-        </TouchableOpacity>
-      ) : null}
+      <TouchableOpacity
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={() => onMenuPress?.(item)}
+      >
+        <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -351,6 +359,85 @@ export default function FaithNoteDetailScreen() {
   const [menuComment, setMenuComment] = useState<CommentItem | null>(null);
   const [pendingDeleteComment, setPendingDeleteComment] = useState<CommentItem | null>(null);
   const [editingComment, setEditingComment] = useState<CommentItem | null>(null);
+  // 신고 대상 댓글 / 내가 차단한 사용자 (차단 사용자의 댓글은 클라이언트에서 숨김)
+  const [reportComment, setReportComment] = useState<CommentItem | null>(null);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    getBlockedUsers()
+      .then((list) => setBlockedIds(new Set(list.map((u) => u.userId))))
+      .catch(() => {});
+  }, []);
+
+  const handleReportComment = async (reason: string) => {
+    const target = reportComment;
+    setReportComment(null);
+    if (!target) return;
+    try {
+      await reportContent('NOTE_COMMENT', target.id, reason);
+      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+    } catch (e: any) {
+      Alert.alert('신고 실패', e?.message ?? '신고에 실패했습니다.');
+    }
+  };
+
+  const handleBlockComment = (target: CommentItem) => {
+    Alert.alert(
+      '사용자 차단',
+      `${target.author.nickname || target.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않습니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '차단',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(target.userId);
+              setBlockedIds((prev) => new Set(prev).add(target.userId));
+            } catch (e: any) {
+              Alert.alert('차단 실패', e?.message ?? '차단에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // 노트 글 자체 신고/차단 (남의 노트 열람 시)
+  const [reportNoteOpen, setReportNoteOpen] = useState(false);
+
+  const handleReportNote = async (reason: string) => {
+    setReportNoteOpen(false);
+    try {
+      await reportContent('NOTE', noteId, reason);
+      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+    } catch (e: any) {
+      Alert.alert('신고 실패', e?.message ?? '신고에 실패했습니다.');
+    }
+  };
+
+  const handleBlockNote = () => {
+    if (!note.writerId) return;
+    Alert.alert(
+      '사용자 차단',
+      `${note.author.nickname || note.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않습니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '차단',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(note.writerId!);
+              router.back();
+            } catch (e: any) {
+              Alert.alert('차단 실패', e?.message ?? '차단에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   // ⋯ → 수정: 작성 화면을 편집 모드(noteId)로 진입
   const handleEdit = () => {
@@ -555,15 +642,19 @@ export default function FaithNoteDetailScreen() {
             onCommentPress={() => inputRef.current?.focus()}
             onEdit={handleEdit}
             onDelete={() => setShowDeleteConfirm(true)}
+            onReport={() => setReportNoteOpen(true)}
+            onBlock={handleBlockNote}
             isDetailScreen
             variant="detail"
           />
 
-          {comments.length > 0 ? (
+          {comments.filter((c) => !blockedIds.has(c.userId)).length > 0 ? (
             <View style={styles.commentList}>
-              {comments.map((item) => (
-                <CommentRow key={item.id} item={item} onMenuPress={setMenuComment} />
-              ))}
+              {comments
+                .filter((c) => !blockedIds.has(c.userId))
+                .map((item) => (
+                  <CommentRow key={item.id} item={item} onMenuPress={setMenuComment} />
+                ))}
             </View>
           ) : (
             <View style={styles.commentEmptySpace} />
@@ -613,31 +704,74 @@ export default function FaithNoteDetailScreen() {
         ]}
       />
 
-      {/* ── 댓글 ⋯ 메뉴 — 수정 / 삭제 (본인 댓글) ── */}
+      {/* ── 댓글 ⋯ 메뉴 — 본인: 수정/삭제, 타인: 신고/차단 ── */}
       <BottomSheet visible={!!menuComment} onClose={() => setMenuComment(null)} disableContentPadding>
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            const target = menuComment;
-            setMenuComment(null);
-            if (target) handleEditComment(target);
-          }}
-        >
-          <Text style={styles.menuText}>수정하기</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            const target = menuComment;
-            setMenuComment(null);
-            setPendingDeleteComment(target);
-          }}
-        >
-          <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
-        </TouchableOpacity>
+        {menuComment?.isMine ? (
+          <>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                if (target) handleEditComment(target);
+              }}
+            >
+              <Text style={styles.menuText}>수정하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                setPendingDeleteComment(target);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                setReportComment(target);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>신고하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                if (target) handleBlockComment(target);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>사용자 차단</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </BottomSheet>
+
+      {/* ── 댓글 신고 사유 선택 ── */}
+      <ReportReasonSheet
+        visible={!!reportComment}
+        onClose={() => setReportComment(null)}
+        onSelect={handleReportComment}
+      />
+
+      {/* ── 노트 글 신고 사유 선택 ── */}
+      <ReportReasonSheet
+        visible={reportNoteOpen}
+        onClose={() => setReportNoteOpen(false)}
+        onSelect={handleReportNote}
+      />
 
       {/* ── 댓글 삭제 확인 팝업 ── */}
       <Popup

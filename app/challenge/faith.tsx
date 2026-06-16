@@ -297,7 +297,7 @@ export default function FaithChallengeScreen() {
             ) : null}
             {(feed?.otherCertifications ?? []).map(item => (
               <View key={item.certId} style={styles.section}>
-                <OtherCertificationCard item={item} />
+                <OtherCertificationCard item={item} onChanged={() => { if (!isTestChallenge) refetchFeed(); }} />
               </View>
             ))}
             {!feed?.myCertification && (feed?.otherCertifications ?? []).length === 0 ? (
