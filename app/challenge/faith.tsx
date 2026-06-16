@@ -5,8 +5,7 @@ import { ChallengeGoalCard } from '@/components/challenge/ChallengeGoalCard';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
 import { useChallengeDetail, useChallengeCertifications, useRecommendedChallenges, joinChallenge, leaveChallenge } from '@/hooks/useChallenge';
-import { useAuthStore } from '@/store/auth-store';
-import { apiClient, BASE_URL } from '@/utils/apiClient';
+import { apiClient, apiClientFormData } from '@/utils/apiClient';
 import { formatShortDate } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -190,16 +189,8 @@ export default function FaithChallengeScreen() {
         formData.append('isPrivate', 'false');
         const filename = photoUri.split('/').pop() ?? 'photo.jpg';
         formData.append('photo', { uri: photoUri, name: filename, type: 'image/jpeg' } as any);
-        const token = useAuthStore.getState().accessToken;
-        const res = await fetch(`${BASE_URL}/challenges/${id}/certify`, {
-          method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: formData,
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `오류 ${res.status}`);
-        }
+        // apiClientFormData: 401 시 토큰 자동 갱신·재시도 (raw fetch는 만료 시 그냥 실패했음)
+        await apiClientFormData(`/challenges/${id}/certify`, formData);
       } else {
         await apiClient(`/challenges/${id}/certify`, {
           method: 'POST',

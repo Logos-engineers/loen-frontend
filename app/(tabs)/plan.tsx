@@ -55,6 +55,8 @@ export default function PlanScreen() {
     weeklyGoal: goal?.weeklyTarget ?? 0,
   };
 
+  // 책(또는 장 셀)을 누르면 그 책의 장 선택 모달을 띄움. 인라인 그리드는 셀이 작아 누르기
+  // 불편하므로, 모달에서 큰 장 버튼을 클릭해 읽은 장을 체크한다. (통독 백엔드는 장 단위)
   const handleBookPress = (book: BibleBook) => setSelectedBook(book);
   const handleModalConfirm = async (selectedChapters: number[]) => {
     if (!selectedBook) return;
@@ -126,7 +128,7 @@ export default function PlanScreen() {
         renderItem={({ item }) => (
           <BookCard
             book={item}
-            readChapters={getReadChaptersForBook(item.code)}
+            readChapters={history?.readCheckList?.[item.code] ?? getReadChaptersForBook(item.code)}
             onPress={() => handleBookPress(item)}
           />
         )}
@@ -220,11 +222,11 @@ export default function PlanScreen() {
         })}
       </View>
 
-      {/* ── 장 선택 모달 ── */}
+      {/* ── 장 선택 모달 ── 책을 누르면 그 책의 장을 클릭해 읽음 체크 */}
       <ChapterSelectModal
         visible={!!selectedBook}
         book={selectedBook}
-        readChapters={selectedBook ? getReadChaptersForBook(selectedBook.code) : []}
+        readChapters={selectedBook ? (history?.readCheckList?.[selectedBook.code] ?? getReadChaptersForBook(selectedBook.code)) : []}
         onClose={handleModalClose}
         onConfirm={handleModalConfirm}
       />

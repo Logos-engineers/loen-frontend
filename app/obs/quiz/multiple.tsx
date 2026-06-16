@@ -1,8 +1,9 @@
 import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
 import { BottomModal } from '@/components/obs/bottom-modal';
@@ -18,6 +19,8 @@ export default function MultipleChoiceQuizScreen() {
   const isPreview = params.preview === 'true';
   const step1Result = (params.step1Result === 'correct' || params.step1Result === 'incorrect') ? params.step1Result : null;
 
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const inputRef = useRef<TextInput>(null);
   const [quiz, setQuiz] = useState<ObsQuiz | null>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(!!contentId);
@@ -86,11 +89,8 @@ export default function MultipleChoiceQuizScreen() {
 
         <OBSHeader />
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
+        {/* 키보드가 올라오면 스크롤+CTA 영역 전체를 키보드 높이만큼 올림 → CTA가 키보드 바로 위에 붙음 */}
+        <View style={[{ flex: 1 }, { marginBottom: kb }]}>
           <ScrollView
             style={styles.content}
             contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
@@ -188,7 +188,7 @@ export default function MultipleChoiceQuizScreen() {
           </ScrollView>
 
           {quizState === 'incorrect' && (
-            <View style={[styles.ctaWrapper, { paddingBottom: 20 }]}>
+            <View style={[styles.ctaWrapper, { paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity
                   style={[styles.ctaButton, { flex: 1, backgroundColor: colors.primaryLight }]}
@@ -207,7 +207,7 @@ export default function MultipleChoiceQuizScreen() {
               </View>
             </View>
           )}
-        </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
 
       <BottomModal visible={modalType !== 'none'} onClose={() => setModalType('none')}>

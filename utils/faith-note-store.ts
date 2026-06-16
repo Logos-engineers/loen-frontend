@@ -18,6 +18,7 @@ export function getWeekStart(now: Date = new Date()): Date {
 export interface BiblePassage {
   book: string;
   chapter: number;
+  verses?: number[]; // 선택한 절 번호들 (말씀노트: 한 책/한 장/여러 절)
 }
 
 let _pendingPassages: BiblePassage[] = [];

@@ -13,11 +13,33 @@ type Props = {
   book: BibleBook;
   readChapters: number[];
   onPress: () => void;
+  // 지정 시 각 장 셀이 이 콜백을 장 번호와 함께 호출 (말씀노트 절 선택용). 없으면 onPress 폴백.
+  onChapterPress?: (chapter: number) => void;
+  // true면 10열을 화면 양끝(좌우 패딩 16)에 딱 맞춰 space-between 정렬 — 양 끝 셀이 화면 끝에서 16px.
+  edgeToEdge?: boolean;
 };
 
-export default function BookCard({ book, readChapters, onPress }: Props) {
+export default function BookCard({ book, readChapters, onPress, onChapterPress, edgeToEdge }: Props) {
   const readSet = new Set(readChapters);
   const chapters = Array.from({ length: book.chapterCount }, (_, i) => i + 1);
+
+  const renderCell = (ch: number) => {
+    const isRead = readSet.has(ch);
+    return (
+      <TouchableOpacity
+        key={ch}
+        style={[styles.cellWrap, edgeToEdge && styles.cellWrapEdge]}
+        activeOpacity={0.7}
+        onPress={() => (onChapterPress ? onChapterPress(ch) : onPress())}
+      >
+        <View style={[styles.cellBox, isRead ? styles.cellBoxRead : styles.cellBoxUnread]}>
+          <Text style={[styles.cellNum, isRead ? styles.cellNumRead : styles.cellNumUnread]}>
+            {ch}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -27,36 +49,28 @@ export default function BookCard({ book, readChapters, onPress }: Props) {
         <Text style={styles.engName}>{book.engName}</Text>
       </TouchableOpacity>
 
-      {/* 장 번호 그리드 — 한 행에 10개 */}
-      <View style={styles.chapterGrid}>
-        {chapters.map(ch => {
-          const isRead = readSet.has(ch);
-          return (
-            <TouchableOpacity
-              key={ch}
-              style={styles.cellWrap}
-              activeOpacity={0.7}
-              onPress={onPress}
-            >
-              <View
-                style={[
-                  styles.cellBox,
-                  isRead ? styles.cellBoxRead : styles.cellBoxUnread,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.cellNum,
-                    isRead ? styles.cellNumRead : styles.cellNumUnread,
-                  ]}
-                >
-                  {ch}
-                </Text>
+      {edgeToEdge ? (
+        // 행 단위로 끊어 렌더 → 각 행을 space-between으로 양끝(16px)에 정렬.
+        // 마지막 행은 빈 칸(spacer)으로 10개를 채워 좌측 정렬을 유지.
+        <View style={styles.edgeGrid}>
+          {Array.from({ length: Math.ceil(chapters.length / 10) }, (_, ri) => {
+            const row = chapters.slice(ri * 10, ri * 10 + 10);
+            const fillers = 10 - row.length;
+            return (
+              <View key={ri} style={styles.edgeRow}>
+                {row.map(renderCell)}
+                {fillers > 0 &&
+                  Array.from({ length: fillers }, (_, i) => (
+                    <View key={`s${i}`} style={styles.cellSpacer} />
+                  ))}
               </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      ) : (
+        // 장 번호 그리드 — 한 행에 10개 (통독표 기본)
+        <View style={styles.chapterGrid}>{chapters.map(renderCell)}</View>
+      )}
     </View>
   );
 }
@@ -93,12 +107,31 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
+  // edgeToEdge: 양끝(16px) 정렬 그리드 — 세로 패딩만, 가로는 각 행이 담당
+  edgeGrid: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  // 한 행 — 좌우 16, 10개를 space-between으로 끝까지 폄
+  edgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+  },
+  // 마지막 행 빈 칸 — 셀(24)과 같은 폭의 투명 spacer
+  cellSpacer: {
+    width: 24,
+  },
   // 10열 고정 — 화면 폭에 무관하게 한 행에 10개
   cellWrap: {
     width: '10%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 2,             // 행 간격 (Figma gap 4 → 위아래 2)
+  },
+  // edgeToEdge 모드 셀 — 박스 폭(24)에 고정 (space-between이 간격을 분배)
+  cellWrapEdge: {
+    width: 24,
   },
   // Figma: count 24x24, radius 8
   cellBox: {

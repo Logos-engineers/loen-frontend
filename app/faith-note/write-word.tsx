@@ -12,9 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,7 +20,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 // ─── 색상 상수 (Figma: 라이트 테마) ──────────────────────────────────────────────
 const SCREEN_BG = '#F2F4F7';
@@ -36,17 +35,22 @@ interface CreatedBibleNote {
 
 // ─── 선택된 구절 표시 문자열 ───────────────────────────────────────────────────
 
+// 절 번호 목록 → "1-5"(연속) 또는 "1, 3, 5"(비연속)
+function formatVerseRange(verses?: number[]): string {
+  if (!verses || verses.length === 0) return '';
+  const sorted = [...verses].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const contiguous = max - min + 1 === sorted.length;
+  return contiguous && sorted.length > 1 ? `${min}-${max}` : sorted.join(', ');
+}
+
+// 단일 구절 라벨: "창세기 1장 1-5절"
 function formatPassages(passages: BiblePassage[]): string {
   if (passages.length === 0) return '';
-  // 같은 book끼리 연속 장을 묶어 표시: "창세기 1, 2, 출애굽기 3"
-  const groups: Record<string, number[]> = {};
-  passages.forEach(({ book, chapter }) => {
-    if (!groups[book]) groups[book] = [];
-    groups[book].push(chapter);
-  });
-  return Object.entries(groups)
-    .map(([book, chs]) => `${book} ${chs.join(', ')}`)
-    .join(', ');
+  const p = passages[0];
+  const vr = formatVerseRange(p.verses);
+  return `${p.book} ${p.chapter}장${vr ? ` ${vr}절` : ''}`;
 }
 
 // ─── Quit Modal ───────────────────────────────────────────────────────────────
@@ -86,12 +90,15 @@ const ms = StyleSheet.create({
 
 export default function WriteWordScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const { noteId } = useLocalSearchParams<{ noteId?: string }>();
   const isEdit = !!noteId;
   const [passages, setPassages] = useState<BiblePassage[]>([]);
   const [bodyText, setBodyText] = useState('');
   const [isBodyFocused, setIsBodyFocused] = useState(false);
   const [showQuitModal, setShowQuitModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const bodyRef = useRef<TextInput>(null);
 
   // select-bible에서 돌아올 때 pending 데이터 읽기
@@ -108,11 +115,17 @@ export default function WriteWordScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const detail = await apiClient<{ bibleName: string; chapter: number; description: string }>(
+        const detail = await apiClient<{ bibleName: string; chapter: number; phaseStart?: number; phaseEnd?: number; description: string }>(
           `/bible/notes/${noteId}`,
         );
         if (cancelled) return;
-        if (detail.bibleName) setPassages([{ book: detail.bibleName, chapter: detail.chapter }]);
+        if (detail.bibleName) {
+          const start = detail.phaseStart ?? 0;
+          const end = detail.phaseEnd ?? 0;
+          const verses: number[] = [];
+          for (let v = start; v <= end; v++) if (v > 0) verses.push(v);
+          setPassages([{ book: detail.bibleName, chapter: detail.chapter, verses }]);
+        }
         setBodyText(detail.description ?? '');
       } catch {
         Alert.alert('오류', '노트를 불러오지 못했습니다.');
@@ -140,17 +153,19 @@ export default function WriteWordScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!hasContent) return;
+    if (!hasContent || isSubmitting) return;
+    setIsSubmitting(true);
     const firstPassage = passages[0];
     const bookMeta = firstPassage
       ? BIBLE_BOOKS.find(b => b.korName === firstPassage.book)
       : null;
+    const verses = firstPassage?.verses ?? [];
     const payload = {
       bibleName: firstPassage?.book ?? '',
       bibleEnglishShort: bookMeta?.code ?? '',
       chapter: firstPassage?.chapter ?? 1,
-      phaseStart: 1,
-      phaseEnd: 1,
+      phaseStart: verses.length ? Math.min(...verses) : 1,
+      phaseEnd: verses.length ? Math.max(...verses) : 1,
       title: passageLabel || (firstPassage?.book ?? ''),
       description: bodyText.trim(),
     };
@@ -172,12 +187,13 @@ export default function WriteWordScreen() {
       router.replace(`/faith-note/publish?noteType=WORD&noteId=${note.id}`);
     } catch {
       Alert.alert('오류', '노트 저장에 실패했습니다.');
+      setIsSubmitting(false); // 실패 시에만 재활성화 (성공 시 화면 전환되므로 유지)
     }
   };
 
   return (
     // Figma: 라이트 배경 (#F2F4F7)
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <StatusBar style="dark" />
 
       {/* 헤더 */}
@@ -187,11 +203,8 @@ export default function WriteWordScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
+      {/* 키보드가 올라오면 스크롤+CTA 영역 전체를 키보드 높이만큼 올림 → CTA가 키보드 바로 위에 붙음 */}
+      <View style={[s.flex, { marginBottom: kb }]}>
         <ScrollView
           style={s.scroll}
           contentContainerStyle={s.scrollContent}
@@ -235,18 +248,18 @@ export default function WriteWordScreen() {
           </View>
         </ScrollView>
 
-        {/* 하단 고정 버튼 */}
-        <View style={s.footer}>
+        {/* 하단 고정 버튼 — 키보드 등장 시 위 영역과 함께 올라가 키보드 위에 붙음(패딩 축소) */}
+        <View style={[s.footer, { paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
           <TouchableOpacity
             style={[s.submitButton, hasContent && s.submitButtonActive]}
             onPress={handleSubmit}
-            activeOpacity={hasContent ? 0.8 : 1}
-            disabled={!hasContent}
+            activeOpacity={hasContent && !isSubmitting ? 0.8 : 1}
+            disabled={!hasContent || isSubmitting}
           >
             <Text style={s.submitText}>작성 완료하기</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <QuitModal visible={showQuitModal} onContinue={() => setShowQuitModal(false)} onQuit={handleQuit} />
     </SafeAreaView>
@@ -293,7 +306,7 @@ const s = StyleSheet.create({
   textArea: { flex: 1, fontSize: fontSize.base, color: colors.text.primary, lineHeight: 24 },
 
   // 하단 고정 버튼
-  footer: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  footer: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   submitButton: { height: 49, borderRadius: radius.md, backgroundColor: SUBMIT_DISABLED_BG, alignItems: 'center', justifyContent: 'center' },
   submitButtonActive: { backgroundColor: colors.primary },
   submitText: { fontSize: fontSize.heading, fontWeight: fontWeight.semibold, color: colors.white },

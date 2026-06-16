@@ -12,7 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
@@ -47,6 +48,8 @@ const TAG_TO_EMOTION: Record<string, string> = {
 };
 
 export default function ObsFinishScreen() {
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string; reviewId?: string; origin?: string }>();
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [goalText, setGoalText] = useState('');
@@ -112,7 +115,7 @@ export default function ObsFinishScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={exitFlow}>
             <SvgXml xml={BACK_SVG} width={24} height={24} />
@@ -121,7 +124,7 @@ export default function ObsFinishScreen() {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, kb > 0 && { paddingBottom: 120 + kb }]}
           showsVerticalScrollIndicator={false}
         >
           {/* 감정 선택 섹션 */}
@@ -191,7 +194,8 @@ export default function ObsFinishScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.bottomCta}>
+        {/* 키보드 등장 시 bottom을 키보드 높이만큼 올려 CTA가 키보드 바로 위에 붙음 */}
+        <View style={[styles.bottomCta, { bottom: kb, paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
           <LinearGradient
             colors={['rgba(242,244,247,0)', '#F2F4F7']}
             style={styles.bottomGradient}

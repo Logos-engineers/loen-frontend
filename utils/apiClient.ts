@@ -127,3 +127,36 @@ export async function apiClient<T>(endpoint: string, options: RequestInit = {}):
     throw error;
   }
 }
+
+/**
+ * 멀티파트(FormData) 업로드용 클라이언트.
+ * apiClient와 동일하게 401 → single-flight refresh → 1회 재시도를 적용한다.
+ * Content-Type은 지정하지 않는다 — fetch가 multipart boundary와 함께 자동 설정하기 때문.
+ * (기존엔 raw fetch라 토큰 만료 시 401이 갱신 없이 그대로 실패했음)
+ */
+export async function apiClientFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+  const url = `${BASE_URL}${endpoint}`;
+  const store = useAuthStore.getState();
+
+  const makeConfig = (token: string | null): RequestInit => ({
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  try {
+    return await doFetch<T>(url, makeConfig(store.accessToken));
+  } catch (error: any) {
+    if (error?.status === 401) {
+      try {
+        const newAccess = await refreshAccessToken();
+        return await doFetch<T>(url, makeConfig(newAccess));
+      } catch {
+        await store.clearTokens();
+        throw error;
+      }
+    }
+    console.warn(`[apiClientFormData] Error uploading ${endpoint}:`, error);
+    throw error;
+  }
+}

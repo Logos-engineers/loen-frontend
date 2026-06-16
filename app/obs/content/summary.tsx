@@ -18,7 +18,8 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { OBSHeader } from '@/components/obs/obs-header';
 import { getBibleBook } from '@/constants/bibleLoader';
 import { colors, fontWeight } from '@/constants/tokens';
@@ -337,6 +338,8 @@ function QuestionCard({
 }
 
 export default function ObsSummaryScreen() {
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string; origin?: string }>();
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
@@ -493,7 +496,7 @@ export default function ObsSummaryScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <OBSHeader onBack={exitFlow} />
 
         {isLoading ? (
@@ -503,7 +506,7 @@ export default function ObsSummaryScreen() {
         ) : (
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, kb > 0 && { paddingBottom: 112 + kb }]}
             showsVerticalScrollIndicator={false}
           >
             {introText ? (
@@ -542,7 +545,8 @@ export default function ObsSummaryScreen() {
           </ScrollView>
         )}
 
-        <View style={styles.bottomCta}>
+        {/* 키보드 등장 시 bottom을 키보드 높이만큼 올려 CTA가 키보드 바로 위에 붙음 */}
+        <View style={[styles.bottomCta, { bottom: kb, paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
           <LinearGradient
             colors={['rgba(242,244,247,0)', '#F2F4F7']}
             style={styles.bottomGradient}
