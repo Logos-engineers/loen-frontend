@@ -1,5 +1,6 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { uploadProfileImage, useProfile } from '@/hooks/useProfile';
+import { launchImageLibrarySafe } from '@/utils/imagePicker';
 import { overlay } from '@/components/ui/overlay';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -51,7 +52,7 @@ export default function ProfileEditScreen() {
       Alert.alert('권한 필요', '사진 접근 권한을 허용해 주세요.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibrarySafe({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
