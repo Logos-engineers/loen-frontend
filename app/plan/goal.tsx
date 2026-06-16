@@ -18,10 +18,12 @@
  */
 
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import { BIBLE_BOOKS, WEEKLY_GOAL_DAYS, WEEKLY_GOAL_CHAPTERS_PER_DAY } from '@/constants/BibleMeta';
 import { AlarmItem, useBiblePlan } from '@/hooks/useBiblePlan';
 import { useBibleHistory } from '@/hooks/useBibleHistory';
 import { useAlarms } from '@/hooks/useAlarms';
+import { overlay } from '@/components/ui/overlay';
+import { formatWeekLabel } from '@/utils/date';
 import BibleSelectSheet from '@/components/plan/BibleSelectSheet';
 import AlarmTimeSheet from '@/components/plan/AlarmTimeSheet';
 import CancelModal from '@/components/plan/CancelModal';
@@ -132,29 +134,38 @@ const sp = StyleSheet.create({
 
 // ─── 메인 ──────────────────────────────────────────────────────────────
 export default function GoalScreen() {
-  const { planData, isLoading, saveGoalAndAlarms, addAlarm, removeAlarm, toggleAlarm } = useBiblePlan();
-  const { goal: existingGoal, createGoal, updateGoal } = useBibleHistory();
+  // 목표는 서버 단일 출처. 로컬 useBiblePlan은 알람(기기 알림)만 사용.
+  // 알람 편집은 드래프트(로컬 state)로만 두고, '완료' 시에만 saveAlarms로 일괄 영속.
+  const { planData, isLoading, saveAlarms } = useBiblePlan();
+  const { goal: existingGoal, isLoading: isGoalLoading, createGoal, updateGoal } = useBibleHistory();
   const { requestPermission, scheduleAlarm, cancelAlarm } = useAlarms();
 
-  // 로컬 편집 상태
-  const [days, setDays] = useState(planData.weeklyGoalDays);
-  const [chaptersPerDay, setChaptersPerDay] = useState(planData.weeklyGoalChapters);
-  const [selectedBook, setSelectedBook] = useState<string | null>(planData.selectedBookCode);
+  // 목표 편집 상태 — 서버 목표(existingGoal)에서 prefill, 없으면 기본값
+  const [days, setDays] = useState(existingGoal?.daysPerWeek ?? WEEKLY_GOAL_DAYS);
+  const [chaptersPerDay, setChaptersPerDay] = useState(existingGoal?.chaptersPerDay ?? WEEKLY_GOAL_CHAPTERS_PER_DAY);
+  const [selectedBook, setSelectedBook] = useState<string | null>(existingGoal?.bookCode ?? null);
+  // 알람만 로컬 (기기 알림 스케줄)
   const [alarms, setAlarms] = useState<AlarmItem[]>(planData.alarms ?? []);
 
   // 관리 상태
   const [isManageMode, setIsManageMode] = useState(false);
   const [selectedAlarmIds, setSelectedAlarmIds] = useState<string[]>([]);
 
-  // [버그 수정] AsyncStorage 로딩 완료 시 데이터를 한 번 UI State로 싱크
-  // 컴포넌트 마운트 시 isLoading=true라 빈 배열([])로 초기화되던 현상 방지. 이게 고스트 알람의 주 원인.
+  // 서버 목표 로딩 완료 시 폼 prefill (편집 시작 전 1회 — 사용자 입력 덮어쓰기 방지)
+  const goalSyncedRef = useRef(false);
   useEffect(() => {
-    if (!isLoading) {
-      setDays(planData.weeklyGoalDays);
-      setChaptersPerDay(planData.weeklyGoalChapters);
-      setSelectedBook(planData.selectedBookCode);
-      setAlarms(planData.alarms ?? []);
+    if (isGoalLoading || goalSyncedRef.current) return;
+    goalSyncedRef.current = true;
+    if (existingGoal) {
+      setDays(existingGoal.daysPerWeek);
+      setChaptersPerDay(existingGoal.chaptersPerDay);
+      setSelectedBook(existingGoal.bookCode);
     }
+  }, [isGoalLoading, existingGoal]);
+
+  // 알람: 로컬 로딩 완료 시 1회 싱크 (고스트 알람 방지)
+  useEffect(() => {
+    if (!isLoading) setAlarms(planData.alarms ?? []);
   }, [isLoading]);  // planData 의존성 제외(사용자 인라인 편집 덮어쓰기 방지)
 
   // 다이얼로그/시트 표시
@@ -162,13 +173,6 @@ export default function GoalScreen() {
   const [showAlarmSheet,   setShowAlarmSheet]   = useState(false);
   const [showCancelModal,  setShowCancelModal]  = useState(false);
   const [isSaving,         setIsSaving]         = useState(false);
-
-  // 변경 감지
-  const isDirty =
-    days !== planData.weeklyGoalDays ||
-    chaptersPerDay !== planData.weeklyGoalChapters ||
-    selectedBook !== planData.selectedBookCode ||
-    JSON.stringify(alarms) !== JSON.stringify(planData.alarms ?? []);
 
   // Swipeable ref 관리
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -199,63 +203,46 @@ export default function GoalScreen() {
     setShowAlarmSheet(true);
   }, [requestPermission]);
 
-  // ── AlarmTimeSheet 확정 ───────────────────────────────────────────
+  // ── AlarmTimeSheet 확정 ── (드래프트: 로컬 state에만 추가, 실제 스케줄·영속은 '완료' 시)
   const handleAlarmConfirm = useCallback(
-    async (hour: number, minute: number, selectedDays: number[]) => {
+    (hour: number, minute: number, selectedDays: number[]) => {
       setShowAlarmSheet(false);
-      try {
-        const id = Date.now().toString();
-        const newAlarm = { id, hour, minute, days: selectedDays, enabled: true, notificationIds: [] as string[] };
-        const notificationIds = await scheduleAlarm(newAlarm);
-        newAlarm.notificationIds = notificationIds;
-        
-        setAlarms(prev => [...prev, newAlarm]);
-        await addAlarm(newAlarm); 
-      } catch (e) {
-        console.warn('[GoalScreen] 알림 등록 실패', e);
-        Alert.alert('알림 등록 실패', '알림을 등록하지 못했습니다. 다시 시도해 주세요.');
-      }
+      const id = Date.now().toString();
+      setAlarms(prev => [...prev, { id, hour, minute, days: selectedDays, enabled: true, notificationIds: [] }]);
     },
-    [scheduleAlarm, addAlarm]
+    []
   );
 
-  // ── 알림 삭제 ─────────────────────────────────────────────────────
-  const handleDeleteAlarm = useCallback(
-    async (alarm: AlarmItem) => {
-      await cancelAlarm(alarm.notificationIds);
-      setAlarms(prev => prev.filter(a => a.id !== alarm.id));
-      await removeAlarm(alarm.id);
-    },
-    [cancelAlarm, removeAlarm]
-  );
+  // ── 알림 삭제 ── (드래프트: 로컬 state에서만 제거)
+  const handleDeleteAlarm = useCallback((alarm: AlarmItem) => {
+    setAlarms(prev => prev.filter(a => a.id !== alarm.id));
+  }, []);
 
-  // ── 알림 토글 ─────────────────────────────────────────────────────
-  const handleToggleAlarm = useCallback(
-    async (alarm: AlarmItem, enabled: boolean) => {
-      if (enabled) {
-        if (alarm.notificationIds && alarm.notificationIds.length > 0) {
-          await cancelAlarm(alarm.notificationIds);
-        }
-        const notificationIds = await scheduleAlarm({ ...alarm, enabled });
-        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notificationIds } : a));
-        await toggleAlarm(alarm.id, enabled, notificationIds);
-      } else {
-        await cancelAlarm(alarm.notificationIds);
-        setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled, notificationIds: [] } : a));
-        await toggleAlarm(alarm.id, enabled, []);
-      }
-    },
-    [scheduleAlarm, cancelAlarm, toggleAlarm]
-  );
+  // ── 알림 토글 ── (드래프트: 로컬 state에서만 변경)
+  const handleToggleAlarm = useCallback((alarm: AlarmItem, enabled: boolean) => {
+    setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled } : a));
+  }, []);
 
   // ── 저장 (완료 버튼) ──────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     if (isSaving) return;
     setIsSaving(true);
     try {
-      await saveGoalAndAlarms(days, chaptersPerDay, selectedBook, alarms);
-
+      // 책 미선택 시 기본 GEN. 목표는 서버에만 저장(단일 출처).
       const bookCode = selectedBook ?? 'GEN';
+
+      // 알람 드래프트 커밋: 기존 OS 알림 전부 취소 → 활성 드래프트만 재스케줄 → 로컬 영속.
+      // (편집 중엔 아무것도 영속하지 않으므로 취소/이전 시 자동으로 원상복구됨)
+      for (const a of planData.alarms) {
+        if (a.notificationIds?.length) await cancelAlarm(a.notificationIds);
+      }
+      const committedAlarms: AlarmItem[] = [];
+      for (const a of alarms) {
+        const notificationIds = a.enabled ? await scheduleAlarm(a) : [];
+        committedAlarms.push({ ...a, notificationIds });
+      }
+      await saveAlarms(committedAlarms);
+
       const notificationEnabled = alarms.length > 0 && alarms.some(a => a.enabled);
       const firstAlarm = alarms.find(a => a.enabled) ?? alarms[0];
       const notificationDays = firstAlarm?.days.map(d => DAY_MAP[d]) ?? [];
@@ -265,27 +252,33 @@ export default function GoalScreen() {
 
       const payload = { bookCode, daysPerWeek: days, chaptersPerDay, notificationEnabled, notificationDays, notificationTime };
 
-      if (existingGoal?.id) {
-        await updateGoal(existingGoal.id, payload);
-      } else {
-        await createGoal(payload);
-      }
+      const saved = existingGoal?.id
+        ? await updateGoal(existingGoal.id, payload)
+        : await createGoal(payload);
 
-      router.replace('/plan/goal-success');
+      // 완료 화면에 실제 설정값 전달 (하드코딩 제거)
+      router.replace({
+        pathname: '/plan/goal-success',
+        params: {
+          bookName: saved.bookName,
+          chapters: String(saved.weeklyTarget),
+          weekLabel: formatWeekLabel(saved.weekStartDate),
+        },
+      });
     } catch (e) {
       console.warn('[GoalScreen] 저장 실패', e);
       Alert.alert('오류', '목표 저장에 실패했습니다.');
       setIsSaving(false);
     }
-  }, [days, chaptersPerDay, selectedBook, alarms, saveGoalAndAlarms, existingGoal, createGoal, updateGoal, isSaving]);
+  }, [days, chaptersPerDay, selectedBook, alarms, planData.alarms, scheduleAlarm, cancelAlarm, saveAlarms, existingGoal, createGoal, updateGoal, isSaving]);
 
   // ── 스와이프 우측 삭제 버튼 ──────────────────────────────────────
   const renderRightActions = useCallback(
     (_: unknown, __: unknown, alarm: AlarmItem) => (
       <View style={{ paddingLeft: 8, height: '100%' }}>
-        <TouchableOpacity style={s.swipeDel} onPress={() => { 
-          handleDeleteAlarm(alarm); 
-          Alert.alert('', '1개의 알람을 삭제했어요');
+        <TouchableOpacity style={s.swipeDel} onPress={() => {
+          handleDeleteAlarm(alarm);
+          overlay.toast('1개의 알람을 삭제했어요');
         }} activeOpacity={0.8}>
           <Text style={s.swipeDelTxt}>삭제</Text>
         </TouchableOpacity>
@@ -318,21 +311,34 @@ export default function GoalScreen() {
             <View style={s.cardInnerRow}>
               <TouchableOpacity style={s.bookRow} activeOpacity={0.7} onPress={() => setShowBibleSheet(true)}>
                 <View style={s.bookRowTextWrap}>
-                  <Text style={selectedBook ? s.bookName : s.bookPlaceholder}>{selectedBookName ?? '창세기'}</Text>
+                  <Text style={s.bookName}>{selectedBookName ?? '창세기'}</Text>
                 </View>
                 <DownButtonIcon width={24} height={24} />
               </TouchableOpacity>
             </View>
 
-            {/* 스텝퍼 자연어 문장 */}
+            {/* 스텝퍼 2개 나란히 (라벨 위) — 주 N일 × 하루 M장 = 주 N×M장 */}
             <View style={s.stepperRowArea}>
-              <View style={s.naturalLine}>
-                <Stepper value={days} min={MIN_DAYS} max={MAX_DAYS} onDec={() => setDays(v => Math.max(MIN_DAYS, v - 1))} onInc={() => setDays(v => Math.min(MAX_DAYS, v + 1))} />
-                <Text style={s.naturalText}>일에</Text>
-                <Stepper value={chaptersPerDay} min={MIN_CH} max={MAX_CH} onDec={() => setChaptersPerDay(v => Math.max(MIN_CH, v - 1))} onInc={() => setChaptersPerDay(v => Math.min(MAX_CH, v + 1))} />
-                <Text style={s.naturalText}>장씩 읽을게요</Text>
+              <View style={s.stepperColumns}>
+                <View style={s.stepperCol}>
+                  <Text style={s.stepperColLabel}>읽는 날</Text>
+                  <View style={s.stepperColControl}>
+                    <Stepper value={days} min={MIN_DAYS} max={MAX_DAYS} onDec={() => setDays(v => Math.max(MIN_DAYS, v - 1))} onInc={() => setDays(v => Math.min(MAX_DAYS, v + 1))} />
+                    <Text style={s.naturalText}>일</Text>
+                  </View>
+                </View>
+                <View style={s.stepperCol}>
+                  <Text style={s.stepperColLabel}>하루 분량</Text>
+                  <View style={s.stepperColControl}>
+                    <Stepper value={chaptersPerDay} min={MIN_CH} max={MAX_CH} onDec={() => setChaptersPerDay(v => Math.max(MIN_CH, v - 1))} onInc={() => setChaptersPerDay(v => Math.min(MAX_CH, v + 1))} />
+                    <Text style={s.naturalText}>장</Text>
+                  </View>
+                </View>
               </View>
             </View>
+
+            {/* 입력 ↔ 결과 구분선 */}
+            <View style={s.summaryDivider} />
 
             {/* 요약 */}
             <View style={s.summaryBox}>
@@ -446,7 +452,7 @@ export default function GoalScreen() {
               }
               setIsManageMode(false);
               setSelectedAlarmIds([]);
-              Alert.alert('', `${count}개의 알람을 삭제했어요`);
+              overlay.toast(`${count}개의 알람을 삭제했어요`);
             }}
             disabled={selectedAlarmIds.length === 0}
           >
@@ -530,13 +536,17 @@ const s = StyleSheet.create({
   bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: 'rgba(13,28,45,0.16)', paddingBottom: 12 },
   bookRowTextWrap: { flex: 1 },
   bookName: { fontSize: 24, fontWeight: '700', color: '#1B1E26', lineHeight: 36 },
-  bookPlaceholder: { fontSize: 24, fontWeight: '700', color: 'rgba(13,28,45,0.5)', lineHeight: 36 },
 
-  stepperRowArea: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
-  naturalLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepperRowArea: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   naturalText: { fontSize: 16, fontWeight: '600', color: 'rgba(13,28,45,0.8)' },
+  // 스텝퍼 2열 (라벨 위 / 스텝퍼+단위 아래)
+  stepperColumns: { flexDirection: 'row', gap: 16 },
+  stepperCol: { flex: 1, gap: 8 },
+  stepperColLabel: { fontSize: 14, fontWeight: '600', color: 'rgba(13,28,45,0.5)' },
+  stepperColControl: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
-  summaryBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 },
+  summaryDivider: { height: 1, backgroundColor: colors.border, marginHorizontal: 16, marginTop: 16 },
+  summaryBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
   summaryTextContainer: { flex: 1, justifyContent: 'center', paddingLeft: 8, paddingRight: 8 },
   summaryText: { fontSize: 16, fontWeight: '600', color: 'rgba(13,28,45,0.8)', lineHeight: 25.6, textAlign: 'left' },
 

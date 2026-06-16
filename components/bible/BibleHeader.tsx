@@ -50,7 +50,7 @@ export function BibleHeader({ bookName, chapterNum, onSearchPress, onTitlePress 
 
         <View style={styles.rightGroup}>
           <View style={styles.versionTag}>
-            <Text style={styles.versionText}>개역개정</Text>
+            <Text style={styles.versionText}>개역한글</Text>
           </View>
           <TouchableOpacity onPress={onSearchPress} hitSlop={8} style={styles.iconBtn}>
             <SearchIcon width={24} height={24} />

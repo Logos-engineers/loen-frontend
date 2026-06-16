@@ -10,6 +10,7 @@ import { FaithNoteTab } from './faith-note-tab-bar';
 
 export interface FaithNoteItem {
   id: string;
+  writerId?: string;           // 작성자 uid (남의 노트 차단용)
   tab: FaithNoteTab;
   dayKey?: string;             // 'MON' | 'TUE' | ... (목 데이터 요일 필터용)
   createdAt?: string;          // 원본 작성 시각 (주간 뷰 '작성한 날' 판별용)
@@ -40,7 +41,8 @@ type ReactionIcon =
 const REACTION_ICON: Record<string, ReactionIcon> = {
   HEART: { lib: 'ion', name: 'heart', active: colors.reaction.red },
   FIRE: { lib: 'ion', name: 'flame', active: '#FF7A00' },
-  PRAY: { lib: 'fa5', name: 'praying-hands', active: colors.primary },
+  // PRAY는 보라(브랜드색) 대신 회색조 — 클릭 전엔 회색(REACTION_INACTIVE), 클릭 시 진한 회색으로만 구분
+  PRAY: { lib: 'fa5', name: 'praying-hands', active: colors.text.primary },
 };
 
 interface FaithNoteCardProps {
@@ -48,8 +50,10 @@ interface FaithNoteCardProps {
   onLikeToggle?: (id: string) => void;  // 좋아요 토글 콜백 (없으면 로컬 처리)
   onReactionToggle?: (id: string, emoji: string) => void;  // 기도노트 이모지 반응 토글
   onCommentPress?: (id: string) => void;
-  onEdit?: (item: FaithNoteItem) => void;   // ⋯ → 수정
-  onDelete?: (item: FaithNoteItem) => void; // ⋯ → 삭제
+  onEdit?: (item: FaithNoteItem) => void;   // ⋯ → 수정 (내 노트)
+  onDelete?: (item: FaithNoteItem) => void; // ⋯ → 삭제 (내 노트)
+  onReport?: (item: FaithNoteItem) => void; // ⋯ → 신고 (남의 노트)
+  onBlock?: (item: FaithNoteItem) => void;  // ⋯ → 차단 (남의 노트)
   isDetailScreen?: boolean;              // true: 댓글 버튼 클릭 비활성화
   variant?: 'feed' | 'detail';
 }
@@ -63,13 +67,17 @@ export function FaithNoteCard({
   onCommentPress,
   onEdit,
   onDelete,
+  onReport,
+  onBlock,
   isDetailScreen,
   variant = 'feed',
 }: FaithNoteCardProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  // 내 노트 + 수정/삭제 콜백이 있을 때만 ⋯ 메뉴 노출
-  const showMenu = !!item.isMine && (!!onEdit || !!onDelete);
+  // 내 노트: 수정/삭제, 남의 노트: 신고/차단 — 콜백이 있을 때만 ⋯ 노출
+  const showMenu = item.isMine
+    ? (!!onEdit || !!onDelete)
+    : (!!onReport || !!onBlock);
   const isWordTab = item.tab === 'WORD';
   const primaryAuthor = item.author.nickname || item.author.name;
   const secondaryAuthor = item.author.nickname && item.author.nickname !== item.author.name ? item.author.name : '';
@@ -208,28 +216,55 @@ export function FaithNoteCard({
         )}
       </View>
 
-      {/* ⋯ 메뉴 — 수정 / 삭제 (내 노트일 때만) */}
+      {/* ⋯ 메뉴 — 내 노트: 수정/삭제, 남의 노트: 신고/차단 */}
       <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} disableContentPadding>
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            setMenuOpen(false);
-            onEdit?.(item);
-          }}
-        >
-          <Text style={styles.menuText}>수정하기</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            setMenuOpen(false);
-            onDelete?.(item);
-          }}
-        >
-          <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
-        </TouchableOpacity>
+        {item.isMine ? (
+          <>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                setMenuOpen(false);
+                onEdit?.(item);
+              }}
+            >
+              <Text style={styles.menuText}>수정하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                setMenuOpen(false);
+                onDelete?.(item);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                setMenuOpen(false);
+                onReport?.(item);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>신고하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                setMenuOpen(false);
+                onBlock?.(item);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>사용자 차단</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </BottomSheet>
     </View>
   );

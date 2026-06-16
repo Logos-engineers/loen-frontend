@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   bookKor: {
     fontSize: 16,
     fontWeight: fontWeight.medium,
-    color: colors.text.primary,
+    color: '#1B1E26',   // 검정 — 기존 rgba 0.8(회색빛) 대신 또렷한 책 이름
   },
   bookKorSelected: {
     color: colors.primary,

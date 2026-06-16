@@ -12,7 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
@@ -47,7 +48,9 @@ const TAG_TO_EMOTION: Record<string, string> = {
 };
 
 export default function ObsFinishScreen() {
-  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string; reviewId?: string }>();
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
+  const params = useLocalSearchParams<{ flow?: string; preview?: string; contentId?: string; title?: string; verse?: string; reviewId?: string; origin?: string }>();
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [goalText, setGoalText] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -56,8 +59,14 @@ export default function ObsFinishScreen() {
   const isViewFlow = params.flow === 'view';
   const isPreview = params.preview === 'true';
   const contentId = params.contentId ? Number(params.contentId) : null;
+  const isFromHome = params.origin === 'home';
   // 좌상단 쉐브론: OBS 보기 플로우 전체를 빠져나감 (단계 뒤로는 하단 '이전으로'가 담당)
-  const exitFlow = () => router.dismissTo(isPreview ? '/obs/admin' : '/obs');
+  // 홈에서 시작했으면 플로우를 모두 닫고 홈(탭)으로, 아니면 OBS 목록으로 복귀
+  const exitFlow = () => {
+    if (isPreview) { router.dismissTo('/obs/admin'); return; }
+    if (isFromHome) { router.dismissAll(); return; }
+    router.dismissTo('/obs');
+  };
   const [reviewId, setReviewId] = useState<number | null>(params.reviewId ? Number(params.reviewId) : null);
 
   useEffect(() => {
@@ -106,7 +115,7 @@ export default function ObsFinishScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={exitFlow}>
             <SvgXml xml={BACK_SVG} width={24} height={24} />
@@ -115,7 +124,7 @@ export default function ObsFinishScreen() {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, kb > 0 && { paddingBottom: 120 + kb }]}
           showsVerticalScrollIndicator={false}
         >
           {/* 감정 선택 섹션 */}
@@ -185,7 +194,8 @@ export default function ObsFinishScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.bottomCta}>
+        {/* 키보드 등장 시 bottom을 키보드 높이만큼 올려 CTA가 키보드 바로 위에 붙음 */}
+        <View style={[styles.bottomCta, { bottom: kb, paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
           <LinearGradient
             colors={['rgba(242,244,247,0)', '#F2F4F7']}
             style={styles.bottomGradient}
@@ -259,7 +269,14 @@ export default function ObsFinishScreen() {
                       }
                     }
                     setShowModal(false);
-                    router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
+                    if (isPreview) {
+                      router.replace('/obs/admin');
+                    } else {
+                      router.replace({
+                        pathname: '/obs/content/complete',
+                        params: isFromHome ? { origin: 'home' } : {},
+                      });
+                    }
                   }}
                 >
                   <Text style={styles.modalBtnPrimaryText}>{isSaving ? '저장 중...' : '완료하기'}</Text>
@@ -373,16 +390,22 @@ const styles = StyleSheet.create({
   inputField: {
     backgroundColor: colors.border,
     borderRadius: 12,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
     minHeight: 130,
   },
   textInput: {
-    flex: 1,
+    // flex:1 을 주면 iOS 멀티라인 입력이 박스를 꽉 채우며 텍스트를 세로 가운데로
+    // 정렬해버린다. minHeight 로 박스 높이는 유지하되 상단 정렬되게 한다.
+    minHeight: 90,
+    paddingTop: 0,
     fontSize: 15,
     lineHeight: 15 * 1.6,
     fontWeight: fontWeight.medium,
     color: colors.text.primary,
     textAlignVertical: 'top',
+    includeFontPadding: false,
   },
   bottomCta: {
     position: 'absolute',

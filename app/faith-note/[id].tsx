@@ -5,7 +5,12 @@ import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import Popup from '@/components/ui/overlay/Popup';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { normalizePrayerReactions } from '@/hooks/useFaithNotes';
+import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import { getBibleBook } from '@/constants/bibleLoader';
 import { apiClient } from '@/utils/apiClient';
+import { blockUser, getBlockedUsers, reportContent } from '@/utils/moderation';
+import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
+import { usePopup } from '@/components/shared/usePopup';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,8 +18,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +26,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 type NoteDetailParams = {
   id?: string;
@@ -57,6 +61,7 @@ type ApiCommentListResponse = {
 
 type ThanksDetailResponse = {
   id: string;
+  writerId: string;
   writerName: string;
   writerNickname: string | null;
   answers: string[];
@@ -69,6 +74,7 @@ type ThanksDetailResponse = {
 
 type PrayerDetailResponse = {
   id: string;
+  writerId: string;
   writerName: string;
   writerNickname: string | null;
   prayers: string[];
@@ -80,6 +86,7 @@ type PrayerDetailResponse = {
 
 type WordDetailResponse = {
   id: string;
+  writerId: string;
   writerName: string;
   writerNickname: string | null;
   bibleName: string;
@@ -97,6 +104,7 @@ type WordDetailResponse = {
 
 interface CommentItem {
   id: string;
+  userId: string;
   author: { handle: string; name: string; nickname: string; initial: string; imageUri?: string | null };
   timeAgo: string;
   text: string;
@@ -159,6 +167,7 @@ function buildFallbackNote(id?: string): FaithNoteItem {
 function toCommentItem(item: ApiCommentItem): CommentItem {
   return {
     id: item.commentId,
+    userId: item.userId,
     author: {
       handle: '',
       name: item.writerName,
@@ -175,6 +184,7 @@ function toCommentItem(item: ApiCommentItem): CommentItem {
 function toThanksNote(detail: ThanksDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
   return {
     id: detail.id,
+    writerId: detail.writerId,
     tab: 'THANKS',
     author: {
       handle: fallback.author.handle,
@@ -196,6 +206,7 @@ function toThanksNote(detail: ThanksDetailResponse, fallback: FaithNoteItem): Fa
 function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
   return {
     id: detail.id,
+    writerId: detail.writerId,
     tab: 'PRAYER',
     author: {
       handle: fallback.author.handle,
@@ -215,9 +226,29 @@ function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): Fa
   };
 }
 
+// 선택한 절 범위(phaseStart~phaseEnd)의 성경 본문 줄을 앱 로컬 데이터에서 만든다. "1 본문…"
+function buildScriptureLines(bibleName: string, chapter: number, start: number, end: number): string[] {
+  const code = BIBLE_BOOKS.find((b) => b.korName === bibleName)?.code;
+  if (!code || !start) return [];
+  const chap = getBibleBook(code)?.chapters.find((c) => c.chapter === chapter);
+  if (!chap) return [];
+  return chap.verses
+    .filter((v) => v.verse >= start && v.verse <= (end || start))
+    .map((v) => `${v.verse} ${v.text}`);
+}
+
 function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
+  const verseLabel = detail.phaseEnd > detail.phaseStart ? `${detail.phaseStart}-${detail.phaseEnd}` : `${detail.phaseStart}`;
+  const passageRef = `${detail.bibleName} ${detail.chapter}장 ${verseLabel}절`;
+  // 상세에서는 선택한 절의 실제 성경 본문을 함께 표시한다 (참조 → 본문 → 묵상).
+  const scriptureLines = buildScriptureLines(detail.bibleName, detail.chapter, detail.phaseStart, detail.phaseEnd);
+  const content: string[] = [passageRef];
+  if (scriptureLines.length) content.push('', ...scriptureLines);
+  if (detail.description?.trim()) content.push('', detail.description.trim());
+
   return {
     id: detail.id,
+    writerId: detail.writerId,
     tab: 'WORD',
     author: {
       handle: fallback.author.handle,
@@ -228,11 +259,7 @@ function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithN
       imageUri: fallback.author.imageUri,
     },
     timeAgo: getTimeAgo(detail.createdAt),
-    content: [
-      `${detail.bibleName} ${detail.chapter}장 ${detail.phaseStart}-${detail.phaseEnd}절`,
-      detail.title,
-      detail.description,
-    ].filter(Boolean),
+    content,
     likeCount: detail.likeCount,
     commentCount: detail.commentCount ?? 0,
     isLiked: detail.isLiked,
@@ -288,19 +315,18 @@ function CommentRow({ item, onMenuPress }: { item: CommentItem; onMenuPress?: (i
         <Text style={styles.commentText}>{item.text}</Text>
       </View>
 
-      {item.isMine ? (
-        <TouchableOpacity
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={() => onMenuPress?.(item)}
-        >
-          <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
-        </TouchableOpacity>
-      ) : null}
+      <TouchableOpacity
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={() => onMenuPress?.(item)}
+      >
+        <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
+      </TouchableOpacity>
     </View>
   );
 }
 
 export default function FaithNoteDetailScreen() {
+  const kb = useKeyboardHeight();
   const params = useLocalSearchParams<NoteDetailParams>();
   const fallback = useMemo(() => buildFallbackNote(toStringValue(params.id)), [params.id]);
   const noteId = toStringValue(params.id) ?? fallback.id;
@@ -334,6 +360,74 @@ export default function FaithNoteDetailScreen() {
   const [menuComment, setMenuComment] = useState<CommentItem | null>(null);
   const [pendingDeleteComment, setPendingDeleteComment] = useState<CommentItem | null>(null);
   const [editingComment, setEditingComment] = useState<CommentItem | null>(null);
+  // 신고 대상 댓글 / 내가 차단한 사용자 (차단 사용자의 댓글은 클라이언트에서 숨김)
+  const [reportComment, setReportComment] = useState<CommentItem | null>(null);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+  const { confirm, info, node: popupNode } = usePopup();
+
+  useEffect(() => {
+    getBlockedUsers()
+      .then((list) => setBlockedIds(new Set(list.map((u) => u.userId))))
+      .catch(() => {});
+  }, []);
+
+  const handleReportComment = async (reason: string) => {
+    const target = reportComment;
+    setReportComment(null);
+    if (!target) return;
+    try {
+      await reportContent('NOTE_COMMENT', target.id, reason);
+      info('신고가 접수되었어요', '검토 후 조치할게요.');
+    } catch (e: any) {
+      info('신고 실패', e?.message ?? '신고에 실패했어요.');
+    }
+  };
+
+  const handleBlockComment = (target: CommentItem) => {
+    confirm({
+      title: '사용자 차단',
+      description: `${target.author.nickname || target.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않아요.`,
+      confirmLabel: '차단',
+      onConfirm: async () => {
+        try {
+          await blockUser(target.userId);
+          setBlockedIds((prev) => new Set(prev).add(target.userId));
+        } catch (e: any) {
+          info('차단 실패', e?.message ?? '차단에 실패했어요.');
+        }
+      },
+    });
+  };
+
+  // 노트 글 자체 신고/차단 (남의 노트 열람 시)
+  const [reportNoteOpen, setReportNoteOpen] = useState(false);
+
+  const handleReportNote = async (reason: string) => {
+    setReportNoteOpen(false);
+    try {
+      await reportContent('NOTE', noteId, reason);
+      info('신고가 접수되었어요', '검토 후 조치할게요.');
+    } catch (e: any) {
+      info('신고 실패', e?.message ?? '신고에 실패했어요.');
+    }
+  };
+
+  const handleBlockNote = () => {
+    if (!note.writerId) return;
+    confirm({
+      title: '사용자 차단',
+      description: `${note.author.nickname || note.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않아요.`,
+      confirmLabel: '차단',
+      onConfirm: async () => {
+        try {
+          await blockUser(note.writerId!);
+          router.back();
+        } catch (e: any) {
+          info('차단 실패', e?.message ?? '차단에 실패했어요.');
+        }
+      },
+    });
+  };
 
   // ⋯ → 수정: 작성 화면을 편집 모드(noteId)로 진입
   const handleEdit = () => {
@@ -522,10 +616,9 @@ export default function FaithNoteDetailScreen() {
       <StatusBar style="dark" backgroundColor={colors.background.base} />
       <FaithNoteHeader />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* 키보드가 올라오면 스크롤+입력바 전체를 키보드 높이만큼 올림 → 입력바가 키보드 바로 위에 붙음.
+          KeyboardAvoidingView는 키보드 내린 뒤 잔여 padding이 남아 입력바 아래 여백이 생겨 직접 처리. */}
+      <View style={[styles.flex, { marginBottom: kb }]}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -539,15 +632,19 @@ export default function FaithNoteDetailScreen() {
             onCommentPress={() => inputRef.current?.focus()}
             onEdit={handleEdit}
             onDelete={() => setShowDeleteConfirm(true)}
+            onReport={() => setReportNoteOpen(true)}
+            onBlock={handleBlockNote}
             isDetailScreen
             variant="detail"
           />
 
-          {comments.length > 0 ? (
+          {comments.filter((c) => !blockedIds.has(c.userId)).length > 0 ? (
             <View style={styles.commentList}>
-              {comments.map((item) => (
-                <CommentRow key={item.id} item={item} onMenuPress={setMenuComment} />
-              ))}
+              {comments
+                .filter((c) => !blockedIds.has(c.userId))
+                .map((item) => (
+                  <CommentRow key={item.id} item={item} onMenuPress={setMenuComment} />
+                ))}
             </View>
           ) : (
             <View style={styles.commentEmptySpace} />
@@ -583,7 +680,7 @@ export default function FaithNoteDetailScreen() {
             <Text style={styles.submitText}>{editingComment ? '수정' : '등록'}</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {/* ── 삭제 확인 팝업 ── */}
       <Popup
@@ -597,31 +694,76 @@ export default function FaithNoteDetailScreen() {
         ]}
       />
 
-      {/* ── 댓글 ⋯ 메뉴 — 수정 / 삭제 (본인 댓글) ── */}
+      {/* ── 댓글 ⋯ 메뉴 — 본인: 수정/삭제, 타인: 신고/차단 ── */}
       <BottomSheet visible={!!menuComment} onClose={() => setMenuComment(null)} disableContentPadding>
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            const target = menuComment;
-            setMenuComment(null);
-            if (target) handleEditComment(target);
-          }}
-        >
-          <Text style={styles.menuText}>수정하기</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            const target = menuComment;
-            setMenuComment(null);
-            setPendingDeleteComment(target);
-          }}
-        >
-          <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
-        </TouchableOpacity>
+        {menuComment?.isMine ? (
+          <>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                if (target) handleEditComment(target);
+              }}
+            >
+              <Text style={styles.menuText}>수정하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                setPendingDeleteComment(target);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                setReportComment(target);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>신고하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                const target = menuComment;
+                setMenuComment(null);
+                if (target) handleBlockComment(target);
+              }}
+            >
+              <Text style={[styles.menuText, styles.menuTextDanger]}>사용자 차단</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </BottomSheet>
+
+      {/* ── 댓글 신고 사유 선택 ── */}
+      <ReportReasonSheet
+        visible={!!reportComment}
+        onClose={() => setReportComment(null)}
+        onSelect={handleReportComment}
+      />
+
+      {/* ── 노트 글 신고 사유 선택 ── */}
+      <ReportReasonSheet
+        visible={reportNoteOpen}
+        onClose={() => setReportNoteOpen(false)}
+        onSelect={handleReportNote}
+      />
+
+      {popupNode}
 
       {/* ── 댓글 삭제 확인 팝업 ── */}
       <Popup
@@ -767,6 +909,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(13,28,45,0.08)',
     paddingHorizontal: spacing.md,
+    paddingVertical: 0,             // 고정 높이 단일라인 — 세로 패딩 제거(텍스트 잘림 방지)
+    textAlignVertical: 'center',    // Android 세로 중앙 정렬
+    includeFontPadding: false,      // Android 폰트 상하 여백 제거(플레이스홀더 흔들림/잘림 방지)
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     color: colors.text.primary,

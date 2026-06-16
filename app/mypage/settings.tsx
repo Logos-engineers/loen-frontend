@@ -1,18 +1,16 @@
 import { Popup } from '@/components/ui/overlay';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useAlarms } from '@/hooks/useAlarms';
+import { registerPushToken } from '@/hooks/usePushToken';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
 import { googleSignOut } from '@/utils/googleAuth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const NOTIFY_KEY = 'loen_notify_enabled';
 
 // 개인정보처리방침/이용약관 — 저장소 루트 legal/ 의 정적 HTML(Vercel 호스팅).
 // 소스/재배포 방법은 legal/README.md 참고.
@@ -27,21 +25,43 @@ export default function SettingsScreen() {
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [withdrawVisible, setWithdrawVisible] = useState(false);
 
+  // 서버가 푸시 수신 동의(pushEnabled)의 단일 출처. 마운트 시 현재 값을 불러온다.
   useEffect(() => {
-    AsyncStorage.getItem(NOTIFY_KEY).then((v) => setNotifyEnabled(v === 'true'));
+    let active = true;
+    apiClient<{ pushEnabled: boolean }>('/users/me/notification-setting')
+      .then((data) => {
+        if (active) setNotifyEnabled(!!data?.pushEnabled);
+      })
+      .catch(() => {
+        // 조회 실패 시 토글은 기본 off로 두되, 변경 시 서버에 다시 시도.
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleToggleNotify = async (next: boolean) => {
+    const prev = notifyEnabled;
+    // 켤 때는 OS 권한이 먼저 있어야 실제 푸시가 도달한다.
     if (next) {
       const granted = await requestPermission();
       if (!granted) {
         setNotifyEnabled(false);
-        await AsyncStorage.setItem(NOTIFY_KEY, 'false');
         return;
       }
     }
-    setNotifyEnabled(next);
-    await AsyncStorage.setItem(NOTIFY_KEY, String(next));
+    setNotifyEnabled(next); // 낙관적 업데이트
+    try {
+      await apiClient('/users/me/notification-setting', {
+        method: 'PATCH',
+        body: JSON.stringify({ pushEnabled: next }),
+      });
+      // 켤 때는 이 기기의 푸시 토큰이 서버에 등록돼 있도록 보장한다.
+      if (next) await registerPushToken();
+    } catch (e) {
+      setNotifyEnabled(prev); // 실패 시 롤백
+      console.warn('[settings] 알림 설정 변경 실패', e);
+    }
   };
 
   const handleLogout = async () => {
@@ -141,6 +161,29 @@ export default function SettingsScreen() {
           >
             <Ionicons name="document-text-outline" size={22} color={colors.text.primary} />
             <Text style={styles.rowLabel}>이용약관</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 지원 */}
+        <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/mypage/bug-report')}
+          >
+            <Ionicons name="bug-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>버그 신고</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/mypage/blocked-users')}
+          >
+            <Ionicons name="ban-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>차단한 사용자</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
           </TouchableOpacity>
         </View>

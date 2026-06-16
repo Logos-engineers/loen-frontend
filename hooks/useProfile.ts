@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiClient, BASE_URL } from '@/utils/apiClient';
-import { useAuthStore } from '@/store/auth-store';
+import { apiClient, apiClientFormData } from '@/utils/apiClient';
 
 export type Profile = {
   uid: string;
@@ -24,20 +23,13 @@ export type UpdateProfilePayload = {
   profileImage?: string;
 };
 
-/** 프로필 이미지를 R2에 업로드하고 공개 URL을 반환한다. (multipart — apiClient 대신 raw fetch) */
+/** 프로필 이미지를 R2에 업로드하고 공개 URL을 반환한다. (multipart — 401 시 토큰 자동 갱신·재시도) */
 export async function uploadProfileImage(uri: string): Promise<string> {
-  const token = useAuthStore.getState().accessToken;
   const formData = new FormData();
   formData.append('file', { uri, name: 'profile.jpg', type: 'image/jpeg' } as any);
 
-  const res = await fetch(`${BASE_URL}/users/me/profile-image`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message ?? '이미지 업로드 실패');
-  return json.data.url as string;
+  const data = await apiClientFormData<{ url: string }>('/users/me/profile-image', formData);
+  return data.url;
 }
 
 export function useProfile() {

@@ -6,9 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,7 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 // ─── 색상 상수 (Figma: 라이트 테마) ──────────────────────────────────────────────
 const SCREEN_BG = '#F2F4F7';                  // background/fill/elevated
@@ -125,12 +124,15 @@ const modalStyles = StyleSheet.create({
 
 export default function WritePrayerScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const { noteId } = useLocalSearchParams<{ noteId?: string }>();
   const isEdit = !!noteId;
   const [inputs, setInputs] = useState<string[]>(Array(DEFAULT_INPUT_COUNT).fill(''));
   // 현재 작성 중(focus)인 항목. 이 index 직전 항목이 상단 네비게이션 아래에 고정(sticky)된다.
   const [activeIndex, setActiveIndex] = useState(0);
   const [showQuitModal, setShowQuitModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const scrollRef = useRef<ScrollView>(null);
   const rowY = useRef<number[]>([]); // 각 입력 행의 contentContainer 기준 y 위치
@@ -204,7 +206,8 @@ export default function WritePrayerScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!isSubmitEnabled) return;
+    if (!isSubmitEnabled || isSubmitting) return;
+    setIsSubmitting(true);
     const prayers = inputs.map((v) => v.trim()).filter((v) => v.length > 0);
     let createdNoteId: string | null = null;
     try {
@@ -223,6 +226,7 @@ export default function WritePrayerScreen() {
       createdNoteId = note.id;
     } catch {
       Alert.alert('오류', '노트 저장에 실패했습니다.');
+      setIsSubmitting(false); // 실패 시에만 재활성화 (성공 시 화면 전환되므로 유지)
       return;
     }
     router.replace(`/faith-note/publish?noteType=PRAYER&noteId=${createdNoteId}`);
@@ -230,7 +234,7 @@ export default function WritePrayerScreen() {
 
   return (
     // Figma: 라이트 배경 (#F2F4F7)
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />
 
       {/* ── 헤더 */}
@@ -243,11 +247,8 @@ export default function WritePrayerScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
+      {/* 키보드가 올라오면 스크롤+CTA 영역 전체를 키보드 높이만큼 올림 → CTA가 키보드 바로 위에 붙음 */}
+      <View style={[styles.flex, { marginBottom: kb }]}>
         <ScrollView
           ref={scrollRef}
           style={styles.scroll}
@@ -306,19 +307,20 @@ export default function WritePrayerScreen() {
             );
           })}
 
-          {/* ── 작성 완료 버튼 */}
-          <View style={styles.submitWrapper}>
-            <TouchableOpacity
-              style={[styles.submitButton, ctaEnabled && styles.submitButtonActive]}
-              onPress={handleSubmit}
-              activeOpacity={ctaEnabled ? 0.8 : 1}
-              disabled={!ctaEnabled}
-            >
-              <Text style={styles.submitText}>{ctaLabel}</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+
+        {/* ── 작성 완료 버튼 — 키보드 등장 시 위 영역과 함께 올라가 키보드 위에 붙음(패딩 축소) */}
+        <View style={[styles.submitWrapper, { paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
+          <TouchableOpacity
+            style={[styles.submitButton, ctaEnabled && styles.submitButtonActive]}
+            onPress={handleSubmit}
+            activeOpacity={ctaEnabled && !isSubmitting ? 0.8 : 1}
+            disabled={!ctaEnabled || isSubmitting}
+          >
+            <Text style={styles.submitText}>{ctaLabel}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* 그만두기 확인 모달 */}
       <QuitConfirmModal
@@ -426,10 +428,10 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  // ── 작성 완료 버튼
+  // ── 작성 완료 버튼 (하단 고정) — 좌우 16, 상 8 / 하단(14+inset)은 인라인 적용
   submitWrapper: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.sm,
   },
   // Figma 비활성: primary 40% 불투명
   submitButton: {

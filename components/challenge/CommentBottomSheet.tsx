@@ -1,10 +1,13 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import type { CommentItem } from '@/hooks/useChallenge';
 import { useCertificationComments } from '@/hooks/useChallenge';
+import { blockUser, reportContent } from '@/utils/moderation';
+import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Keyboard,
   KeyboardEvent,
@@ -42,7 +45,15 @@ function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
-function CommentRow({ comment, onDelete }: { comment: CommentItem; onDelete: (id: string) => void }) {
+function CommentRow({
+  comment,
+  onDelete,
+  onMenu,
+}: {
+  comment: CommentItem;
+  onDelete: (id: string) => void;
+  onMenu: (comment: CommentItem) => void;
+}) {
   return (
     <View style={styles.commentRow}>
       <CommentAvatar uri={comment.writerProfileImage} name={comment.writerName} />
@@ -61,7 +72,15 @@ function CommentRow({ comment, onDelete }: { comment: CommentItem; onDelete: (id
         >
           <Ionicons name="trash-outline" size={16} color={colors.text.secondary} />
         </TouchableOpacity>
-      ) : null}
+      ) : (
+        <TouchableOpacity
+          onPress={() => onMenu(comment)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.deleteBtn}
+        >
+          <Ionicons name="ellipsis-horizontal" size={16} color={colors.text.secondary} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -84,6 +103,7 @@ export function CommentBottomSheet({
   const { comments, isLoading, fetch, createComment, deleteComment } = useCertificationComments(certificationId);
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [reportTarget, setReportTarget] = useState<CommentItem | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const inputRef = useRef<TextInput>(null);
   const hasFetched = useRef(false);
@@ -122,6 +142,49 @@ export function CommentBottomSheet({
     await deleteComment(commentId);
   };
 
+  const handleMenu = (comment: CommentItem) => {
+    Alert.alert(comment.writerName, undefined, [
+      { text: '신고하기', style: 'destructive', onPress: () => setReportTarget(comment) },
+      {
+        text: '사용자 차단',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert(
+            '사용자 차단',
+            `${comment.writerName}님을 차단할까요?\n차단하면 이 사용자의 인증글과 댓글이 더 이상 보이지 않습니다.`,
+            [
+              { text: '취소', style: 'cancel' },
+              {
+                text: '차단',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await blockUser(comment.userId);
+                    fetch();
+                  } catch (err) {
+                    Alert.alert('차단 실패', (err as Error)?.message || '차단에 실패했습니다.');
+                  }
+                },
+              },
+            ],
+          ),
+      },
+      { text: '취소', style: 'cancel' },
+    ]);
+  };
+
+  const handleReport = async (reason: string) => {
+    if (!reportTarget) return;
+    try {
+      await reportContent('CERTIFICATION_COMMENT', reportTarget.commentId, reason);
+      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+    } catch (err) {
+      Alert.alert('신고 실패', (err as Error)?.message || '신고에 실패했습니다.');
+    } finally {
+      setReportTarget(null);
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.kav}>
@@ -150,7 +213,7 @@ export function CommentBottomSheet({
           ) : (
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
               {comments.map(c => (
-                <CommentRow key={c.commentId} comment={c} onDelete={handleDelete} />
+                <CommentRow key={c.commentId} comment={c} onDelete={handleDelete} onMenu={handleMenu} />
               ))}
             </ScrollView>
           )}
@@ -178,6 +241,12 @@ export function CommentBottomSheet({
           </View>
         </View>
       </View>
+
+      <ReportReasonSheet
+        visible={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        onSelect={handleReport}
+      />
     </Modal>
   );
 }

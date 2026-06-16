@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
@@ -37,7 +37,8 @@ function parseScriptureVerses(reference: string): { number: number; text: string
 }
 
 export default function ObsScriptureScreen() {
-  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string }>();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; title?: string; verse?: string; preview?: string; origin?: string }>();
   const reference = params.verse || '성경말씀 데이터가 없습니다';
   const scriptureVerses = parseScriptureVerses(reference);
 
@@ -47,7 +48,7 @@ export default function ObsScriptureScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={exitFlow}>
             <SvgXml xml={ARROW_BACK_SVG} width={24} height={24} />
@@ -91,7 +92,8 @@ export default function ObsScriptureScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.bottomCta}>
+        {/* 절대위치 CTA는 SafeAreaView bottom inset을 못 받으므로 직접 적용 (summary/finish와 동일) */}
+        <View style={[styles.bottomCta, { paddingBottom: insets.bottom + 14 }]}>
           <LinearGradient
             colors={['rgba(242,244,247,0)', '#F2F4F7']}
             style={styles.bottomGradient}
@@ -100,7 +102,7 @@ export default function ObsScriptureScreen() {
           <TouchableOpacity
             style={styles.nextButton}
             activeOpacity={0.85}
-            onPress={() => router.push({ pathname: '/obs/content/summary', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}) } })}
+            onPress={() => router.push({ pathname: '/obs/content/summary', params: { contentId: params.contentId, reviewId: params.reviewId, title: params.title, verse: params.verse, ...(params.preview === 'true' ? { preview: 'true' } : {}), ...(params.origin ? { origin: params.origin } : {}) } })}
           >
             <Text style={styles.nextButtonText}>다음으로</Text>
           </TouchableOpacity>

@@ -22,6 +22,19 @@ export async function fetchObsContent(obsId: number): Promise<ObsContentDetail> 
   };
 }
 
+/** 이번 주 교안 상세 (리뷰 정보 포함). 발행된 이번 주 OBS가 없으면 null. */
+export async function fetchCurrentObsContent(): Promise<ObsContentDetail | null> {
+  try {
+    const data = await apiClient<Omit<ObsContentDetail, 'sections'> & { sections?: unknown }>(`/obs/contents/current`);
+    return {
+      ...data,
+      sections: normalizeObsSections(data.sections),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function startObsReview(obsId: number): Promise<number> {
   const data = await apiClient<{ id?: number; reviewId?: number; obsContentId?: number; obsId?: number; status: string }>(
     `/obs/contents/${obsId}/reviews`,

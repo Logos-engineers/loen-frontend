@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Linking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── noteType → 한글 라벨 ────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ const PUBLISH_OPTIONS: {
     key: 'LINK',
     Icon: IconLink,
     label: '링크로 공개',
-    description: '챌린지 생성 완료 후 공유한 링크를 전달받은 사람만 볼 수 있어요',
+    description: '작성 완료 후 복사된 링크를 전달받은 사람만 볼 수 있어요',
   },
 ];
 
@@ -147,6 +148,18 @@ export default function PublishScreen() {
       } catch {
         Alert.alert('오류', '공개 범위 설정에 실패했습니다.');
         return;
+      }
+
+      // 링크로 공개: 노트 딥링크를 공유 시트로 전달 (복사/카톡 등). 취소/실패해도 진행.
+      if (selected === 'LINK') {
+        try {
+          const url = Linking.createURL(`/faith-note/${noteId}`, {
+            queryParams: { tab: noteType ?? 'THANKS' },
+          });
+          await Share.share({ message: `로엔에서 공유한 노트를 확인해보세요\n${url}` });
+        } catch {
+          /* 공유 취소/실패는 무시 */
+        }
       }
     }
     router.replace(`/faith-note/complete?noteType=${noteType ?? 'THANKS'}`);

@@ -2,7 +2,7 @@ import { startObsReview } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop, SvgXml } from 'react-native-svg';
 
 // tokens
@@ -26,6 +26,7 @@ function getWeekOfMonth(dateString?: string) {
 }
 
 export default function ReviewIntroScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ contentId?: string; title?: string; verse?: string; date?: string }>();
   const [isStarting, setIsStarting] = useState(false);
 
@@ -48,8 +49,8 @@ export default function ReviewIntroScreen() {
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
         </Svg>
       </View>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        
+      <SafeAreaView style={styles.safe} edges={['top']}>
+
         {/* Navigation Bar */}
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.backBtn} activeOpacity={0.8} onPress={() => router.back()}>
@@ -71,8 +72,8 @@ export default function ReviewIntroScreen() {
           </View>
         </View>
 
-        {/* Bottom CTA Area */}
-        <View style={styles.ctaWrapper}>
+        {/* Bottom CTA Area — 기준: 좌우 16 / 하단 inset+14 */}
+        <View style={[styles.ctaWrapper, { paddingBottom: insets.bottom + 14 }]}>
           <TouchableOpacity 
             style={styles.skipButton} 
             activeOpacity={0.8}
@@ -157,7 +158,6 @@ const styles = StyleSheet.create({
   },
   ctaWrapper: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
     gap: 12,
   },
   skipButton: {

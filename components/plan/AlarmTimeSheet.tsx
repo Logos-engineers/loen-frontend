@@ -10,11 +10,10 @@
  */
 
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import TimeWheelPicker from '@/components/challenge/TimeWheelPicker';
 import React, { useCallback, useState } from 'react';
 import {
   Modal,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -46,24 +45,9 @@ export default function AlarmTimeSheet({ visible, initialAlarm, onConfirm, onCan
     d.setHours(initialAlarm?.hour ?? 7, initialAlarm?.minute ?? 0, 0, 0);
     return d;
   });
-  // Android: 사용자가 picker를 열었는지
-  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
-
   // 기본 선택 요일: 평일 (1~5)
   const [selectedDays, setSelectedDays] = useState<number[]>(
     initialAlarm?.days ?? [1, 2, 3, 4, 5]
-  );
-
-  const handleTimeChange = useCallback(
-    (_event: DateTimePickerEvent, selected?: Date) => {
-      if (Platform.OS === 'android') {
-        setShowAndroidPicker(false);
-      }
-      if (selected) {
-        setDate(selected);
-      }
-    },
-    []
   );
 
   const toggleDay = useCallback((day: number) => {
@@ -76,8 +60,6 @@ export default function AlarmTimeSheet({ visible, initialAlarm, onConfirm, onCan
     if (selectedDays.length === 0) return;
     onConfirm(date.getHours(), date.getMinutes(), [...selectedDays].sort((a, b) => a - b));
   }, [date, selectedDays, onConfirm]);
-
-  const formattedTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
   return (
     <Modal
@@ -96,41 +78,10 @@ export default function AlarmTimeSheet({ visible, initialAlarm, onConfirm, onCan
 
         <Text style={styles.sheetTitle}>알림 시간 설정</Text>
 
-        {/* ── 시간 선택 영역 ── */}
-        {Platform.OS === 'ios' ? (
-          // iOS: 드럼롤 스피너 — height: 216 필수 (기본값이 0으로 렌더됨)
-          <View style={styles.iosPickerWrapper}>
-            <DateTimePicker
-              value={date}
-              mode="time"
-              display="spinner"
-              onChange={handleTimeChange}
-              locale="ko-KR"
-              style={styles.iosPicker}
-              textColor={colors.text.primary}
-            />
-          </View>
-        ) : (
-          // Android: 현재 시간 표시 버튼 → 탭 시 시스템 다이얼로그
-          <TouchableOpacity
-            style={styles.androidTimeBtn}
-            onPress={() => setShowAndroidPicker(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.androidTimeText}>{formattedTime}</Text>
-            <Text style={styles.androidTimeHint}>탭하여 시간 변경</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Android 피커 다이얼로그 */}
-        {Platform.OS === 'android' && showAndroidPicker && (
-          <DateTimePicker
-            value={date}
-            mode="time"
-            display="default"
-            onChange={handleTimeChange}
-          />
-        )}
+        {/* ── 시간 선택 (휠) ── iOS/Android 공통 커스텀 휠 */}
+        <View style={styles.wheelWrapper}>
+          <TimeWheelPicker value={date} onChange={setDate} visibleItems={5} />
+        </View>
 
         <View style={styles.divider} />
 
@@ -218,34 +169,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
-  // iOS 피커 — 반드시 height 지정 (없으면 0px)
-  iosPickerWrapper: {
-    height: 216,
-    overflow: 'hidden',
-  },
-  iosPicker: {
-    height: 216,
-    width: '100%',
-  },
-
-  // Android 시간 표시 버튼
-  androidTimeBtn: {
+  // 시간 휠 영역
+  wheelWrapper: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.background.base,
-    marginVertical: spacing.sm,
-  },
-  androidTimeText: {
-    fontSize: 44,               // 시간 강조 — 일회성
-    fontWeight: fontWeight.bold,
-    color: colors.primary,
-    letterSpacing: 2,
-  },
-  androidTimeHint: {
-    fontSize: fontSize.xs,
-    color: colors.text.secondary,
-    marginTop: 4,
+    paddingVertical: spacing.sm,
   },
 
   divider: {

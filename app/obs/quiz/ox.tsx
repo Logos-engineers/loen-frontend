@@ -2,7 +2,7 @@ import { ObsQuiz, fetchObsQuizzes } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
 import { BottomModal } from '@/components/obs/bottom-modal';
@@ -17,6 +17,7 @@ import WhiteOMarkIcon from '@/assets/icons/whiteO mark.svg';
 import WhiteXMarkIcon from '@/assets/icons/whiteX mark.svg';
 
 export default function OXQuizScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string }>();
   const contentId = params.contentId ? Number(params.contentId) : null;
   const reviewId = params.reviewId ?? '0';
@@ -110,8 +111,8 @@ export default function OXQuizScreen() {
           </View>
         </View>
 
-        {/* Bottom CTA Area */}
-        <View style={styles.ctaWrapper}>
+        {/* Bottom CTA Area — 기준: 좌우 16 / 하단 inset+14 */}
+        <View style={[styles.ctaWrapper, { paddingBottom: insets.bottom + 14 }]}>
           <TouchableOpacity
             style={[
               styles.ctaButton,
@@ -242,7 +243,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingTop: 16,
     paddingHorizontal: 16,
-    paddingBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,

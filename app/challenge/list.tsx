@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   actionButton: { width: 64, height: 64, backgroundColor: colors.border, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
 
   // 카드 공통
-  challengeCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  challengeCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
   badge: { backgroundColor: '#F2F2F7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
   badgeText: { fontSize: 10, color: colors.text.secondary, fontWeight: fontWeight.medium },
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   cardSubtitle: { fontSize: fontSize.xs, color: colors.text.secondary },
   
   // 빈 상태
-  emptyCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  emptyCard: { backgroundColor: colors.background.elevated, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: colors.text.secondary, fontSize: fontSize.sm },
 
   // 바텀시트

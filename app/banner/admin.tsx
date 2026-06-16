@@ -1,11 +1,13 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { launchImageLibrarySafe } from '@/utils/imagePicker';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { uploadBannerImage, useAdminBanners, type Banner } from '@/hooks/useBanners';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +26,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function BannerAdminScreen() {
   const { banners, isLoading, error, createBanner, updateBanner, setActive, deleteBanner } = useAdminBanners();
   const [busy, setBusy] = useState(false);
+  const kb = useKeyboardHeight();
+  const scrollRef = useRef<ScrollView>(null);
+
+  // 하단 입력칸 포커스 시 키보드 위로 끌어올린다(안드로이드 Modal은 자동 스크롤 안 됨).
+  const scrollToFocused = () => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+  };
 
   // 에디터(등록/수정 공용) 상태
   const [editorOpen, setEditorOpen] = useState(false);
@@ -50,7 +59,7 @@ export default function BannerAdminScreen() {
       Alert.alert('권한 필요', '사진 접근 권한을 허용해 주세요.');
       return null;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibrarySafe({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [29, 10], // 배너 비율(≈2.9:1)
@@ -197,8 +206,14 @@ export default function BannerAdminScreen() {
       <Modal visible={editorOpen} transparent animationType="fade" onRequestClose={closeEditor}>
         <View style={styles.dialogBackdrop}>
           <ScrollView
-            contentContainerStyle={styles.dialogScroll}
+            ref={scrollRef}
+            contentContainerStyle={[
+              styles.dialogScroll,
+              // 키보드가 올라오면 중앙 정렬을 풀고(위로 스크롤 가능) 키보드 높이만큼 하단 여백 추가
+              kb > 0 && { justifyContent: 'flex-start', paddingBottom: kb + spacing.md },
+            ]}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.dialog}>
@@ -234,6 +249,7 @@ export default function BannerAdminScreen() {
                 placeholderTextColor={colors.text.dim}
                 value={contentInput}
                 onChangeText={setContentInput}
+                onFocus={scrollToFocused}
                 multiline
               />
               <TextInput
@@ -242,6 +258,7 @@ export default function BannerAdminScreen() {
                 placeholderTextColor={colors.text.dim}
                 value={linkInput}
                 onChangeText={setLinkInput}
+                onFocus={scrollToFocused}
                 autoCapitalize="none"
                 keyboardType="url"
               />

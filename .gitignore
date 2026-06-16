@@ -49,5 +49,11 @@ app-example
 # Firebase
 google-services.json
 
+# App Store Connect API key (.p8) — 절대 커밋 금지
+/credentials/
+
 # IDE
 .idea/
+
+# Logs
+*.log
