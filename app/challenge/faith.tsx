@@ -6,6 +6,7 @@ import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constan
 import type { CertificationFeedResponse, ChallengeDetail } from '@/hooks/useChallenge';
 import { useChallengeDetail, useChallengeCertifications, useRecommendedChallenges, joinChallenge, leaveChallenge } from '@/hooks/useChallenge';
 import { apiClient, apiClientFormData } from '@/utils/apiClient';
+import { launchImageLibrarySafe } from '@/utils/imagePicker';
 import { formatShortDate } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -130,7 +131,7 @@ export default function FaithChallengeScreen() {
       alert('사진 접근 권한이 필요합니다.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibrarySafe({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
       allowsEditing: false,
