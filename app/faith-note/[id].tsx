@@ -10,6 +10,7 @@ import { getBibleBook } from '@/constants/bibleLoader';
 import { apiClient } from '@/utils/apiClient';
 import { blockUser, getBlockedUsers, reportContent } from '@/utils/moderation';
 import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
+import { usePopup } from '@/components/shared/usePopup';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -362,6 +363,7 @@ export default function FaithNoteDetailScreen() {
   // 신고 대상 댓글 / 내가 차단한 사용자 (차단 사용자의 댓글은 클라이언트에서 숨김)
   const [reportComment, setReportComment] = useState<CommentItem | null>(null);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+  const { confirm, info, node: popupNode } = usePopup();
 
   useEffect(() => {
     getBlockedUsers()
@@ -375,32 +377,26 @@ export default function FaithNoteDetailScreen() {
     if (!target) return;
     try {
       await reportContent('NOTE_COMMENT', target.id, reason);
-      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+      info('신고가 접수되었어요', '검토 후 조치할게요.');
     } catch (e: any) {
-      Alert.alert('신고 실패', e?.message ?? '신고에 실패했습니다.');
+      info('신고 실패', e?.message ?? '신고에 실패했어요.');
     }
   };
 
   const handleBlockComment = (target: CommentItem) => {
-    Alert.alert(
-      '사용자 차단',
-      `${target.author.nickname || target.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않습니다.`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '차단',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await blockUser(target.userId);
-              setBlockedIds((prev) => new Set(prev).add(target.userId));
-            } catch (e: any) {
-              Alert.alert('차단 실패', e?.message ?? '차단에 실패했습니다.');
-            }
-          },
-        },
-      ],
-    );
+    confirm({
+      title: '사용자 차단',
+      description: `${target.author.nickname || target.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않아요.`,
+      confirmLabel: '차단',
+      onConfirm: async () => {
+        try {
+          await blockUser(target.userId);
+          setBlockedIds((prev) => new Set(prev).add(target.userId));
+        } catch (e: any) {
+          info('차단 실패', e?.message ?? '차단에 실패했어요.');
+        }
+      },
+    });
   };
 
   // 노트 글 자체 신고/차단 (남의 노트 열람 시)
@@ -410,33 +406,27 @@ export default function FaithNoteDetailScreen() {
     setReportNoteOpen(false);
     try {
       await reportContent('NOTE', noteId, reason);
-      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+      info('신고가 접수되었어요', '검토 후 조치할게요.');
     } catch (e: any) {
-      Alert.alert('신고 실패', e?.message ?? '신고에 실패했습니다.');
+      info('신고 실패', e?.message ?? '신고에 실패했어요.');
     }
   };
 
   const handleBlockNote = () => {
     if (!note.writerId) return;
-    Alert.alert(
-      '사용자 차단',
-      `${note.author.nickname || note.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않습니다.`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '차단',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await blockUser(note.writerId!);
-              router.back();
-            } catch (e: any) {
-              Alert.alert('차단 실패', e?.message ?? '차단에 실패했습니다.');
-            }
-          },
-        },
-      ],
-    );
+    confirm({
+      title: '사용자 차단',
+      description: `${note.author.nickname || note.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않아요.`,
+      confirmLabel: '차단',
+      onConfirm: async () => {
+        try {
+          await blockUser(note.writerId!);
+          router.back();
+        } catch (e: any) {
+          info('차단 실패', e?.message ?? '차단에 실패했어요.');
+        }
+      },
+    });
   };
 
   // ⋯ → 수정: 작성 화면을 편집 모드(noteId)로 진입
@@ -772,6 +762,8 @@ export default function FaithNoteDetailScreen() {
         onClose={() => setReportNoteOpen(false)}
         onSelect={handleReportNote}
       />
+
+      {popupNode}
 
       {/* ── 댓글 삭제 확인 팝업 ── */}
       <Popup

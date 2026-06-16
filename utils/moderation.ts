@@ -54,3 +54,46 @@ export async function unblockUser(blockedUserId: string): Promise<void> {
 export async function getBlockedUsers(): Promise<BlockedUser[]> {
   return apiClient<BlockedUser[]>('/blocks');
 }
+
+// ─── 관리자 신고함 ──────────────────────────────────────────────────────────
+
+export type ReportStatus = 'PENDING' | 'RESOLVED';
+
+export type AdminReport = {
+  reportId: string;
+  reporterId: string;
+  reporterNickname: string | null;
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: string | null;
+  status: ReportStatus;
+  createdAt: string;
+  contentPreview: string | null;
+  targetAuthorId: string | null;
+  targetAuthorNickname: string | null;
+};
+
+/** 신고 대상 타입 → 한글 라벨 */
+export const REPORT_TARGET_LABEL: Record<ReportTargetType, string> = {
+  CERTIFICATION: '인증글',
+  CERTIFICATION_COMMENT: '인증 댓글',
+  NOTE: '노트',
+  NOTE_COMMENT: '노트 댓글',
+  USER: '사용자',
+};
+
+/** 관리자: 신고 목록 (기본 PENDING) */
+export async function getAdminReports(status: 'PENDING' | 'ALL' = 'PENDING'): Promise<AdminReport[]> {
+  const res = await apiClient<{ reports: AdminReport[] } | AdminReport[]>(`/admin/reports?status=${status}`);
+  return Array.isArray(res) ? res : (res?.reports ?? []);
+}
+
+/** 관리자: 신고 처리완료(콘텐츠 유지) */
+export async function resolveReport(reportId: string): Promise<void> {
+  await apiClient<void>(`/admin/reports/${reportId}/resolve`, { method: 'POST' });
+}
+
+/** 관리자: 신고된 콘텐츠 삭제(takedown) + 처리완료 */
+export async function takedownReportedContent(reportId: string): Promise<void> {
+  await apiClient<void>(`/admin/reports/${reportId}/content`, { method: 'DELETE' });
+}
