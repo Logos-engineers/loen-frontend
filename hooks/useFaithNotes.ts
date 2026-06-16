@@ -121,7 +121,9 @@ export function fromPrayer(note: PrayerNote): FaithNoteItem {
 }
 
 export function fromWord(note: WordNote): FaithNoteItem {
-  const passageLabel = `${note.bibleName} ${note.chapter}장 ${note.phaseStart}-${note.phaseEnd}절`;
+  // 구절 표시 = 책 N장 a-b절 (단일 절이면 "a절"). 피드는 참조만, 본문은 상세에서.
+  const verseLabel = note.phaseEnd > note.phaseStart ? `${note.phaseStart}-${note.phaseEnd}` : `${note.phaseStart}`;
+  const passageRef = `${note.bibleName} ${note.chapter}장 ${verseLabel}절`;
   return {
     id: String(note.id),
     tab: 'WORD',
@@ -129,7 +131,7 @@ export function fromWord(note: WordNote): FaithNoteItem {
     createdAt: note.createdAt,
     author: toAuthor(note.writerName, note.writerNickname),
     timeAgo: getTimeAgo(note.createdAt),
-    content: [passageLabel, note.title, note.description].filter(Boolean),
+    content: [passageRef, note.description].filter(Boolean),
     likeCount: note.likeCount,
     commentCount: note.commentCount ?? 0,
     isLiked: note.isLiked,

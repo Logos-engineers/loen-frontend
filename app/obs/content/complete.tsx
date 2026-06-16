@@ -25,13 +25,16 @@ export default function ObsCompleteScreen() {
   const isFromHome = params.origin === 'home';
 
   // 완료 화면을 1.5초간 보여준 뒤 자동 이동 (별도 CTA 없음)
-  // 홈에서 시작한 플로우면 플로우를 모두 닫고 홈(탭)으로, 아니면 OBS 모아보기로
+  //
+  // 스택 정규화: 보기/복습 플로우 화면들이 그대로 쌓인 채 완료에 도달하므로, 단순 replace나
+  // dismissTo('/obs')로는 (특히 /obs가 스택에 없을 때 dismissTo가 /obs를 새로 push 하면서)
+  // 플로우 화면이 모아보기 아래에 남아 "모아보기 뒤로가기 → OBS 보기"로 되돌아간다.
+  // → dismissAll()로 플로우 전체를 닫아 탭(홈)까지 비운 뒤, 모아보기 진입이었으면 /obs만 새로
+  //   쌓는다. 결과 스택은 항상 [홈] 또는 [홈, 모아보기]가 되어 "뒤로가기 = 홈"이 보장된다.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isFromHome) router.dismissAll();
-      // replace는 완료 화면만 교체해 플로우 화면들이 스택에 남는다 → 모아보기 뒤로가기가
-      // 플로우로 되돌아감. dismissTo로 플로우 전체를 닫고 기존 /obs로 복귀해야 [홈, 모아보기]가 됨.
-      else router.dismissTo('/obs');
+      router.dismissAll();
+      if (!isFromHome) router.push('/obs');
     }, 1500);
     return () => clearTimeout(timer);
   }, [isFromHome]);

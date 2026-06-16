@@ -2,7 +2,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fontWeight } from '@/constants/tokens';
 import { OBSHeader } from '@/components/obs/obs-header';
@@ -10,6 +10,7 @@ import { QuizProgress } from '@/components/obs/quiz-progress';
 import { completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
 
 export default function ObsQ3Screen() {
+  const insets = useSafeAreaInsets();
   const [revealed, setRevealed] = useState(false);
   const params = useLocalSearchParams<{
     title?: string;
@@ -125,9 +126,9 @@ export default function ObsQ3Screen() {
           </View>
         </ScrollView>
 
-        {/* CTA — 정답 공개 후에만 노출 */}
+        {/* CTA — 정답 공개 후에만 노출. 절대위치라 bottom inset 직접 적용 */}
         {revealed && (
-          <View style={styles.bottomCta}>
+          <View style={[styles.bottomCta, { paddingBottom: insets.bottom + 14 }]}>
             <LinearGradient
               colors={['rgba(242,244,247,0)', '#F2F4F7']}
               style={styles.bottomGradient}

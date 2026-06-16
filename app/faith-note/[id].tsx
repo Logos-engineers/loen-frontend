@@ -5,6 +5,8 @@ import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import Popup from '@/components/ui/overlay/Popup';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { normalizePrayerReactions } from '@/hooks/useFaithNotes';
+import { BIBLE_BOOKS } from '@/constants/BibleMeta';
+import { getBibleBook } from '@/constants/bibleLoader';
 import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -13,7 +15,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,6 +23,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 type NoteDetailParams = {
   id?: string;
@@ -214,7 +216,26 @@ function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): Fa
   };
 }
 
+// 선택한 절 범위(phaseStart~phaseEnd)의 성경 본문 줄을 앱 로컬 데이터에서 만든다. "1 본문…"
+function buildScriptureLines(bibleName: string, chapter: number, start: number, end: number): string[] {
+  const code = BIBLE_BOOKS.find((b) => b.korName === bibleName)?.code;
+  if (!code || !start) return [];
+  const chap = getBibleBook(code)?.chapters.find((c) => c.chapter === chapter);
+  if (!chap) return [];
+  return chap.verses
+    .filter((v) => v.verse >= start && v.verse <= (end || start))
+    .map((v) => `${v.verse} ${v.text}`);
+}
+
 function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
+  const verseLabel = detail.phaseEnd > detail.phaseStart ? `${detail.phaseStart}-${detail.phaseEnd}` : `${detail.phaseStart}`;
+  const passageRef = `${detail.bibleName} ${detail.chapter}장 ${verseLabel}절`;
+  // 상세에서는 선택한 절의 실제 성경 본문을 함께 표시한다 (참조 → 본문 → 묵상).
+  const scriptureLines = buildScriptureLines(detail.bibleName, detail.chapter, detail.phaseStart, detail.phaseEnd);
+  const content: string[] = [passageRef];
+  if (scriptureLines.length) content.push('', ...scriptureLines);
+  if (detail.description?.trim()) content.push('', detail.description.trim());
+
   return {
     id: detail.id,
     tab: 'WORD',
@@ -227,11 +248,7 @@ function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithN
       imageUri: fallback.author.imageUri,
     },
     timeAgo: getTimeAgo(detail.createdAt),
-    content: [
-      `${detail.bibleName} ${detail.chapter}장 ${detail.phaseStart}-${detail.phaseEnd}절`,
-      detail.title,
-      detail.description,
-    ].filter(Boolean),
+    content,
     likeCount: detail.likeCount,
     commentCount: detail.commentCount ?? 0,
     isLiked: detail.isLiked,
@@ -300,6 +317,7 @@ function CommentRow({ item, onMenuPress }: { item: CommentItem; onMenuPress?: (i
 }
 
 export default function FaithNoteDetailScreen() {
+  const kb = useKeyboardHeight();
   const params = useLocalSearchParams<NoteDetailParams>();
   const fallback = useMemo(() => buildFallbackNote(toStringValue(params.id)), [params.id]);
   const noteId = toStringValue(params.id) ?? fallback.id;
@@ -521,12 +539,9 @@ export default function FaithNoteDetailScreen() {
       <StatusBar style="dark" backgroundColor={colors.background.base} />
       <FaithNoteHeader />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        // edge-to-edge(Android)에선 창 자동 리사이즈가 안 되므로 양 플랫폼 모두 padding 처리.
-        // KAV가 자기 화면 위치(헤더 아래)를 이미 측정하므로 offset은 0 — 더 주면 그만큼 회색 공백이 생긴다.
-        behavior="padding"
-      >
+      {/* 키보드가 올라오면 스크롤+입력바 전체를 키보드 높이만큼 올림 → 입력바가 키보드 바로 위에 붙음.
+          KeyboardAvoidingView는 키보드 내린 뒤 잔여 padding이 남아 입력바 아래 여백이 생겨 직접 처리. */}
+      <View style={[styles.flex, { marginBottom: kb }]}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -584,7 +599,7 @@ export default function FaithNoteDetailScreen() {
             <Text style={styles.submitText}>{editingComment ? '수정' : '등록'}</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {/* ── 삭제 확인 팝업 ── */}
       <Popup

@@ -1,225 +1,185 @@
+/**
+ * select-bible.tsx — 말씀노트 성경 구절 선택
+ * 통독표(plan.tsx)와 동일한 책+장 그리드(BookCard). 장을 누르면 가운데 VerseSelectModal 팝업이
+ * 떠서 그 장의 절(節)을 여러 개 선택한다. 한 책 / 한 장 / 여러 절.
+ */
+
+import BookCard from '@/components/BiblePlan/BookCard';
+import VerseSelectModal from '@/components/BiblePlan/VerseSelectModal';
+import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { BiblePassage, getPendingPassages, setPendingPassages } from '@/utils/faith-note-store';
+import { getPendingPassages, setPendingPassages } from '@/utils/faith-note-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// ─── 성경 데이터 ──────────────────────────────────────────────────────────────
-
-const OT_BOOKS = [
-  { name: '창세기', eng: 'Genesis', chapters: 50 },
-  { name: '출애굽기', eng: 'Exodus', chapters: 40 },
-  { name: '레위기', eng: 'Leviticus', chapters: 27 },
-  { name: '민수기', eng: 'Numbers', chapters: 36 },
-  { name: '신명기', eng: 'Deuteronomy', chapters: 34 },
-  { name: '여호수아', eng: 'Joshua', chapters: 24 },
-  { name: '사사기', eng: 'Judges', chapters: 21 },
-  { name: '룻기', eng: 'Ruth', chapters: 4 },
-  { name: '사무엘상', eng: '1 Samuel', chapters: 31 },
-  { name: '사무엘하', eng: '2 Samuel', chapters: 24 },
-  { name: '열왕기상', eng: '1 Kings', chapters: 22 },
-  { name: '열왕기하', eng: '2 Kings', chapters: 25 },
-  { name: '시편', eng: 'Psalms', chapters: 150 },
-  { name: '잠언', eng: 'Proverbs', chapters: 31 },
-  { name: '이사야', eng: 'Isaiah', chapters: 66 },
-  { name: '예레미야', eng: 'Jeremiah', chapters: 52 },
-  { name: '에스겔', eng: 'Ezekiel', chapters: 48 },
-  { name: '다니엘', eng: 'Daniel', chapters: 12 },
-];
-
-const NT_BOOKS = [
-  { name: '마태복음', eng: 'Matthew', chapters: 28 },
-  { name: '마가복음', eng: 'Mark', chapters: 16 },
-  { name: '누가복음', eng: 'Luke', chapters: 24 },
-  { name: '요한복음', eng: 'John', chapters: 21 },
-  { name: '사도행전', eng: 'Acts', chapters: 28 },
-  { name: '로마서', eng: 'Romans', chapters: 16 },
-  { name: '고린도전서', eng: '1 Corinthians', chapters: 16 },
-  { name: '고린도후서', eng: '2 Corinthians', chapters: 13 },
-  { name: '갈라디아서', eng: 'Galatians', chapters: 6 },
-  { name: '에베소서', eng: 'Ephesians', chapters: 6 },
-  { name: '빌립보서', eng: 'Philippians', chapters: 4 },
-  { name: '히브리서', eng: 'Hebrews', chapters: 13 },
-  { name: '야고보서', eng: 'James', chapters: 5 },
-  { name: '요한계시록', eng: 'Revelation', chapters: 22 },
-];
-
-// ─── 유틸 ─────────────────────────────────────────────────────────────────────
-
-function passageKey(book: string, chapter: number) {
-  return `${book}:${chapter}`;
-}
-
-// ─── Chapter Grid ─────────────────────────────────────────────────────────────
-
-function ChapterGrid({
-  book,
-  chapters,
-  selected,
-  onToggle,
-}: {
-  book: string;
-  chapters: number;
-  selected: Set<string>;
-  onToggle: (p: BiblePassage) => void;
-}) {
-  return (
-    <View style={g.grid}>
-      {Array.from({ length: chapters }, (_, i) => i + 1).map((ch) => {
-        const key = passageKey(book, ch);
-        const isSelected = selected.has(key);
-        return (
-          <TouchableOpacity
-            key={ch}
-            style={g.cellWrap}
-            onPress={() => onToggle({ book, chapter: ch })}
-            activeOpacity={0.7}
-          >
-            <View style={[g.cellBox, isSelected && g.cellBoxSelected]}>
-              <Text style={[g.cellText, isSelected && g.cellTextSelected]}>{ch}</Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-const g = StyleSheet.create({
-  // Figma: total page — flex-wrap, gap 4, pt8 pb16 px16 (배경 없음 = 흰 페이지 노출)
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    gap: 4,
-  },
-  // Figma: 각 칸 래퍼 px4 py2
-  cellWrap: { paddingHorizontal: 4, paddingVertical: 2 },
-  // Figma: 셀 박스 24×24, rounded 8, 연한 그레이(#F2F4F7) / 선택 시 primary
-  cellBox: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.xs,
-    backgroundColor: colors.background.base,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cellBoxSelected: { backgroundColor: colors.primary },
-  // Figma: Caption_12_SB, color 0.8
-  cellText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary, textAlign: 'center' },
-  cellTextSelected: { color: '#fff' },
-});
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
-type TabType = 'OT' | 'NT';
+type Testament = 'old' | 'new';
 
 export default function SelectBibleScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<TabType>('OT');
-  const [selected, setSelected] = useState<Set<string>>(() => {
-    const s = new Set<string>();
-    getPendingPassages().forEach((p) => s.add(passageKey(p.book, p.chapter)));
-    return s;
-  });
+  const [activeTestament, setActiveTestament] = useState<Testament>('old');
 
-  const books = tab === 'OT' ? OT_BOOKS : NT_BOOKS;
+  // 선택된 단일 구절 (한 책 / 한 장 / 여러 절)
+  const initial = getPendingPassages()[0];
+  const [selBook, setSelBook] = useState<BibleBook | null>(
+    initial ? BIBLE_BOOKS.find((b) => b.korName === initial.book) ?? null : null,
+  );
+  const [selChapter, setSelChapter] = useState<number | null>(initial?.chapter ?? null);
+  const [selVerses, setSelVerses] = useState<number[]>(initial?.verses ?? []);
 
-  const toggle = (p: BiblePassage) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      const key = passageKey(p.book, p.chapter);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  // 절 선택 팝업 컨텍스트
+  const [verseCtx, setVerseCtx] = useState<{ book: BibleBook; chapter: number } | null>(null);
+
+  const bookList = BIBLE_BOOKS.filter((b) => b.testament === activeTestament);
+
+  const openVerseModal = (book: BibleBook, chapter: number) => setVerseCtx({ book, chapter });
+
+  const handleVerseConfirm = (verses: number[]) => {
+    if (!verseCtx) return;
+    if (verses.length === 0) {
+      setSelBook(null);
+      setSelChapter(null);
+      setSelVerses([]);
+    } else {
+      setSelBook(verseCtx.book);
+      setSelChapter(verseCtx.chapter);
+      setSelVerses(verses);
+    }
+    setVerseCtx(null);
   };
 
   const handleDone = () => {
-    const passages: BiblePassage[] = [];
-    selected.forEach((key) => {
-      const [book, ch] = key.split(':');
-      passages.push({ book, chapter: Number(ch) });
-    });
-    // book 순서 유지 (OT → NT 순)
-    const allBooks = [...OT_BOOKS, ...NT_BOOKS].map((b) => b.name);
-    passages.sort((a, b) => {
-      const ai = allBooks.indexOf(a.book);
-      const bi = allBooks.indexOf(b.book);
-      if (ai !== bi) return ai - bi;
-      return a.chapter - b.chapter;
-    });
-    setPendingPassages(passages);
+    if (selBook && selChapter && selVerses.length > 0) {
+      setPendingPassages([{ book: selBook.korName, chapter: selChapter, verses: selVerses }]);
+    } else {
+      setPendingPassages([]);
+    }
     router.back();
   };
 
+  // 그리드에서 현재 선택된 장 하이라이트
+  const highlightChapters = (book: BibleBook) =>
+    selBook?.code === book.code && selChapter ? [selChapter] : [];
+
+  const totalSelected = selVerses.length;
+
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
 
       {/* 헤더 */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerBack}
+          activeOpacity={0.7}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>성경 선택</Text>
+        <View style={styles.headerBack} />
       </View>
 
-      {/* 탭 */}
-      <View style={s.tabRow}>
-        {(['OT', 'NT'] as TabType[]).map((t) => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)} activeOpacity={0.7}>
-            <Text style={[s.tabText, tab === t && s.tabTextActive]}>
-              {t === 'OT' ? '구약성경' : '신약성경'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* 책 + 장 목록 */}
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
-        {books.map((book) => (
-          <View key={book.name}>
-            <View style={s.bookHeader}>
-              <Text style={s.bookName}>{book.name}</Text>
-              <Text style={s.bookEng}>{book.eng}</Text>
-            </View>
-            <ChapterGrid book={book.name} chapters={book.chapters} selected={selected} onToggle={toggle} />
+      {/* 통독표와 동일: 구약/신약 탭 + 책별 장 그리드. 장을 누르면 절 선택 팝업. */}
+      <FlatList
+        key={activeTestament}
+        style={styles.list}
+        data={bookList}
+        keyExtractor={(book) => book.code}
+        renderItem={({ item }) => (
+          <BookCard
+            book={item}
+            readChapters={highlightChapters(item)}
+            onPress={() => {}}
+            onChapterPress={(ch) => openVerseModal(item, ch)}
+            edgeToEdge
+          />
+        )}
+        ListHeaderComponent={
+          <View style={styles.tabRow}>
+            {(['old', 'new'] as Testament[]).map((t) => {
+              const isActive = activeTestament === t;
+              return (
+                <TouchableOpacity key={t} style={styles.tabBtn} activeOpacity={0.8} onPress={() => setActiveTestament(t)}>
+                  <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
+                    {t === 'old' ? '구약성경' : '신약성경'}
+                  </Text>
+                  {isActive && <View style={styles.tabUnderline} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        ))}
-        <View style={{ height: 24 }} />
-      </ScrollView>
+        }
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
+      />
 
       {/* 완료 버튼 */}
-      <View style={s.footer}>
-        <TouchableOpacity style={s.doneBtn} onPress={handleDone} activeOpacity={0.8}>
-          <Text style={s.doneBtnText}>선택 완료 ({selected.size})</Text>
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.doneBtn} onPress={handleDone} activeOpacity={0.8}>
+          <Text style={styles.doneBtnText}>선택 완료 ({totalSelected}절)</Text>
         </TouchableOpacity>
       </View>
+
+      {/* 절 멀티선택 팝업 */}
+      <VerseSelectModal
+        visible={!!verseCtx}
+        book={verseCtx?.book ?? null}
+        chapter={verseCtx?.chapter ?? 0}
+        selectedVerses={
+          verseCtx && selBook?.code === verseCtx.book.code && selChapter === verseCtx.chapter
+            ? selVerses
+            : []
+        }
+        onClose={() => setVerseCtx(null)}
+        onConfirm={handleVerseConfirm}
+      />
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.elevated },
-  header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.background.elevated },
-  tabRow: { flexDirection: 'row', backgroundColor: colors.background.elevated, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: colors.primary },
-  tabText: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.text.secondary },
-  tabTextActive: { color: colors.primary, fontWeight: fontWeight.semibold },
-  scroll: { flex: 1 },
-  // Figma: 책 제목 줄 — 그레이(#F2F4F7) 스트립, px16 py8
-  bookHeader: { backgroundColor: colors.background.base, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  // Figma: 창세기 — Title3_16_B (Bold 16, 0.8)
-  bookName: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary, lineHeight: 26 },
-  // Figma: Genesis — Caption_12_M (Medium 12, 0.5)
-  bookEng: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.secondary, lineHeight: 18 },
-  footer: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, backgroundColor: colors.background.elevated, borderTopWidth: 1, borderTopColor: colors.border },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    height: 48,
+    backgroundColor: colors.background.elevated,
+  },
+  headerBack: { width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: fontSize.heading,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  list: { flex: 1 },
+  scrollContent: { paddingBottom: spacing.md },
+
+  tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
+  tabBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.secondary },
+  tabBtnTextActive: { color: colors.primary, fontWeight: fontWeight.bold },
+  tabUnderline: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, backgroundColor: colors.primary, borderRadius: 1 },
+
+  footer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: 14,
+    backgroundColor: colors.background.elevated,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   doneBtn: { height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   doneBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: '#fff' },
 });

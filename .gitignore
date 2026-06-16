@@ -54,3 +54,6 @@ google-services.json
 
 # IDE
 .idea/
+
+# Logs
+*.log
