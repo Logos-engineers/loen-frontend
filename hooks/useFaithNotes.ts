@@ -5,6 +5,7 @@ import type { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
 
 export type ThanksNote = {
   id: string;
+  writerId?: string;
   writerName: string;
   writerNickname: string | null;
   answers: string[];
@@ -34,6 +35,7 @@ export function normalizePrayerReactions(reactions?: ReactionItem[]): ReactionIt
 
 export type PrayerNote = {
   id: string;
+  writerId?: string;
   writerName: string;
   writerNickname: string | null;
   prayers: string[];
@@ -45,6 +47,7 @@ export type PrayerNote = {
 
 export type WordNote = {
   id: string;
+  writerId?: string;
   writerName: string;
   writerNickname: string | null;
   bibleName: string;
@@ -90,6 +93,7 @@ function toAuthor(writerName: string, writerNickname?: string | null) {
 export function fromThanks(note: ThanksNote): FaithNoteItem {
   return {
     id: String(note.id),
+    writerId: note.writerId,
     tab: 'THANKS',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
@@ -106,6 +110,7 @@ export function fromThanks(note: ThanksNote): FaithNoteItem {
 export function fromPrayer(note: PrayerNote): FaithNoteItem {
   return {
     id: String(note.id),
+    writerId: note.writerId,
     tab: 'PRAYER',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
@@ -126,6 +131,7 @@ export function fromWord(note: WordNote): FaithNoteItem {
   const passageRef = `${note.bibleName} ${note.chapter}장 ${verseLabel}절`;
   return {
     id: String(note.id),
+    writerId: note.writerId,
     tab: 'WORD',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,

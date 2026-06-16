@@ -9,6 +9,8 @@ import { FaithNoteTab, FaithNoteTabBar } from '@/components/faith-note/faith-not
 import { FaithNoteWeekSelector } from '@/components/faith-note/faith-note-week-selector';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { getTodayKey, getWeekStart } from '@/utils/faith-note-store';
+import { blockUser, reportContent } from '@/utils/moderation';
+import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
 import { useFaithNotes } from '@/hooks/useFaithNotes';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -59,8 +61,46 @@ export default function FaithNoteListScreen() {
 
   const { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
   const [pendingDelete, setPendingDelete] = useState<FaithNoteItem | null>(null);
+  const [reportTarget, setReportTarget] = useState<FaithNoteItem | null>(null);
 
   useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+
+  // ⋯ → 신고 (남의 노트)
+  const handleReport = useCallback(async (reason: string) => {
+    const target = reportTarget;
+    setReportTarget(null);
+    if (!target) return;
+    try {
+      await reportContent('NOTE', target.id, reason);
+      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+    } catch (e: any) {
+      Alert.alert('신고 실패', e?.message ?? '신고에 실패했습니다.');
+    }
+  }, [reportTarget]);
+
+  // ⋯ → 차단 (남의 노트) → 차단 후 피드 새로고침(서버가 차단자 글 제외)
+  const handleBlock = useCallback((item: FaithNoteItem) => {
+    if (!item.writerId) return;
+    Alert.alert(
+      '사용자 차단',
+      `${item.author.nickname || item.author.name}님을 차단할까요?\n차단하면 이 사용자의 글과 댓글이 더 이상 보이지 않습니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '차단',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(item.writerId!);
+              refetch();
+            } catch (e: any) {
+              Alert.alert('차단 실패', e?.message ?? '차단에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  }, [refetch]);
 
   // 단일 선택 — 같은 요일을 다시 누르면 해제(전체 보기)
   const handleToggleDate = (key: string) => {
@@ -147,6 +187,8 @@ export default function FaithNoteListScreen() {
               onReactionToggle={toggleReaction}
               onEdit={handleEdit}
               onDelete={setPendingDelete}
+              onReport={setReportTarget}
+              onBlock={handleBlock}
             />
           )}
           contentContainerStyle={[
@@ -202,6 +244,12 @@ export default function FaithNoteListScreen() {
           { label: '취소', onPress: () => setPendingDelete(null), variant: 'secondary' },
           { label: '삭제', onPress: handleDeleteConfirm, variant: 'primary' },
         ]}
+      />
+
+      <ReportReasonSheet
+        visible={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        onSelect={handleReport}
       />
     </SafeAreaView>
   );

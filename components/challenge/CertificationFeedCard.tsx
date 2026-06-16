@@ -2,6 +2,8 @@ import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constan
 import type { MyCertificationItem, OtherCertificationItem } from '@/hooks/useChallenge';
 import { useCertificationLike } from '@/hooks/useChallenge';
 import { apiClient } from '@/utils/apiClient';
+import { blockUser, reportContent } from '@/utils/moderation';
+import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -283,7 +285,41 @@ export function MyCertificationCard({ item, onDelete, onEditDone }: MyCertificat
   );
 }
 
-export function OtherCertificationCard({ item }: { item: OtherCertificationItem }) {
+export function OtherCertificationCard({ item, onChanged }: { item: OtherCertificationItem; onChanged?: () => void }) {
+  const [reportVisible, setReportVisible] = useState(false);
+
+  const handleReport = async (reason: string) => {
+    try {
+      await reportContent('CERTIFICATION', item.certId, reason);
+      Alert.alert('신고 접수', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+    } catch (err) {
+      Alert.alert('신고 실패', (err as Error)?.message || '신고에 실패했습니다.');
+    }
+  };
+
+  const handleBlock = () => {
+    if (!item.writerId) return;
+    Alert.alert(
+      '사용자 차단',
+      `${item.writerName}님을 차단할까요?\n차단하면 이 사용자의 인증글과 댓글이 더 이상 보이지 않습니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '차단',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(item.writerId!);
+              onChanged?.();
+            } catch (err) {
+              Alert.alert('차단 실패', (err as Error)?.message || '차단에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.rowItem}>
@@ -296,10 +332,17 @@ export function OtherCertificationCard({ item }: { item: OtherCertificationItem 
         </View>
         <MeatballMenu
           options={[
-            { label: '신고하기', onPress: () => {}, destructive: true },
+            { label: '신고하기', onPress: () => setReportVisible(true), destructive: true },
+            ...(item.writerId ? [{ label: '사용자 차단', onPress: handleBlock, destructive: true }] : []),
           ]}
         />
       </View>
+
+      <ReportReasonSheet
+        visible={reportVisible}
+        onClose={() => setReportVisible(false)}
+        onSelect={handleReport}
+      />
 
       {item.meditationText ? (
         <View style={styles.bodySection}>

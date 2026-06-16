@@ -207,6 +207,7 @@ export type MyCertificationItem = {
 
 export type OtherCertificationItem = {
   certId: string;
+  writerId?: string;
   writerName: string;
   writerProfileImage: string | null;
   date: string;
