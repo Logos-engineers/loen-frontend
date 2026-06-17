@@ -1,5 +1,6 @@
 import * as Notifications from '@/utils/notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -19,6 +20,13 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  // Pretendard 번들 — 디자인 텍스트 스타일(Pretendard Medium/SemiBold/Bold)을 실제 굵기로 렌더.
+  // 미로딩 시 fontFamily가 시스템 폰트 regular로 폴백돼 굵기 위계가 사라진다.
+  const [fontsLoaded] = useFonts({
+    'Pretendard-Medium': require('../assets/fonts/Pretendard-Medium.otf'),
+    'Pretendard-SemiBold': require('../assets/fonts/Pretendard-SemiBold.otf'),
+    'Pretendard-Bold': require('../assets/fonts/Pretendard-Bold.otf'),
+  });
   const { isLoggedIn, isNewUser, isInitialized, initialize } = useAuthStore();
   // 루트 네비게이터(Stack)가 마운트된 뒤에만 navigate 해야 함 (마운트 전 router.replace 시 크래시)
   const rootNavState = useRootNavigationState();
@@ -82,6 +90,9 @@ export default function RootLayout() {
     });
     return () => subscription.remove();
   }, []);
+
+  // 폰트 로딩 완료까지 렌더 보류 (로컬 에셋이라 거의 즉시). 미스타일 텍스트 깜빡임 방지.
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={styles.root}>
