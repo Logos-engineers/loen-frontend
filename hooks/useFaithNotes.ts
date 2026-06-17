@@ -45,6 +45,14 @@ export type PrayerNote = {
   reactions: ReactionItem[];
 };
 
+export type WordPassage = {
+  bibleName: string;
+  bibleEnglishShort?: string;
+  chapter: number;
+  phaseStart: number;
+  phaseEnd: number;
+};
+
 export type WordNote = {
   id: string;
   writerId?: string;
@@ -54,6 +62,8 @@ export type WordNote = {
   chapter: number;
   phaseStart: number;
   phaseEnd: number;
+  // 여러 구절. 구버전 데이터는 없을 수 있어 단일 필드로 폴백.
+  passages?: WordPassage[];
   title: string;
   description: string;
   likeCount: number;
@@ -125,10 +135,26 @@ export function fromPrayer(note: PrayerNote): FaithNoteItem {
   };
 }
 
+// 구절 하나의 참조 라벨 = "책 N:a-b" (단일 절이면 "책 N:a"). 예: 창세기 1:6-7
+function passageRefLabel(p: WordPassage): string {
+  const verseLabel = p.phaseEnd > p.phaseStart ? `${p.phaseStart}-${p.phaseEnd}` : `${p.phaseStart}`;
+  return `${p.bibleName} ${p.chapter}:${verseLabel}`;
+}
+
+// 노트의 구절 목록 — passages가 있으면 그대로, 없으면 단일 필드를 1개짜리로 폴백(구버전 호환).
+export function wordPassages(note: WordNote | WordPassage & { passages?: WordPassage[] }): WordPassage[] {
+  if (note.passages && note.passages.length > 0) return note.passages;
+  return [{
+    bibleName: note.bibleName,
+    chapter: note.chapter,
+    phaseStart: note.phaseStart,
+    phaseEnd: note.phaseEnd,
+  }];
+}
+
 export function fromWord(note: WordNote): FaithNoteItem {
-  // 구절 표시 = 책 N장 a-b절 (단일 절이면 "a절"). 피드는 참조만, 본문은 상세에서.
-  const verseLabel = note.phaseEnd > note.phaseStart ? `${note.phaseStart}-${note.phaseEnd}` : `${note.phaseStart}`;
-  const passageRef = `${note.bibleName} ${note.chapter}장 ${verseLabel}절`;
+  // 구절 표시 = 책 N장 a-b절. 여러 구절이면 ", "로 이어 모두 노출. 피드는 참조만, 본문은 상세에서.
+  const passageRef = wordPassages(note).map(passageRefLabel).join(', ');
   return {
     id: String(note.id),
     writerId: note.writerId,
@@ -145,15 +171,18 @@ export function fromWord(note: WordNote): FaithNoteItem {
   };
 }
 
-const ENDPOINTS: Record<FaithNoteTab, string> = {
-  THANKS: '/notes/thanks?scope=ALL',
-  PRAYER: '/notes/prayers?scope=ALL',
-  WORD: '/bible/notes?scope=ALL',
+// 공개 범위. PUBLIC = 전체공개만(홈 '같이 기도해요' 등 공개 피드), ALL = 내가 볼 수 있는 전체(탭 목록).
+export type FaithNoteScope = 'ALL' | 'PUBLIC' | 'MINE' | 'OIKOS';
+
+const ENDPOINT_BASE: Record<FaithNoteTab, string> = {
+  THANKS: '/notes/thanks',
+  PRAYER: '/notes/prayers',
+  WORD: '/bible/notes',
 };
 
 const PAGE_SIZE = 10;
 
-export function useFaithNotes(activeTab: FaithNoteTab) {
+export function useFaithNotes(activeTab: FaithNoteTab, scope: FaithNoteScope = 'ALL') {
   const [notes, setNotes] = useState<FaithNoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);       // 초기/refetch 로딩
   const [isLoadingMore, setIsLoadingMore] = useState(false); // 추가 페이지 로딩
@@ -172,7 +201,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     else setIsLoading(true);
     setError(null);
     try {
-      const url = `${ENDPOINTS[tab]}&page=${pageNum}&size=${PAGE_SIZE}`;
+      const url = `${ENDPOINT_BASE[tab]}?scope=${scope}&page=${pageNum}&size=${PAGE_SIZE}`;
       let mapped: FaithNoteItem[] = [];
       let total = 0;
       if (tab === 'THANKS') {
@@ -200,7 +229,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
       else setIsLoading(false);
       loadingRef.current = false;
     }
-  }, []);
+  }, [scope]);
 
   // 탭 변경/마운트 → 0페이지부터 새로 로드
   useEffect(() => {
@@ -208,7 +237,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     loadedCountRef.current = 0;
     hasMoreRef.current = true;
     load(activeTab, 0, false);
-  }, [activeTab, load]);
+  }, [activeTab, scope, load]);
 
   // 다음 페이지 로드 (FlatList onEndReached)
   const loadMore = useCallback(() => {
@@ -277,7 +306,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     loadedCountRef.current = 0;
     hasMoreRef.current = true;
     load(activeTab, 0, false);
-  }, [activeTab, load]);
+  }, [activeTab, scope, load]);
 
   return { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch };
 }

@@ -49,7 +49,7 @@ export default function GoalSuccessScreen() {
   };
 
   const handleLater = () => {
-    router.replace('/(tabs)/plan');
+    router.replace('/plan');
   };
 
   return (

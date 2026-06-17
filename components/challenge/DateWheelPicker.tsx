@@ -1,27 +1,10 @@
 import React from 'react';
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import WheelColumn from './WheelColumn';
 
 const ITEM_HEIGHT = 36;
 const VISIBLE_ITEMS = 7;
 const HALF = 3; // Math.floor(VISIBLE_ITEMS / 2)
-
-const DISTANCE_STYLES = [
-  { fontSize: 23, color: '#16191C' }, // distance 0 — selected
-  { fontSize: 18, color: '#AEAEAE' }, // distance 1
-  { fontSize: 14, color: '#C2C2C2' }, // distance 2
-  { fontSize: 12, color: '#D7D7D7' }, // distance 3+
-] as const;
-
-function getDistanceStyle(distance: number) {
-  return DISTANCE_STYLES[Math.min(Math.abs(distance), 3)];
-}
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -53,10 +36,6 @@ function getYearOptions(value: Date, minimumDate?: Date, maximumDate?: Date) {
   const maxYear = maximumDate?.getFullYear() ?? currentYear + 4;
   const lastYear = Math.max(value.getFullYear(), maxYear);
   return Array.from({ length: lastYear - firstYear + 1 }, (_, i) => firstYear + i);
-}
-
-function snapIndex(e: NativeSyntheticEvent<NativeScrollEvent>, maxIndex: number) {
-  return Math.max(0, Math.min(maxIndex, Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT)));
 }
 
 type Props = {
@@ -104,88 +83,35 @@ export default function DateWheelPicker({ value, onChange, minimumDate, maximumD
     <View style={styles.container}>
       <View style={styles.wheel}>
         {/* 년 */}
-        <ScrollView
-          style={styles.yearColumn}
-          contentContainerStyle={styles.columnContent}
-          contentOffset={{ x: 0, y: yearIdx * ITEM_HEIGHT }}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
-          onMomentumScrollEnd={e =>
-            update(years[snapIndex(e, years.length - 1)], selectedMonth, selectedDay)
-          }
-          onScrollEndDrag={e =>
-            update(years[snapIndex(e, years.length - 1)], selectedMonth, selectedDay)
-          }
-        >
-          {years.map((year, i) => {
-            const s = getDistanceStyle(i - yearIdx);
-            return (
-              <View key={year} style={styles.item}>
-                <Text style={[styles.itemText, { fontSize: s.fontSize, color: isYearDisabled(year) ? '#D7D7D7' : s.color }]}>
-                  {year}
-                </Text>
-              </View>
-            );
-          })}
-        </ScrollView>
-
+        <WheelColumn
+          items={years}
+          selectedIndex={yearIdx}
+          onIndexChange={(i) => update(years[i], selectedMonth, selectedDay)}
+          itemHeight={ITEM_HEIGHT}
+          visibleItems={VISIBLE_ITEMS}
+          width={YEAR_WIDTH}
+          isDisabled={(i) => isYearDisabled(years[i])}
+        />
         {/* 월 */}
-        <ScrollView
-          style={styles.monthColumn}
-          contentContainerStyle={styles.columnContent}
-          contentOffset={{ x: 0, y: monthIdx * ITEM_HEIGHT }}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
-          onMomentumScrollEnd={e =>
-            update(selectedYear, snapIndex(e, months.length - 1), selectedDay)
-          }
-          onScrollEndDrag={e =>
-            update(selectedYear, snapIndex(e, months.length - 1), selectedDay)
-          }
-        >
-          {months.map((month, i) => {
-            const s = getDistanceStyle(i - monthIdx);
-            return (
-              <View key={month} style={styles.item}>
-                <Text style={[styles.itemText, { fontSize: s.fontSize, color: isMonthDisabled(month) ? '#D7D7D7' : s.color }]}>
-                  {month + 1}
-                </Text>
-              </View>
-            );
-          })}
-        </ScrollView>
-
+        <WheelColumn
+          items={months.map((m) => m + 1)}
+          selectedIndex={monthIdx}
+          onIndexChange={(i) => update(selectedYear, i, selectedDay)}
+          itemHeight={ITEM_HEIGHT}
+          visibleItems={VISIBLE_ITEMS}
+          width={MONTH_WIDTH}
+          isDisabled={(i) => isMonthDisabled(i)}
+        />
         {/* 일 */}
-        <ScrollView
-          style={styles.dayColumn}
-          contentContainerStyle={styles.columnContent}
-          contentOffset={{ x: 0, y: dayIdx * ITEM_HEIGHT }}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
-          onMomentumScrollEnd={e =>
-            update(selectedYear, selectedMonth, days[snapIndex(e, days.length - 1)])
-          }
-          onScrollEndDrag={e =>
-            update(selectedYear, selectedMonth, days[snapIndex(e, days.length - 1)])
-          }
-        >
-          {days.map((day, i) => {
-            const s = getDistanceStyle(i - dayIdx);
-            return (
-              <View key={day} style={styles.item}>
-                <Text style={[styles.itemText, { fontSize: s.fontSize, color: isDayDisabled(day) ? '#D7D7D7' : s.color }]}>
-                  {day}
-                </Text>
-              </View>
-            );
-          })}
-        </ScrollView>
+        <WheelColumn
+          items={days}
+          selectedIndex={dayIdx}
+          onIndexChange={(i) => update(selectedYear, selectedMonth, days[i])}
+          itemHeight={ITEM_HEIGHT}
+          visibleItems={VISIBLE_ITEMS}
+          width={DAY_WIDTH}
+          isDisabled={(i) => isDayDisabled(days[i])}
+        />
       </View>
 
       <View style={[styles.separator, { top: ITEM_HEIGHT * HALF }]} pointerEvents="none" />
@@ -223,10 +149,4 @@ const styles = StyleSheet.create({
     gap: GAP,
     backgroundColor: '#FFFFFF',
   },
-  yearColumn: { width: YEAR_WIDTH, height: ITEM_HEIGHT * VISIBLE_ITEMS },
-  monthColumn: { width: MONTH_WIDTH, height: ITEM_HEIGHT * VISIBLE_ITEMS },
-  dayColumn: { width: DAY_WIDTH, height: ITEM_HEIGHT * VISIBLE_ITEMS },
-  columnContent: { paddingVertical: ITEM_HEIGHT * HALF },
-  item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
-  itemText: { fontWeight: '400' },
 });

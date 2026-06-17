@@ -20,6 +20,7 @@ import { getBibleBook } from '@/constants/bibleLoader';
 import { colors } from '@/constants/tokens';
 import { StatusBar } from 'expo-status-bar';
 import { useBiblePlan } from '@/hooks/useBiblePlan';
+import { useBibleHistory } from '@/hooks/useBibleHistory';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -57,6 +58,8 @@ export default function BibleReadScreen() {
 
   // ── bible plan sync ─────────────────────────────────────────────────────
   const { planData, toggleChapter } = useBiblePlan();
+  // 통독표(성경통독표)는 서버 history를 읽으므로, 로컬 토글과 함께 서버에도 읽음/해제를 반영한다.
+  const { checkChapters, uncheckChapters } = useBibleHistory();
 
   const isChapterRead = useMemo(() => {
     return Boolean(planData.readChapters[bookCode]?.[String(chapterNum)]);
@@ -162,15 +165,17 @@ export default function BibleReadScreen() {
     if (isChapterRead) {
       // 이미 읽은 상태일 때 -> 읽음 해제만 수행, 다음 장으로 이동 금지
       await toggleChapter(bookCode, chapterNum);
+      await uncheckChapters(bookCode, [chapterNum]); // 서버 통독표에도 해제 반영
       return;
     }
-    
+
     // 아직 읽지 않은 상태일 때 -> 읽음 처리 후 다음 장으로 이동 (책 경계 넘어 다음 책 1장까지)
     await toggleChapter(bookCode, chapterNum);
+    await checkChapters(bookCode, [chapterNum]); // 서버 통독표에도 읽음 반영
     if (nextTarget) {
       goToChapter(nextTarget.bookCode, nextTarget.chapterNum);
     }
-  }, [bookCode, chapterNum, goToChapter, isChapterRead, toggleChapter, nextTarget]);
+  }, [bookCode, chapterNum, goToChapter, isChapterRead, toggleChapter, checkChapters, uncheckChapters, nextTarget]);
 
   // ── scroll ───────────────────────────────────────────────────────────────
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {

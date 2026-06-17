@@ -45,12 +45,26 @@ function formatVerseRange(verses?: number[]): string {
   return contiguous && sorted.length > 1 ? `${min}-${max}` : sorted.join(', ');
 }
 
-// 단일 구절 라벨: "창세기 1장 1-5절"
+// 구절 라벨: "창세기 1:1-5" 또는 여러 곳이면 "창세기 1:1-5 외 2곳"
 function formatPassages(passages: BiblePassage[]): string {
   if (passages.length === 0) return '';
   const p = passages[0];
   const vr = formatVerseRange(p.verses);
-  return `${p.book} ${p.chapter}장${vr ? ` ${vr}절` : ''}`;
+  const first = `${p.book} ${p.chapter}${vr ? `:${vr}` : ''}`;
+  return passages.length === 1 ? first : `${first} 외 ${passages.length - 1}곳`;
+}
+
+// BiblePassage(book=korName, verses[]) → 백엔드 구절 형식
+function toBackendPassage(p: BiblePassage) {
+  const meta = BIBLE_BOOKS.find((b) => b.korName === p.book);
+  const vs = p.verses ?? [];
+  return {
+    bibleName: p.book,
+    bibleEnglishShort: meta?.code ?? '',
+    chapter: p.chapter,
+    phaseStart: vs.length ? Math.min(...vs) : 1,
+    phaseEnd: vs.length ? Math.max(...vs) : 1,
+  };
 }
 
 // ─── Quit Modal ───────────────────────────────────────────────────────────────
@@ -115,16 +129,22 @@ export default function WriteWordScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const detail = await apiClient<{ bibleName: string; chapter: number; phaseStart?: number; phaseEnd?: number; description: string }>(
-          `/bible/notes/${noteId}`,
-        );
+        const detail = await apiClient<{
+          bibleName: string; chapter: number; phaseStart?: number; phaseEnd?: number; description: string;
+          passages?: { bibleName: string; chapter: number; phaseStart: number; phaseEnd: number }[];
+        }>(`/bible/notes/${noteId}`);
         if (cancelled) return;
-        if (detail.bibleName) {
-          const start = detail.phaseStart ?? 0;
-          const end = detail.phaseEnd ?? 0;
-          const verses: number[] = [];
-          for (let v = start; v <= end; v++) if (v > 0) verses.push(v);
-          setPassages([{ book: detail.bibleName, chapter: detail.chapter, verses }]);
+        const rangeToVerses = (s?: number, e?: number) => {
+          const out: number[] = [];
+          for (let v = s ?? 0; v <= (e ?? 0); v++) if (v > 0) out.push(v);
+          return out;
+        };
+        if (detail.passages && detail.passages.length > 0) {
+          setPassages(detail.passages.map((p) => ({
+            book: p.bibleName, chapter: p.chapter, verses: rangeToVerses(p.phaseStart, p.phaseEnd),
+          })));
+        } else if (detail.bibleName) {
+          setPassages([{ book: detail.bibleName, chapter: detail.chapter, verses: rangeToVerses(detail.phaseStart, detail.phaseEnd) }]);
         }
         setBodyText(detail.description ?? '');
       } catch {
@@ -161,11 +181,13 @@ export default function WriteWordScreen() {
       : null;
     const verses = firstPassage?.verses ?? [];
     const payload = {
+      // 단일 필드 = 첫 구절(primary, 하위호환). 전체는 passages로 전송.
       bibleName: firstPassage?.book ?? '',
       bibleEnglishShort: bookMeta?.code ?? '',
       chapter: firstPassage?.chapter ?? 1,
       phaseStart: verses.length ? Math.min(...verses) : 1,
       phaseEnd: verses.length ? Math.max(...verses) : 1,
+      passages: passages.map(toBackendPassage),
       title: passageLabel || (firstPassage?.book ?? ''),
       description: bodyText.trim(),
     };

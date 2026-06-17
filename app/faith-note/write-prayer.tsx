@@ -398,7 +398,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    gap: spacing.xs,
+    // Figma: 번호 배지와 입력 텍스트 사이 간격 8px (#18)
+    gap: spacing.sm,
   },
   // Figma: 번호 배지 — 밝은 박스(24×24, rounded 8)
   inputNumberBox: {

@@ -143,7 +143,10 @@ export default function GoalScreen() {
   // 목표 편집 상태 — 서버 목표(existingGoal)에서 prefill, 없으면 기본값
   const [days, setDays] = useState(existingGoal?.daysPerWeek ?? WEEKLY_GOAL_DAYS);
   const [chaptersPerDay, setChaptersPerDay] = useState(existingGoal?.chaptersPerDay ?? WEEKLY_GOAL_CHAPTERS_PER_DAY);
-  const [selectedBook, setSelectedBook] = useState<string | null>(existingGoal?.bookCode ?? null);
+  const [selectedBooks, setSelectedBooks] = useState<string[]>(existingGoal?.bookCodes ?? []);
+  const toggleBook = useCallback((code: string) => {
+    setSelectedBooks((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+  }, []);
   // 알람만 로컬 (기기 알림 스케줄)
   const [alarms, setAlarms] = useState<AlarmItem[]>(planData.alarms ?? []);
 
@@ -159,7 +162,7 @@ export default function GoalScreen() {
     if (existingGoal) {
       setDays(existingGoal.daysPerWeek);
       setChaptersPerDay(existingGoal.chaptersPerDay);
-      setSelectedBook(existingGoal.bookCode);
+      setSelectedBooks(existingGoal.bookCodes ?? []);
     }
   }, [isGoalLoading, existingGoal]);
 
@@ -179,10 +182,12 @@ export default function GoalScreen() {
 
   const weeklyTotal = days * chaptersPerDay;
 
-  const selectedBookName =
-    selectedBook
-      ? BIBLE_BOOKS.find(b => b.code === selectedBook)?.korName ?? selectedBook
-      : null;
+  // 여러 권 선택 표시: "창세기" 또는 "창세기 외 2권"
+  const selectedBookName = (() => {
+    if (selectedBooks.length === 0) return null;
+    const first = BIBLE_BOOKS.find(b => b.code === selectedBooks[0])?.korName ?? selectedBooks[0];
+    return selectedBooks.length === 1 ? first : `${first} 외 ${selectedBooks.length - 1}권`;
+  })();
 
   // ── 뒤로가기 ─────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -229,7 +234,7 @@ export default function GoalScreen() {
     setIsSaving(true);
     try {
       // 책 미선택 시 기본 GEN. 목표는 서버에만 저장(단일 출처).
-      const bookCode = selectedBook ?? 'GEN';
+      const bookCodes = selectedBooks.length > 0 ? selectedBooks : ['GEN'];
 
       // 알람 드래프트 커밋: 기존 OS 알림 전부 취소 → 활성 드래프트만 재스케줄 → 로컬 영속.
       // (편집 중엔 아무것도 영속하지 않으므로 취소/이전 시 자동으로 원상복구됨)
@@ -250,17 +255,21 @@ export default function GoalScreen() {
         ? `${String(firstAlarm.hour).padStart(2, '0')}:${String(firstAlarm.minute).padStart(2, '0')}`
         : '08:00';
 
-      const payload = { bookCode, daysPerWeek: days, chaptersPerDay, notificationEnabled, notificationDays, notificationTime };
+      const payload = { bookCodes, daysPerWeek: days, chaptersPerDay, notificationEnabled, notificationDays, notificationTime };
 
       const saved = existingGoal?.id
         ? await updateGoal(existingGoal.id, payload)
         : await createGoal(payload);
 
+      // 완료 화면 라벨: "창세기" 또는 "창세기 외 2권"
+      const names = saved.bookNames ?? [];
+      const bookLabel = names.length <= 1 ? (names[0] ?? '창세기') : `${names[0]} 외 ${names.length - 1}권`;
+
       // 완료 화면에 실제 설정값 전달 (하드코딩 제거)
       router.replace({
         pathname: '/plan/goal-success',
         params: {
-          bookName: saved.bookName,
+          bookName: bookLabel,
           chapters: String(saved.weeklyTarget),
           weekLabel: formatWeekLabel(saved.weekStartDate),
         },
@@ -270,7 +279,7 @@ export default function GoalScreen() {
       Alert.alert('오류', '목표 저장에 실패했습니다.');
       setIsSaving(false);
     }
-  }, [days, chaptersPerDay, selectedBook, alarms, planData.alarms, scheduleAlarm, cancelAlarm, saveAlarms, existingGoal, createGoal, updateGoal, isSaving]);
+  }, [days, chaptersPerDay, selectedBooks, alarms, planData.alarms, scheduleAlarm, cancelAlarm, saveAlarms, existingGoal, createGoal, updateGoal, isSaving]);
 
   // ── 스와이프 우측 삭제 버튼 ──────────────────────────────────────
   const renderRightActions = useCallback(
@@ -486,8 +495,8 @@ export default function GoalScreen() {
       {/* 성경책 선택 바텀시트 */}
       <BibleSelectSheet
         visible={showBibleSheet}
-        selectedCode={selectedBook}
-        onSelect={setSelectedBook}
+        selectedCodes={selectedBooks}
+        onToggle={toggleBook}
         onClose={() => setShowBibleSheet(false)}
       />
 

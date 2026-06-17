@@ -12,6 +12,9 @@ import { QuizProgress } from '@/components/obs/quiz-progress';
 
 import HumanOMarkIcon from '@/assets/icons/humanOmark.svg';
 
+// 정답 비교용 정규화: 앞뒤 공백 제거 + 연속 공백을 하나로. ('하나님의  선물' 같은 띄어쓰기 차이 허용)
+const normalize = (s: string) => s.trim().replace(/\s+/g, ' ');
+
 export default function MultipleChoiceQuizScreen() {
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string; step1Result?: string }>();
   const contentId = params.contentId ? Number(params.contentId) : null;
@@ -41,20 +44,16 @@ export default function MultipleChoiceQuizScreen() {
 
   const CORRECT_ANSWER = quiz?.correctAnswer ?? '';
 
+  // 입력 중에는 채점하지 않는다. 길이가 정답과 같아지는 순간 즉시 채점하면
+  // 한글 마지막 음절을 조합하는 도중(자음만 입력된 상태)에 오답으로 처리된다.
+  // 채점은 '완료'(onSubmitEditing)/제출 시점에만 수행.
   const handleInputChange = (text: string) => {
     setInputText(text);
     setQuizState('idle');
-    if (CORRECT_ANSWER.length > 0 && text.length === CORRECT_ANSWER.length) {
-      if (text === CORRECT_ANSWER) {
-        setModalType('correct');
-      } else {
-        setQuizState('incorrect');
-      }
-    }
   };
 
   const handleSubmit = () => {
-    if (inputText === CORRECT_ANSWER) {
+    if (normalize(inputText) === normalize(CORRECT_ANSWER)) {
       setModalType('correct');
     } else {
       setQuizState('incorrect');
@@ -69,7 +68,7 @@ export default function MultipleChoiceQuizScreen() {
 
   const handleNextQuiz = () => {
     setModalType('none');
-    const step2Result = inputText.trim() === CORRECT_ANSWER ? 'correct' : 'incorrect';
+    const step2Result = normalize(inputText) === normalize(CORRECT_ANSWER) ? 'correct' : 'incorrect';
     router.push({
       pathname: '/obs/quiz/essay',
       params: {
@@ -169,7 +168,8 @@ export default function MultipleChoiceQuizScreen() {
                       handleInputChange(text);
                     }
                   }}
-                  maxLength={CORRECT_ANSWER.length || 20}
+                  // maxLength는 두지 않는다 — 마지막 칸이 자음으로 찼을 때 모음을 못 붙여
+                  // 한글 음절 조합이 막히는 문제(모음 입력 불가)를 유발한다. 길이 제한은 위 onChangeText 가드가 담당.
                   style={styles.hiddenInput}
                   autoCorrect={false}
                   spellCheck={false}

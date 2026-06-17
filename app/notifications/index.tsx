@@ -68,7 +68,7 @@ function navigateTo(item: NotificationItem) {
   } else if (item.type === 'OBS_PUBLISHED') {
     router.push('/obs');
   } else if (item.type === 'BIBLE_REMINDER') {
-    router.push('/(tabs)/plan');
+    router.push('/plan');
   } else if (item.type === 'ATTENDANCE_REMINDER') {
     router.push('/mypage');
   }

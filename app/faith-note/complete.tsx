@@ -43,12 +43,12 @@ export default function CompleteScreen() {
   const noteLabel = noteType === 'PRAYER' ? '기도노트' : noteType === 'WORD' ? '말씀노트' : '감사노트';
   const today = getKoreanDate();
 
-  // 작성 완료 화면을 잠시 보여준 뒤 메인(홈)으로 자동 이동.
+  // 작성 완료 화면을 잠시 보여준 뒤 신앙노트 목록으로 자동 이동.
   // (이 화면엔 별도 네비게이션이 없어, 없으면 사용자가 갇혀 저장이 안 된 것처럼 보임)
   // 1.5초는 (특히 링크 공유 시트 닫은 직후) 너무 빨라 완료 화면을 못 보고 지나감 → 2.5초.
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/(tabs)');
+      router.replace('/faith-note');
     }, 2500);
     return () => clearTimeout(timer);
   }, []);
