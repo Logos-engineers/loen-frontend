@@ -8,7 +8,7 @@ import BookCard from '@/components/BiblePlan/BookCard';
 import VerseSelectModal from '@/components/BiblePlan/VerseSelectModal';
 import { BIBLE_BOOKS, BibleBook } from '@/constants/BibleMeta';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { getPendingPassages, setPendingPassages } from '@/utils/faith-note-store';
+import { BiblePassage, getPendingPassages, setPendingPassages } from '@/utils/faith-note-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,13 +22,8 @@ export default function SelectBibleScreen() {
   const router = useRouter();
   const [activeTestament, setActiveTestament] = useState<Testament>('old');
 
-  // 선택된 단일 구절 (한 책 / 한 장 / 여러 절)
-  const initial = getPendingPassages()[0];
-  const [selBook, setSelBook] = useState<BibleBook | null>(
-    initial ? BIBLE_BOOKS.find((b) => b.korName === initial.book) ?? null : null,
-  );
-  const [selChapter, setSelChapter] = useState<number | null>(initial?.chapter ?? null);
-  const [selVerses, setSelVerses] = useState<number[]>(initial?.verses ?? []);
+  // 선택된 구절들 (여러 책/장/절 누적). 한 책의 한 장 = 하나의 passage.
+  const [passages, setPassages] = useState<BiblePassage[]>(() => getPendingPassages());
 
   // 절 선택 팝업 컨텍스트
   const [verseCtx, setVerseCtx] = useState<{ book: BibleBook; chapter: number } | null>(null);
@@ -37,34 +32,28 @@ export default function SelectBibleScreen() {
 
   const openVerseModal = (book: BibleBook, chapter: number) => setVerseCtx({ book, chapter });
 
+  // 해당 장의 절을 확정 → 같은 책/장 기존 항목을 갱신(누적), 절이 비면 그 항목만 제거
   const handleVerseConfirm = (verses: number[]) => {
     if (!verseCtx) return;
-    if (verses.length === 0) {
-      setSelBook(null);
-      setSelChapter(null);
-      setSelVerses([]);
-    } else {
-      setSelBook(verseCtx.book);
-      setSelChapter(verseCtx.chapter);
-      setSelVerses(verses);
-    }
+    const bookName = verseCtx.book.korName;
+    const chapter = verseCtx.chapter;
+    setPassages((prev) => {
+      const rest = prev.filter((p) => !(p.book === bookName && p.chapter === chapter));
+      return verses.length === 0 ? rest : [...rest, { book: bookName, chapter, verses }];
+    });
     setVerseCtx(null);
   };
 
   const handleDone = () => {
-    if (selBook && selChapter && selVerses.length > 0) {
-      setPendingPassages([{ book: selBook.korName, chapter: selChapter, verses: selVerses }]);
-    } else {
-      setPendingPassages([]);
-    }
+    setPendingPassages(passages);
     router.back();
   };
 
-  // 그리드에서 현재 선택된 장 하이라이트
+  // 그리드 하이라이트: 그 책에서 선택된 모든 장
   const highlightChapters = (book: BibleBook) =>
-    selBook?.code === book.code && selChapter ? [selChapter] : [];
+    passages.filter((p) => p.book === book.korName).map((p) => p.chapter);
 
-  const totalSelected = selVerses.length;
+  const totalSelected = passages.length;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -125,7 +114,7 @@ export default function SelectBibleScreen() {
       {/* 완료 버튼 */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.doneBtn} onPress={handleDone} activeOpacity={0.8}>
-          <Text style={styles.doneBtnText}>선택 완료 ({totalSelected}절)</Text>
+          <Text style={styles.doneBtnText}>선택 완료 ({totalSelected}곳)</Text>
         </TouchableOpacity>
       </View>
 
@@ -135,8 +124,8 @@ export default function SelectBibleScreen() {
         book={verseCtx?.book ?? null}
         chapter={verseCtx?.chapter ?? 0}
         selectedVerses={
-          verseCtx && selBook?.code === verseCtx.book.code && selChapter === verseCtx.chapter
-            ? selVerses
+          verseCtx
+            ? passages.find((p) => p.book === verseCtx.book.korName && p.chapter === verseCtx.chapter)?.verses ?? []
             : []
         }
         onClose={() => setVerseCtx(null)}

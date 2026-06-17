@@ -84,6 +84,14 @@ type PrayerDetailResponse = {
   reactions: { emoji: string; count: number; reacted: boolean }[];
 };
 
+type WordPassageResponse = {
+  bibleName: string;
+  bibleEnglishShort?: string;
+  chapter: number;
+  phaseStart: number;
+  phaseEnd: number;
+};
+
 type WordDetailResponse = {
   id: string;
   writerId: string;
@@ -93,6 +101,8 @@ type WordDetailResponse = {
   chapter: number;
   phaseStart: number;
   phaseEnd: number;
+  // 여러 구절. 구버전 데이터는 없을 수 있어 단일 필드로 폴백.
+  passages?: WordPassageResponse[];
   title: string;
   description: string;
   likeCount: number;
@@ -238,12 +248,22 @@ function buildScriptureLines(bibleName: string, chapter: number, start: number, 
 }
 
 function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithNoteItem {
-  const verseLabel = detail.phaseEnd > detail.phaseStart ? `${detail.phaseStart}-${detail.phaseEnd}` : `${detail.phaseStart}`;
-  const passageRef = `${detail.bibleName} ${detail.chapter}장 ${verseLabel}절`;
-  // 상세에서는 선택한 절의 실제 성경 본문을 함께 표시한다 (참조 → 본문 → 묵상).
-  const scriptureLines = buildScriptureLines(detail.bibleName, detail.chapter, detail.phaseStart, detail.phaseEnd);
-  const content: string[] = [passageRef];
-  if (scriptureLines.length) content.push('', ...scriptureLines);
+  // passages가 있으면 모든 구절을, 없으면 단일 필드를 1개짜리로 폴백(구버전 호환).
+  const passages: WordPassageResponse[] =
+    detail.passages && detail.passages.length > 0
+      ? detail.passages
+      : [{ bibleName: detail.bibleName, chapter: detail.chapter, phaseStart: detail.phaseStart, phaseEnd: detail.phaseEnd }];
+
+  // 각 구절마다: 참조(책 N장 a-b절) → 실제 성경 본문. 구절 사이는 빈 줄로 구분. 마지막에 묵상 내용.
+  const content: string[] = [];
+  passages.forEach((p, i) => {
+    const verseLabel = p.phaseEnd > p.phaseStart ? `${p.phaseStart}-${p.phaseEnd}` : `${p.phaseStart}`;
+    const passageRef = `${p.bibleName} ${p.chapter}:${verseLabel}`;
+    const scriptureLines = buildScriptureLines(p.bibleName, p.chapter, p.phaseStart, p.phaseEnd);
+    if (i > 0) content.push('');
+    content.push(passageRef);
+    if (scriptureLines.length) content.push('', ...scriptureLines);
+  });
   if (detail.description?.trim()) content.push('', detail.description.trim());
 
   return {
