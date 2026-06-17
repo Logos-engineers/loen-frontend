@@ -7,6 +7,7 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { FlatList, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/tokens';
+import { HEADER_TOP_GAP } from './BibleHeader';
 import { VerseItem } from './VerseItem';
 
 export type VerseListItem =
@@ -28,7 +29,8 @@ const VerseList = forwardRef<VerseListHandle, VerseListProps>(
   ({ items, highlightVerseNum, listFooter, onScroll }, ref) => {
     const listRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
-    const paddingTop = insets.top + 68;
+    // 절대위치 헤더(BibleHeader) 높이만큼 본문을 내려 가림 방지. 헤더 상단 간격(HEADER_TOP_GAP)도 포함.
+    const paddingTop = insets.top + 68 + HEADER_TOP_GAP;
 
     useImperativeHandle(ref, () => ({
       scrollToVerse: (verseNum: number) => {

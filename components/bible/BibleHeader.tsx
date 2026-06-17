@@ -21,6 +21,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// 상태바 아래 ~ 네비게이션 행 사이 상단 간격. 본문 오프셋(VerseList)도 이 값을 더해 맞춘다.
+export const HEADER_TOP_GAP = 14;
+
 type BibleHeaderProps = {
   bookName: string;
   chapterNum: number;
@@ -32,7 +35,7 @@ export function BibleHeader({ bookName, chapterNum, onSearchPress, onTitlePress 
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrapper, { paddingTop: insets.top }]}>
+    <View style={[styles.wrapper, { paddingTop: insets.top + HEADER_TOP_GAP }]}>
       <View style={styles.bar}>
         <View style={styles.side}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.iconBtn}>
@@ -127,6 +130,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
+    // Figma 텍스트 스타일 Title2_18_SB (Pretendard SemiBold 18 / 줄높이 140%).
+    // Pretendard 번들 후 본문 말씀(Medium)과 굵기 대비가 살아 권 제목 계층이 명확해진다 (#16).
     fontFamily: 'Pretendard-SemiBold',
     fontSize: 18,
     lineHeight: 18 * 1.4,
