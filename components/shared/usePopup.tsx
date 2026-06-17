@@ -21,9 +21,21 @@ export function usePopup() {
   const [state, setState] = useState<PopupState | null>(null);
   const close = useCallback(() => setState(null), []);
 
-  /** 단일 '확인' 안내 팝업 */
-  const info = useCallback((title: string, description?: string) => {
-    setState({ title, description, buttons: [{ label: '확인', onPress: () => setState(null) }] });
+  /** 단일 '확인' 안내 팝업. onConfirm을 주면 '확인'을 눌렀을 때(닫힌 뒤) 실행한다. */
+  const info = useCallback((title: string, description?: string, onConfirm?: () => void) => {
+    setState({
+      title,
+      description,
+      buttons: [
+        {
+          label: '확인',
+          onPress: () => {
+            setState(null);
+            onConfirm?.();
+          },
+        },
+      ],
+    });
   }, []);
 
   /** 취소/실행 2버튼 확인 팝업 */

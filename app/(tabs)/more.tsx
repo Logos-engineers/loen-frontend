@@ -20,6 +20,7 @@ interface MenuItem {
 const BASE_MENU_ITEMS: MenuItem[] = [
   { label: '마이페이지', icon: 'person-outline', onPress: () => router.push('/mypage') },
   { label: '공지사항', icon: 'notifications-outline', onPress: () => router.push('/notice') },
+  { label: '피드백 보내기', icon: 'chatbubble-ellipses-outline', onPress: () => router.push('/feedback') },
 ];
 
 export default function MoreScreen() {
@@ -45,6 +46,7 @@ export default function MoreScreen() {
           { label: '공지 등록', icon: 'megaphone-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/notice/write') },
           { label: '배너 관리', icon: 'image-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/banner/admin') },
           { label: '신고 관리', icon: 'flag-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/admin/reports') },
+          { label: '피드백 관리', icon: 'chatbubbles-outline' as keyof typeof Ionicons.glyphMap, onPress: () => router.push('/admin/feedback') },
         ]
       : []),
   ];
