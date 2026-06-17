@@ -110,7 +110,7 @@ export function BibleReadingSection() {
           {/* 전체 통독표 보기 — 밑줄 없음 */}
           <TouchableOpacity
             style={styles.linkRow}
-            onPress={() => router.push('/(tabs)/plan')}
+            onPress={() => router.push('/plan')}
           >
             <Text style={styles.linkText}>전체 통독표 보기</Text>
           </TouchableOpacity>

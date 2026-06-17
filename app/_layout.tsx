@@ -56,7 +56,7 @@ export default function RootLayout() {
       const data = response.notification.request.content.data ?? {};
       const type = data.type;
       if (type === 'bible-plan') {
-        router.push('/(tabs)/plan');
+        router.push('/plan');
       } else if (type === 'NOTE_COMMENT' || type === 'NOTE_LIKE' || type === 'NOTE_OIKOS_SHARE') {
         if (data.targetId && data.targetType) {
           router.push({ pathname: '/faith-note/[id]', params: { id: data.targetId, tab: data.targetType } });
@@ -72,7 +72,7 @@ export default function RootLayout() {
       } else if (type === 'OBS_PUBLISHED') {
         router.push('/obs');
       } else if (type === 'BIBLE_REMINDER') {
-        router.push('/(tabs)/plan');
+        router.push('/plan');
       } else if (type === 'ATTENDANCE_REMINDER') {
         router.push('/mypage');
       } else {
@@ -113,6 +113,7 @@ export default function RootLayout() {
           <Stack.Screen name="obs/quiz/ox" options={{ headerShown: false }} />
           <Stack.Screen name="obs/quiz/multiple" options={{ headerShown: false }} />
           <Stack.Screen name="obs/quiz/essay" options={{ headerShown: false }} />
+          <Stack.Screen name="plan/index" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal" options={{ headerShown: false }} />
           <Stack.Screen name="plan/goal-success" options={{ headerShown: false }} />
           <Stack.Screen name="notifications/index" options={{ headerShown: false }} />

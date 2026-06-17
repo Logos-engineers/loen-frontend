@@ -66,7 +66,7 @@ export default function MyPageScreen() {
         <TouchableOpacity
           style={styles.planButton}
           activeOpacity={0.7}
-          onPress={() => router.push('/(tabs)/plan')}
+          onPress={() => router.push('/plan')}
         >
           <Ionicons name="book-outline" size={20} color={colors.primary} />
           <Text style={styles.planButtonText}>성경통독표</Text>
