@@ -10,8 +10,8 @@ export type BibleHistory = {
 
 export type BibleGoal = {
   id: string;
-  bookCode: string;
-  bookName: string;
+  bookCodes: string[];
+  bookNames: string[];
   daysPerWeek: number;
   chaptersPerDay: number;
   weeklyTarget: number;
@@ -23,7 +23,7 @@ export type BibleGoal = {
 };
 
 type GoalPayload = {
-  bookCode: string;
+  bookCodes: string[];
   daysPerWeek: number;
   chaptersPerDay: number;
   notificationEnabled?: boolean;

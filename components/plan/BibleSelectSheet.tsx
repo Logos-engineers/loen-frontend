@@ -35,12 +35,12 @@ const SPRING_CONFIG = { damping: 20, stiffness: 200 };
 
 type Props = {
   visible: boolean;
-  selectedCode: string | null;
-  onSelect: (code: string) => void;
+  selectedCodes: string[];
+  onToggle: (code: string) => void;
   onClose: () => void;
 };
 
-export default function BibleSelectSheet({ visible, selectedCode, onSelect, onClose }: Props) {
+export default function BibleSelectSheet({ visible, selectedCodes, onToggle, onClose }: Props) {
   const translateY = useSharedValue(0);
   const scrollY = useSharedValue(0);       // 내부 리스트 스크롤 위치
 
@@ -81,12 +81,12 @@ export default function BibleSelectSheet({ visible, selectedCode, onSelect, onCl
     translateY.value = 0;
   }, [translateY]);
 
-  // 선택만 하고 닫지는 않음
+  // 여러 권 토글 (선택/해제). 닫지는 않음 — '완료'로 닫는다.
   const handleSelect = useCallback(
     (code: string) => {
-      onSelect(code);
+      onToggle(code);
     },
-    [onSelect]
+    [onToggle]
   );
 
   return (
@@ -118,6 +118,8 @@ export default function BibleSelectSheet({ visible, selectedCode, onSelect, onCl
           {/* 리스트 */}
           <FlatList
             data={BIBLE_BOOKS}
+            // 선택 변경 시 행 리렌더 강제 (없으면 FlatList가 PureComponent라 체크가 갱신 안 됨)
+            extraData={selectedCodes}
             keyExtractor={(item) => item.code}
             style={styles.list}
             onScroll={(e) => {
@@ -126,7 +128,7 @@ export default function BibleSelectSheet({ visible, selectedCode, onSelect, onCl
             scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
-              const isSelected = item.code === selectedCode;
+              const isSelected = selectedCodes.includes(item.code);
               return (
                 <TouchableOpacity
                   style={[styles.bookRow, isSelected && styles.bookRowSelected]}
