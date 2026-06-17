@@ -1,37 +1,15 @@
 import { colors } from '@/constants/tokens';
 import React from 'react';
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import WheelColumn from './WheelColumn';
 import { TimePeriod } from './challengeTypes';
 
 const ITEM_HEIGHT = 36;
 const DEFAULT_VISIBLE_ITEMS = 7; // 위아래 3개씩 + 선택 1
 
-// 거리별 텍스트 스타일 (Figma 시간 휠 메타데이터: 23/#16191C → 18/#AEAEAE → 14/#C2C2C2 → 12/#D7D7D7)
-const DISTANCE_STYLES = [
-  { fontSize: 23, color: '#16191C' }, // distance 0 — selected
-  { fontSize: 18, color: '#AEAEAE' }, // distance 1
-  { fontSize: 14, color: '#C2C2C2' }, // distance 2
-  { fontSize: 12, color: '#D7D7D7' }, // distance 3+
-] as const;
-
-function getDistanceStyle(distance: number) {
-  return DISTANCE_STYLES[Math.min(Math.abs(distance), 3)];
-}
-
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 const PERIODS = ['AM', 'PM'] as const;
-
-function snapIndex(e: NativeSyntheticEvent<NativeScrollEvent>, maxIndex: number) {
-  return Math.max(0, Math.min(maxIndex, Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT)));
-}
 
 function getTimeParts(date: Date) {
   const hour = date.getHours();
@@ -59,7 +37,6 @@ type Props = {
 export default function TimeWheelPicker({ value, onChange, visibleItems = DEFAULT_VISIBLE_ITEMS }: Props) {
   const half = Math.floor(visibleItems / 2);
   const wheelHeight = ITEM_HEIGHT * visibleItems;
-  const padVertical = ITEM_HEIGHT * half;
   const { hour12, minute, period } = getTimeParts(value);
   const hourIdx = hour12 - 1;
   const minuteIdx = minute;
@@ -71,72 +48,32 @@ export default function TimeWheelPicker({ value, onChange, visibleItems = DEFAUL
     <View style={styles.container}>
       <View style={[styles.wheel, { height: wheelHeight }]}>
         {/* 시 */}
-        <ScrollView
-          style={[styles.numberColumn, { height: wheelHeight }]}
-          contentContainerStyle={[styles.columnContent, { paddingVertical: padVertical }]}
-          contentOffset={{ x: 0, y: hourIdx * ITEM_HEIGHT }}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
-          onMomentumScrollEnd={e => update(HOURS[snapIndex(e, HOURS.length - 1)], minute, period)}
-          onScrollEndDrag={e => update(HOURS[snapIndex(e, HOURS.length - 1)], minute, period)}
-        >
-          {HOURS.map((h, i) => {
-            const s = getDistanceStyle(i - hourIdx);
-            return (
-              <View key={h} style={styles.item}>
-                <Text style={[styles.itemText, { fontSize: s.fontSize, color: s.color }]}>{h}</Text>
-              </View>
-            );
-          })}
-        </ScrollView>
-
+        <WheelColumn
+          items={HOURS}
+          selectedIndex={hourIdx}
+          onIndexChange={(i) => update(HOURS[i], minute, period)}
+          itemHeight={ITEM_HEIGHT}
+          visibleItems={visibleItems}
+          width={COL_WIDTH}
+        />
         {/* 분 */}
-        <ScrollView
-          style={[styles.numberColumn, { height: wheelHeight }]}
-          contentContainerStyle={[styles.columnContent, { paddingVertical: padVertical }]}
-          contentOffset={{ x: 0, y: minuteIdx * ITEM_HEIGHT }}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
-          onMomentumScrollEnd={e => update(hour12, MINUTES[snapIndex(e, MINUTES.length - 1)], period)}
-          onScrollEndDrag={e => update(hour12, MINUTES[snapIndex(e, MINUTES.length - 1)], period)}
-        >
-          {MINUTES.map((m, i) => {
-            const s = getDistanceStyle(i - minuteIdx);
-            return (
-              <View key={m} style={styles.item}>
-                <Text style={[styles.itemText, { fontSize: s.fontSize, color: s.color }]}>
-                  {m.toString().padStart(2, '0')}
-                </Text>
-              </View>
-            );
-          })}
-        </ScrollView>
-
+        <WheelColumn
+          items={MINUTES.map((m) => m.toString().padStart(2, '0'))}
+          selectedIndex={minuteIdx}
+          onIndexChange={(i) => update(hour12, MINUTES[i], period)}
+          itemHeight={ITEM_HEIGHT}
+          visibleItems={visibleItems}
+          width={COL_WIDTH}
+        />
         {/* AM/PM */}
-        <ScrollView
-          style={[styles.periodColumn, { height: wheelHeight }]}
-          contentContainerStyle={[styles.columnContent, { paddingVertical: padVertical }]}
-          contentOffset={{ x: 0, y: periodIdx * ITEM_HEIGHT }}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
-          onMomentumScrollEnd={e => update(hour12, minute, PERIODS[snapIndex(e, PERIODS.length - 1)])}
-          onScrollEndDrag={e => update(hour12, minute, PERIODS[snapIndex(e, PERIODS.length - 1)])}
-        >
-          {PERIODS.map((p, i) => {
-            const s = getDistanceStyle(i - periodIdx);
-            return (
-              <View key={p} style={styles.item}>
-                <Text style={[styles.itemText, { fontSize: s.fontSize, color: s.color }]}>{p}</Text>
-              </View>
-            );
-          })}
-        </ScrollView>
+        <WheelColumn
+          items={PERIODS}
+          selectedIndex={periodIdx}
+          onIndexChange={(i) => update(hour12, minute, PERIODS[i])}
+          itemHeight={ITEM_HEIGHT}
+          visibleItems={visibleItems}
+          width={COL_WIDTH}
+        />
       </View>
 
       <View style={[styles.separator, { top: ITEM_HEIGHT * half }]} pointerEvents="none" />
@@ -170,9 +107,4 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  numberColumn: { width: COL_WIDTH },
-  periodColumn: { width: COL_WIDTH },
-  columnContent: {},
-  item: { height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' },
-  itemText: { fontWeight: '400' },
 });
