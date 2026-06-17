@@ -145,15 +145,18 @@ export function fromWord(note: WordNote): FaithNoteItem {
   };
 }
 
-const ENDPOINTS: Record<FaithNoteTab, string> = {
-  THANKS: '/notes/thanks?scope=ALL',
-  PRAYER: '/notes/prayers?scope=ALL',
-  WORD: '/bible/notes?scope=ALL',
+// 공개 범위. PUBLIC = 전체공개만(홈 '같이 기도해요' 등 공개 피드), ALL = 내가 볼 수 있는 전체(탭 목록).
+export type FaithNoteScope = 'ALL' | 'PUBLIC' | 'MINE' | 'OIKOS';
+
+const ENDPOINT_BASE: Record<FaithNoteTab, string> = {
+  THANKS: '/notes/thanks',
+  PRAYER: '/notes/prayers',
+  WORD: '/bible/notes',
 };
 
 const PAGE_SIZE = 10;
 
-export function useFaithNotes(activeTab: FaithNoteTab) {
+export function useFaithNotes(activeTab: FaithNoteTab, scope: FaithNoteScope = 'ALL') {
   const [notes, setNotes] = useState<FaithNoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);       // 초기/refetch 로딩
   const [isLoadingMore, setIsLoadingMore] = useState(false); // 추가 페이지 로딩
@@ -172,7 +175,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     else setIsLoading(true);
     setError(null);
     try {
-      const url = `${ENDPOINTS[tab]}&page=${pageNum}&size=${PAGE_SIZE}`;
+      const url = `${ENDPOINT_BASE[tab]}?scope=${scope}&page=${pageNum}&size=${PAGE_SIZE}`;
       let mapped: FaithNoteItem[] = [];
       let total = 0;
       if (tab === 'THANKS') {
@@ -200,7 +203,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
       else setIsLoading(false);
       loadingRef.current = false;
     }
-  }, []);
+  }, [scope]);
 
   // 탭 변경/마운트 → 0페이지부터 새로 로드
   useEffect(() => {
@@ -208,7 +211,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     loadedCountRef.current = 0;
     hasMoreRef.current = true;
     load(activeTab, 0, false);
-  }, [activeTab, load]);
+  }, [activeTab, scope, load]);
 
   // 다음 페이지 로드 (FlatList onEndReached)
   const loadMore = useCallback(() => {
@@ -277,7 +280,7 @@ export function useFaithNotes(activeTab: FaithNoteTab) {
     loadedCountRef.current = 0;
     hasMoreRef.current = true;
     load(activeTab, 0, false);
-  }, [activeTab, load]);
+  }, [activeTab, scope, load]);
 
   return { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch };
 }

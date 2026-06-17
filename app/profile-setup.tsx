@@ -300,8 +300,11 @@ export default function ProfileSetupScreen() {
 
         {/* 생일 picker — 우리 휠 캘린더 (바텀시트) */}
         <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setShowDatePicker(false)}>
-            <Pressable style={[styles.modalSheet, styles.dateSheet]}>
+          {/* 백드롭(탭하면 닫힘)을 시트 '뒤' 별도 레이어로 분리한다.
+              시트를 Pressable로 감싸면 iOS에서 휠 피커 ScrollView의 스크롤 제스처를 가로채 스크롤이 막힘. */}
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowDatePicker(false)} />
+            <View style={[styles.modalSheet, styles.dateSheet]}>
               <Text style={styles.modalTitle}>생일 선택</Text>
               <View style={styles.wheelWrap}>
                 <DateWheelPicker
@@ -317,8 +320,8 @@ export default function ProfileSetupScreen() {
               >
                 <Text style={styles.buttonText}>확인</Text>
               </Pressable>
-            </Pressable>
-          </Pressable>
+            </View>
+          </View>
         </Modal>
 
         {/* 오이코스 선택 모달 */}

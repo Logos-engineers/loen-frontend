@@ -3,6 +3,7 @@ import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { FaithNoteTab } from '@/components/faith-note/faith-note-tab-bar';
 import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import Popup from '@/components/ui/overlay/Popup';
+import { overlay } from '@/components/ui/overlay';
 import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
 import { normalizePrayerReactions } from '@/hooks/useFaithNotes';
 import { BIBLE_BOOKS } from '@/constants/BibleMeta';
@@ -16,7 +17,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -445,21 +445,28 @@ export default function FaithNoteDetailScreen() {
       await apiClient(getNoteEndpoint(tab, noteId), { method: 'DELETE' });
       router.back();
     } catch {
-      Alert.alert('오류', '삭제에 실패했습니다.');
+      overlay.toast('삭제에 실패했어요');
     }
   };
 
   // 댓글 ⋯ → 삭제 확인 → 삭제 (본인 댓글만)
+  // 낙관적 제거로 즉시 반영하고, 실패 시 롤백 + toast로 알린다.
+  // (Alert는 방금 닫힌 Popup(Modal) 위에 present되며 iOS에서 화면이 멈추는 문제가 있어 toast 사용)
   const handleDeleteCommentConfirm = async () => {
     const target = pendingDeleteComment;
     setPendingDeleteComment(null);
     if (!target) return;
+
+    const prevComments = comments;
+    setComments((cur) => cur.filter((c) => c.id !== target.id));
+    setNote((n) => ({ ...n, commentCount: Math.max(n.commentCount - 1, 0) }));
+
     try {
       await apiClient(`${getCommentEndpoint(tab, noteId)}/${target.id}`, { method: 'DELETE' });
-      setComments((cur) => cur.filter((c) => c.id !== target.id));
-      setNote((n) => ({ ...n, commentCount: Math.max(n.commentCount - 1, 0) }));
     } catch {
-      Alert.alert('오류', '댓글 삭제에 실패했습니다.');
+      setComments(prevComments);
+      setNote((n) => ({ ...n, commentCount: n.commentCount + 1 }));
+      overlay.toast('댓글 삭제에 실패했어요');
     }
   };
 
@@ -590,7 +597,7 @@ export default function FaithNoteDetailScreen() {
         setCommentText('');
         inputRef.current?.blur();
       } catch (error) {
-        Alert.alert('오류', '댓글 수정에 실패했습니다.');
+        overlay.toast('댓글 수정에 실패했어요');
         console.warn('[faith-note-detail] update comment 실패', error);
       }
       return;

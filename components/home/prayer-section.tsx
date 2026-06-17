@@ -75,7 +75,8 @@ function PrayerCard({
 }
 
 export function PrayerSection() {
-  const { notes, isLoading, error, toggleReaction, refetch } = useFaithNotes('PRAYER');
+  // 홈 '같이 기도해요'는 전체공개(PUBLIC) 노트만 노출 — 오이코스 공개 노트가 새지 않도록.
+  const { notes, isLoading, error, toggleReaction, refetch } = useFaithNotes('PRAYER', 'PUBLIC');
   useRefetchOnFocus(refetch);
   const prayers = notes.slice(0, 3);
 
