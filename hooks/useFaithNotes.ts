@@ -8,6 +8,7 @@ export type ThanksNote = {
   writerId?: string;
   writerName: string;
   writerNickname: string | null;
+  writerProfileImage?: string | null;
   answers: string[];
   likeCount: number;
   commentCount: number;
@@ -38,6 +39,7 @@ export type PrayerNote = {
   writerId?: string;
   writerName: string;
   writerNickname: string | null;
+  writerProfileImage?: string | null;
   prayers: string[];
   commentCount: number;
   isMine: boolean;
@@ -58,6 +60,7 @@ export type WordNote = {
   writerId?: string;
   writerName: string;
   writerNickname: string | null;
+  writerProfileImage?: string | null;
   bibleName: string;
   chapter: number;
   phaseStart: number;
@@ -94,10 +97,11 @@ function getTimeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)}일`;
 }
 
-function toAuthor(writerName: string, writerNickname?: string | null) {
+function toAuthor(writerName: string, writerNickname?: string | null, writerProfileImage?: string | null) {
   const nick = writerNickname?.trim() ?? '';
   const display = nick || writerName;
-  return { handle: '', name: writerName, nickname: nick, hasAvatar: false, initial: display[0] ?? '?' };
+  const imageUri = writerProfileImage?.trim() || null;
+  return { handle: '', name: writerName, nickname: nick, hasAvatar: !!imageUri, initial: display[0] ?? '?', imageUri };
 }
 
 export function fromThanks(note: ThanksNote): FaithNoteItem {
@@ -107,7 +111,7 @@ export function fromThanks(note: ThanksNote): FaithNoteItem {
     tab: 'THANKS',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
-    author: toAuthor(note.writerName, note.writerNickname),
+    author: toAuthor(note.writerName, note.writerNickname, note.writerProfileImage),
     timeAgo: getTimeAgo(note.createdAt),
     content: note.answers,
     likeCount: note.likeCount,
@@ -124,7 +128,7 @@ export function fromPrayer(note: PrayerNote): FaithNoteItem {
     tab: 'PRAYER',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
-    author: toAuthor(note.writerName, note.writerNickname),
+    author: toAuthor(note.writerName, note.writerNickname, note.writerProfileImage),
     timeAgo: getTimeAgo(note.createdAt),
     content: note.prayers,
     likeCount: 0,
@@ -161,7 +165,7 @@ export function fromWord(note: WordNote): FaithNoteItem {
     tab: 'WORD',
     dayKey: getDayKey(note.createdAt),
     createdAt: note.createdAt,
-    author: toAuthor(note.writerName, note.writerNickname),
+    author: toAuthor(note.writerName, note.writerNickname, note.writerProfileImage),
     timeAgo: getTimeAgo(note.createdAt),
     content: [passageRef, note.description].filter(Boolean),
     likeCount: note.likeCount,
