@@ -1,3 +1,4 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -104,6 +105,41 @@ export default function LoginScreen() {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const identityToken = credential.identityToken;
+      if (!identityToken) {
+        Alert.alert('오류', 'Apple 인증 토큰을 받지 못했습니다.');
+        return;
+      }
+
+      // fullName은 최초 가입 시에만 Apple이 내려준다. 이후 로그인엔 없음.
+      const fullName = credential.fullName
+        ? [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(' ').trim() || undefined
+        : undefined;
+
+      const data = await apiClient<{ accessToken: string; refreshToken: string; isNewUser: boolean }>(
+        '/auth/apple-login',
+        { method: 'POST', body: JSON.stringify({ identityToken, fullName }) }
+      );
+      await persistTokens(data);
+    } catch (e: any) {
+      // 사용자가 Apple 시트에서 취소한 경우는 조용히 무시
+      if (e?.code === 'ERR_REQUEST_CANCELED') return;
+      Alert.alert('오류', e.message ?? 'Apple 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDevLogin = async () => {
     if (!IS_DEV) return;
     setLoading(true);
@@ -185,6 +221,17 @@ export default function LoginScreen() {
               <Text style={styles.googleButtonText}>Google로 계속하기</Text>
             </Pressable>
 
+            {/* Sign in with Apple — iOS에서만 노출 (Expo Go 제외, 네이티브 모듈) */}
+            {Platform.OS === 'ios' && !IS_EXPO_GO && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={radius.lg}
+                style={styles.appleButton}
+                onPress={handleAppleLogin}
+              />
+            )}
+
             {(IS_DEV || IS_EXPO_GO) && (
               <Pressable
                 style={({ pressed }) => [styles.devButton, pressed && styles.pressed]}
@@ -243,6 +290,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.elevated,
   },
   googleButtonText: { color: colors.text.primary, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  appleButton: { height: 52, width: '100%' },
   devButton: {
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
