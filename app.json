@@ -8,9 +8,16 @@
     "scheme": "loenproject",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/89b5be43-11ae-4091-b87f-a98920d35abe"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.loen.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "프로필 사진과 인증 이미지를 등록하기 위해 사진 보관함 접근 권한이 필요합니다.",
         "CFBundleURLTypes": [
@@ -68,6 +75,7 @@
       ],
       "expo-secure-store",
       "@react-native-google-signin/google-signin",
+      "expo-apple-authentication",
       "./plugins/withGoogleModularHeaders"
     ],
     "experiments": {

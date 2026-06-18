@@ -2,10 +2,12 @@
  * app/feedback/index.tsx — 내 피드백 내역 + 처리 상태.
  * 우상단 + 버튼으로 작성 화면(/feedback/write)으로 이동한다.
  */
+import { usePopup } from '@/components/shared/usePopup';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useMyFeedbacks } from '@/hooks/useFeedback';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import {
+  deleteMyFeedback,
   FEEDBACK_CATEGORY_LABEL,
   FEEDBACK_STATUS_LABEL,
   type FeedbackStatus,
@@ -37,6 +39,30 @@ const STATUS_STYLE: Record<FeedbackStatus, { bg: string; fg: string }> = {
 export default function FeedbackListScreen() {
   const { feedbacks, isLoading, error, refetch } = useMyFeedbacks();
   useRefetchOnFocus(refetch);
+  const { confirm, info, node: popupNode } = usePopup();
+
+  const handleEdit = (item: MyFeedback) => {
+    router.push({
+      pathname: '/feedback/write',
+      params: { id: item.id, category: item.category, title: item.title, content: item.content ?? '' },
+    });
+  };
+
+  const handleDelete = (item: MyFeedback) => {
+    confirm({
+      title: '피드백을 삭제할까요?',
+      description: '삭제하면 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      onConfirm: async () => {
+        try {
+          await deleteMyFeedback(item.id);
+          refetch();
+        } catch (e: any) {
+          info('삭제 실패', e?.message ?? '잠시 후 다시 시도해주세요.');
+        }
+      },
+    });
+  };
 
   const renderItem = ({ item }: { item: MyFeedback }) => {
     const s = STATUS_STYLE[item.status];
@@ -75,6 +101,25 @@ export default function FeedbackListScreen() {
             <Text style={styles.noteText}>{item.adminNote}</Text>
           </View>
         ) : null}
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleEdit(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="pencil" size={14} color={colors.text.secondary} />
+            <Text style={styles.actionText}>수정</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleDelete(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={14} color={colors.reaction.red} />
+            <Text style={[styles.actionText, { color: colors.reaction.red }]}>삭제</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -115,6 +160,8 @@ export default function FeedbackListScreen() {
           refreshing={isLoading}
         />
       )}
+
+      {popupNode}
     </SafeAreaView>
   );
 }
@@ -167,4 +214,15 @@ const styles = StyleSheet.create({
   },
   noteLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.primary },
   noteText: { fontSize: fontSize.sm, color: colors.text.primary, lineHeight: fontSize.sm * 1.5 },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 6 },
+  actionText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.secondary },
 });
