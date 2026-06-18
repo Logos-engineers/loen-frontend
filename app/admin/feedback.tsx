@@ -5,6 +5,7 @@
 import { usePopup } from '@/components/shared/usePopup';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import {
+  createFeedbackGithubIssue,
   deleteFeedback,
   FEEDBACK_CATEGORY_LABEL,
   FEEDBACK_STATUS_LABEL,
@@ -19,7 +20,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 function formatDate(dateStr: string): string {
@@ -86,6 +87,22 @@ export default function AdminFeedbackScreen() {
     }
   };
 
+  const handleCreateIssue = (item: AdminFeedback) => {
+    confirm({
+      title: 'GitHub 이슈로 보낼까요?',
+      description: '이 피드백을 개발 저장소 이슈로 등록해요.',
+      confirmLabel: '보내기',
+      onConfirm: async () => {
+        try {
+          await createFeedbackGithubIssue(item.id);
+          load();
+        } catch (e: any) {
+          info('등록 실패', e?.message ?? 'GitHub 이슈 생성에 실패했어요.');
+        }
+      },
+    });
+  };
+
   const handleDelete = (item: AdminFeedback) => {
     confirm({
       title: '피드백을 삭제할까요?',
@@ -130,6 +147,26 @@ export default function AdminFeedbackScreen() {
         ) : null}
 
         <Text style={styles.metaLine}>작성자: {item.userNickname ?? item.userId}</Text>
+
+        {item.githubIssueUrl ? (
+          <TouchableOpacity
+            style={styles.issueLink}
+            onPress={() => Linking.openURL(item.githubIssueUrl!)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="logo-github" size={15} color={colors.text.secondary} />
+            <Text style={styles.issueLinkText}>GitHub 이슈 #{item.githubIssueNumber} 보기</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.issueCreateBtn}
+            onPress={() => handleCreateIssue(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="logo-github" size={15} color={colors.text.primary} />
+            <Text style={styles.issueCreateText}>GitHub 이슈로 보내기</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.actions}>
           {STATUS_ACTIONS.filter((a) => a.status !== item.status).map((a) => (
@@ -238,6 +275,20 @@ const styles = StyleSheet.create({
   imageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   thumb: { width: 64, height: 64, borderRadius: radius.sm },
   metaLine: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: 2 },
+  issueLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs },
+  issueLinkText: { fontSize: fontSize.xs, color: colors.text.secondary, textDecorationLine: 'underline' },
+  issueCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: spacing.xs,
+  },
+  issueCreateText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.primary },
   actions: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   actionBtn: { height: 38, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   statusBtn: { flex: 1, backgroundColor: colors.primaryLight },

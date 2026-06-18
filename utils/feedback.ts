@@ -38,6 +38,9 @@ export type MyFeedback = {
 export type AdminFeedback = MyFeedback & {
   userId: string;
   userNickname: string | null;
+  /** GitHub 이슈로 등록됐으면 채워짐(미등록이면 null). */
+  githubIssueNumber: number | null;
+  githubIssueUrl: string | null;
 };
 
 /** 피드백 제출 (스크린샷 uri 배열 동봉). */
@@ -62,6 +65,26 @@ export async function getMyFeedbacks(): Promise<MyFeedback[]> {
   return apiClient<MyFeedback[]>('/feedbacks/me');
 }
 
+/** 작성자 본인 수정 (텍스트만 — 첨부 이미지는 유지). */
+export async function updateFeedback(
+  feedbackId: string,
+  params: { category: FeedbackCategory; title: string; content?: string },
+): Promise<MyFeedback> {
+  return apiClient<MyFeedback>(`/feedbacks/${feedbackId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      category: params.category,
+      title: params.title,
+      content: params.content ?? '',
+    }),
+  });
+}
+
+/** 작성자 본인 삭제. */
+export async function deleteMyFeedback(feedbackId: string): Promise<void> {
+  await apiClient<void>(`/feedbacks/${feedbackId}`, { method: 'DELETE' });
+}
+
 // ─── 관리자 피드백함 ─────────────────────────────────────────────────────────
 
 export type AdminFeedbackFilter = 'ALL' | FeedbackStatus;
@@ -84,6 +107,16 @@ export async function updateFeedbackStatus(
     method: 'PATCH',
     body: JSON.stringify({ status, adminNote }),
   });
+}
+
+/** 관리자: 피드백을 GitHub 이슈로 등록. (이미 등록됐으면 409) */
+export async function createFeedbackGithubIssue(
+  feedbackId: string,
+): Promise<{ number: number; url: string }> {
+  return apiClient<{ number: number; url: string }>(
+    `/admin/feedbacks/${feedbackId}/github-issue`,
+    { method: 'POST' },
+  );
 }
 
 /** 관리자: 피드백 삭제. */
