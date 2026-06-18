@@ -8,6 +8,12 @@
     "scheme": "loenproject",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/89b5be43-11ae-4091-b87f-a98920d35abe"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.loen.app",
