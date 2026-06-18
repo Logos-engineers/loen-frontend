@@ -65,6 +65,26 @@ export async function getMyFeedbacks(): Promise<MyFeedback[]> {
   return apiClient<MyFeedback[]>('/feedbacks/me');
 }
 
+/** 작성자 본인 수정 (텍스트만 — 첨부 이미지는 유지). */
+export async function updateFeedback(
+  feedbackId: string,
+  params: { category: FeedbackCategory; title: string; content?: string },
+): Promise<MyFeedback> {
+  return apiClient<MyFeedback>(`/feedbacks/${feedbackId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      category: params.category,
+      title: params.title,
+      content: params.content ?? '',
+    }),
+  });
+}
+
+/** 작성자 본인 삭제. */
+export async function deleteMyFeedback(feedbackId: string): Promise<void> {
+  await apiClient<void>(`/feedbacks/${feedbackId}`, { method: 'DELETE' });
+}
+
 // ─── 관리자 피드백함 ─────────────────────────────────────────────────────────
 
 export type AdminFeedbackFilter = 'ALL' | FeedbackStatus;
