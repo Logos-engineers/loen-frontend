@@ -53,6 +53,7 @@ export default function SettingsScreen() {
   const { requestPermission } = useAlarms();
 
   const [noti, setNoti] = useState<NotiSetting>(DEFAULT_NOTI);
+  const [notiExpanded, setNotiExpanded] = useState(false); // '세부 설정' 펼침 여부(기본 접힘)
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [withdrawVisible, setWithdrawVisible] = useState(false);
 
@@ -152,21 +153,40 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {noti.pushEnabled &&
-            NOTI_CATEGORIES.map((c) => (
-              <View key={c.key}>
-                <View style={styles.divider} />
-                <View style={[styles.row, styles.subRow]}>
-                  <Text style={styles.subLabel}>{c.label}</Text>
-                  <Switch
-                    value={noti[c.key]}
-                    onValueChange={handleToggleCategory(c.key)}
-                    trackColor={{ false: colors.border, true: colors.primary }}
-                    thumbColor={colors.white}
-                  />
-                </View>
-              </View>
-            ))}
+          {/* 마스터가 켜졌을 때만 '세부 설정' 펼치기 행 노출. 평소엔 접혀 메인이 깔끔. */}
+          {noti.pushEnabled && (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={[styles.row, styles.subRow]}
+                activeOpacity={0.7}
+                onPress={() => setNotiExpanded((v) => !v)}
+              >
+                <Text style={styles.subLabel}>세부 설정</Text>
+                <Ionicons
+                  name={notiExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.text.secondary}
+                />
+              </TouchableOpacity>
+
+              {notiExpanded &&
+                NOTI_CATEGORIES.map((c) => (
+                  <View key={c.key}>
+                    <View style={[styles.divider, styles.subDivider]} />
+                    <View style={[styles.row, styles.catRow]}>
+                      <Text style={styles.subLabel}>{c.label}</Text>
+                      <Switch
+                        value={noti[c.key]}
+                        onValueChange={handleToggleCategory(c.key)}
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                        thumbColor={colors.white}
+                      />
+                    </View>
+                  </View>
+                ))}
+            </>
+          )}
         </View>
 
         {/* 계정 */}
@@ -312,8 +332,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
-  // 카테고리 하위 토글 — 마스터 라벨(아이콘 22 + gap)에 맞춰 들여쓰기.
+  // '세부 설정' 행 — 마스터 라벨(아이콘 22 + gap)에 맞춰 들여쓰기.
   subRow: { paddingLeft: spacing.md + 22 + spacing.sm, paddingVertical: 12 },
+  // 카테고리 행 — '세부 설정'보다 한 단계 더 들여써 계층을 드러낸다.
+  catRow: { paddingLeft: spacing.md + 22 + spacing.sm + spacing.md, paddingVertical: 12 },
+  subDivider: { marginLeft: spacing.md + 22 + spacing.sm + spacing.md },
   subLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.regular, color: colors.text.secondary },
   danger: { color: colors.reaction.red },
   divider: { height: 1, backgroundColor: colors.border, marginLeft: spacing.md },
