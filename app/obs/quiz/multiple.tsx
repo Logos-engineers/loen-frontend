@@ -43,6 +43,8 @@ export default function MultipleChoiceQuizScreen() {
   }, [contentId]);
 
   const CORRECT_ANSWER = quiz?.correctAnswer ?? '';
+  // 정답 길이만큼 다 채워야 제출 활성 (빈·부분 입력은 비활성)
+  const isAnswerFilled = CORRECT_ANSWER.length > 0 && inputText.length === CORRECT_ANSWER.length;
 
   // 입력 중에는 채점하지 않는다. 길이가 정답과 같아지는 순간 즉시 채점하면
   // 한글 마지막 음절을 조합하는 도중(자음만 입력된 상태)에 오답으로 처리된다.
@@ -123,13 +125,10 @@ export default function MultipleChoiceQuizScreen() {
                 </View>
               )}
 
-              {/* Character Box Input */}
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={() => inputRef.current?.focus()}
-                style={styles.charBoxContainer}
-              >
-                <View style={styles.charBoxRow}>
+              {/* Character Box Input — 박스는 표시만(pointerEvents none), 실제 입력은 위에 덮은 투명 TextInput이 받는다.
+                  0×0 hidden input은 재진입 시 focus()가 불발돼 키보드가 안 올라오는 문제가 있어 풀사이즈 오버레이로 교체. */}
+              <View style={styles.charBoxContainer}>
+                <View style={styles.charBoxRow} pointerEvents="none">
                   {CORRECT_ANSWER.length > 0
                     ? Array.from({ length: CORRECT_ANSWER.length }).map((_, i) => {
                         const char = inputText[i];
@@ -170,14 +169,16 @@ export default function MultipleChoiceQuizScreen() {
                   }}
                   // maxLength는 두지 않는다 — 마지막 칸이 자음으로 찼을 때 모음을 못 붙여
                   // 한글 음절 조합이 막히는 문제(모음 입력 불가)를 유발한다. 길이 제한은 위 onChangeText 가드가 담당.
-                  style={styles.hiddenInput}
+                  style={styles.overlayInput}
+                  caretHidden
+                  autoFocus
                   autoCorrect={false}
                   spellCheck={false}
                   autoCapitalize="none"
                   returnKeyType="done"
                   onSubmitEditing={handleSubmit}
                 />
-              </TouchableOpacity>
+              </View>
 
               {quizState === 'incorrect' && (
                 <View style={styles.feedbackWrapper}>
@@ -187,8 +188,10 @@ export default function MultipleChoiceQuizScreen() {
             </View>
           </ScrollView>
 
-          {quizState === 'incorrect' && (
-            <View style={[styles.ctaWrapper, { paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
+          {/* 하단 CTA — 항상 노출. idle엔 '제출하기'(답 채우면 활성), 오답엔 '정답 보기' + '제출하기'.
+              오답 뒤 글자를 고치면 idle로 돌아가도 제출 버튼이 그대로 남아 재제출이 끊기지 않는다(qa-bot#33). */}
+          <View style={[styles.ctaWrapper, { paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
+            {quizState === 'incorrect' ? (
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity
                   style={[styles.ctaButton, { flex: 1, backgroundColor: colors.primaryLight }]}
@@ -198,15 +201,25 @@ export default function MultipleChoiceQuizScreen() {
                   <Text style={[styles.ctaButtonText, { color: colors.primary }]}>정답 보기</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.ctaButton, { flex: 1, backgroundColor: 'rgba(101, 97, 255, 0.4)' }]}
+                  style={[styles.ctaButton, { flex: 1, backgroundColor: isAnswerFilled ? colors.primary : 'rgba(101, 97, 255, 0.4)' }]}
                   activeOpacity={0.8}
-                  onPress={handleNextQuiz}
+                  disabled={!isAnswerFilled}
+                  onPress={handleSubmit}
                 >
-                  <Text style={[styles.ctaButtonText, { color: colors.white }]}>다음 퀴즈 풀기</Text>
+                  <Text style={[styles.ctaButtonText, { color: colors.white }]}>제출하기</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          )}
+            ) : (
+              <TouchableOpacity
+                style={[styles.ctaButton, { backgroundColor: isAnswerFilled ? colors.primary : 'rgba(101, 97, 255, 0.4)' }]}
+                activeOpacity={0.8}
+                disabled={!isAnswerFilled}
+                onPress={handleSubmit}
+              >
+                <Text style={[styles.ctaButtonText, { color: colors.white }]}>제출하기</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </SafeAreaView>
 
@@ -388,11 +401,12 @@ const styles = StyleSheet.create({
   charTextError: {
     color: colors.incorrect,
   },
-  hiddenInput: {
-    position: 'absolute',
-    opacity: 0,
-    width: 0,
-    height: 0,
+  // 박스 전체를 덮는 투명 입력 — 어디를 탭해도 네이티브 포커스(키보드)가 확실히 뜬다.
+  overlayInput: {
+    ...StyleSheet.absoluteFillObject,
+    color: 'transparent',
+    textAlign: 'center',
+    fontSize: 1,
   },
   feedbackWrapper: {
     alignItems: 'center',
