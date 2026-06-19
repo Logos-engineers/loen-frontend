@@ -52,6 +52,31 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
   }
 }
 
+// 알림 타입별 아이콘 강조색(fg) + 옅은 배경(bg). 회색 일색이던 동그라미에 종류별 색을 입혀
+// 한눈에 구분되게 한다. 색은 앱 브랜드/리액션 팔레트 기준.
+function accentFor(type: string): { fg: string; bg: string } {
+  switch (type) {
+    case 'NOTE_LIKE':
+      return { fg: '#FF5358', bg: 'rgba(255,83,88,0.12)' };       // 좋아요 — 빨강
+    case 'NOTE_COMMENT':
+      return { fg: '#1687F4', bg: 'rgba(22,135,244,0.12)' };      // 댓글 — 파랑
+    case 'OIKOS_INVITE':
+    case 'OIKOS_LEADER':
+    case 'NOTE_OIKOS_SHARE':
+      return { fg: '#6561FF', bg: 'rgba(101,97,255,0.12)' };      // 오이코스 — 브랜드 보라
+    case 'NOTICE':
+      return { fg: '#FF8E28', bg: 'rgba(255,142,40,0.12)' };      // 공지 — 주황
+    case 'OBS_PUBLISHED':
+      return { fg: '#12B886', bg: 'rgba(18,184,134,0.12)' };      // OBS 교안 — 초록
+    case 'BIBLE_REMINDER':
+      return { fg: '#12B886', bg: 'rgba(18,184,134,0.12)' };      // 통독 리마인더 — 초록
+    case 'ATTENDANCE_REMINDER':
+      return { fg: '#FF8E28', bg: 'rgba(255,142,40,0.12)' };      // 출석 리마인더 — 주황
+    default:
+      return { fg: '#6561FF', bg: 'rgba(101,97,255,0.12)' };
+  }
+}
+
 // 노트 관련 알림(댓글/좋아요/오이코스 공유)은 해당 노트 상세로 딥링크
 const NOTE_TYPES = ['NOTE_COMMENT', 'NOTE_LIKE', 'NOTE_OIKOS_SHARE'];
 
@@ -91,18 +116,16 @@ export default function NotificationsScreen() {
     navigateTo(item);
   };
 
-  const renderItem = ({ item }: { item: NotificationItem }) => (
+  const renderItem = ({ item }: { item: NotificationItem }) => {
+    const accent = accentFor(item.type);
+    return (
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.7}
       onPress={() => handlePress(item)}
     >
-      <View style={[styles.iconCircle, item.isRead ? styles.iconCircleRead : styles.iconCircleUnread]}>
-        <Ionicons
-          name={iconFor(item.type)}
-          size={20}
-          color={item.isRead ? colors.text.secondary : colors.primary}
-        />
+      <View style={[styles.iconCircle, { backgroundColor: accent.bg }, item.isRead && styles.iconCircleRead]}>
+        <Ionicons name={iconFor(item.type)} size={20} color={accent.fg} />
       </View>
       <View style={styles.body}>
         <Text style={[styles.title, item.isRead && styles.titleRead]} numberOfLines={1}>{stripLeadingEmoji(item.title)}</Text>
@@ -111,7 +134,8 @@ export default function NotificationsScreen() {
       </View>
       {!item.isRead ? <View style={styles.unreadDot} /> : null}
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -183,8 +207,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCircleUnread: { backgroundColor: colors.primaryLight },
-  iconCircleRead: { backgroundColor: colors.background.base },
+  // 읽은 알림은 색은 유지하되 살짝 톤다운(투명도)으로 덜 강조.
+  iconCircleRead: { opacity: 0.55 },
   body: { flex: 1, gap: 3 },
   title: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
   titleRead: { fontWeight: fontWeight.medium, color: colors.text.secondary },
