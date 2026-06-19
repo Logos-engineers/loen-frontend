@@ -68,7 +68,6 @@ export default function SettingsScreen() {
   const { requestPermission } = useAlarms();
 
   const [noti, setNoti] = useState<NotiSetting>(DEFAULT_NOTI);
-  const [notiExpanded, setNotiExpanded] = useState(false); // '세부 설정' 펼침 여부(기본 접힘)
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [withdrawVisible, setWithdrawVisible] = useState(false);
 
@@ -109,9 +108,8 @@ export default function SettingsScreen() {
       const granted = await requestPermission();
       if (!granted) return; // 권한 거부 시 off 유지
     }
-    // 끌 때 펼쳐진 카테고리가 부드럽게 접히도록.
+    // 카테고리 목록이 부드럽게 나타나고/사라지도록.
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (!next) setNotiExpanded(false);
     await persistNoti({ ...noti, pushEnabled: next }, noti, next);
   };
 
@@ -120,12 +118,6 @@ export default function SettingsScreen() {
     (key: keyof Omit<NotiSetting, 'pushEnabled'>) => async (next: boolean) => {
       await persistNoti({ ...noti, [key]: next }, noti);
     };
-
-  // 세부 설정 펼침/접힘(부드럽게).
-  const toggleNotiExpand = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setNotiExpanded((v) => !v);
-  };
 
   const handleLogout = async () => {
     setLogoutVisible(false);
@@ -164,55 +156,34 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.body}>
-        {/* 알림 — 마스터 헤더(탭하면 펼침) + 카테고리별 토글 (qa-bot#39) */}
+        {/* 알림 — 마스터 + 카테고리별 토글 (마스터 ON이면 카테고리 항상 노출). qa-bot#39 */}
         <View style={styles.group}>
           <View style={styles.row}>
-            {/* 왼쪽 영역(벨+라벨)도 펼침 버튼. 가운데 스위치=마스터, 맨 오른쪽 쉐브론=펼침(아래 > 들과 정렬). */}
-            <TouchableOpacity
-              style={styles.notiMaster}
-              activeOpacity={0.7}
-              disabled={!noti.pushEnabled}
-              onPress={toggleNotiExpand}
-            >
-              <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
-              <Text style={styles.rowLabel}>알림</Text>
-            </TouchableOpacity>
+            <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>알림</Text>
             <Switch
               value={noti.pushEnabled}
               onValueChange={handleToggleMaster}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={colors.white}
             />
-            {noti.pushEnabled && (
-              <TouchableOpacity onPress={toggleNotiExpand} activeOpacity={0.7} hitSlop={8}>
-                <Ionicons
-                  name={notiExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.text.secondary}
-                />
-              </TouchableOpacity>
-            )}
           </View>
 
-          {/* 마스터가 켜지고 펼친 상태에서만 카테고리 노출. 평소엔 접혀 메인이 깔끔. */}
-          {noti.pushEnabled && notiExpanded && (
-            <>
-              {NOTI_CATEGORIES.map((c) => (
-                <View key={c.key}>
-                  <View style={[styles.divider, styles.subDivider]} />
-                  <View style={[styles.row, styles.catRow]}>
-                    <Text style={styles.subLabel}>{c.label}</Text>
-                    <Switch
-                      value={noti[c.key]}
-                      onValueChange={handleToggleCategory(c.key)}
-                      trackColor={{ false: colors.border, true: colors.primary }}
-                      thumbColor={colors.white}
-                    />
-                  </View>
+          {noti.pushEnabled &&
+            NOTI_CATEGORIES.map((c) => (
+              <View key={c.key}>
+                <View style={[styles.divider, styles.subDivider]} />
+                <View style={[styles.row, styles.catRow]}>
+                  <Text style={styles.subLabel}>{c.label}</Text>
+                  <Switch
+                    value={noti[c.key]}
+                    onValueChange={handleToggleCategory(c.key)}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor={colors.white}
+                  />
                 </View>
-              ))}
-            </>
-          )}
+              </View>
+            ))}
         </View>
 
         {/* 계정 */}
@@ -358,8 +329,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
-  // 알림 마스터 헤더 좌측(아이콘+라벨+펼침 화살표) — 탭 영역. 우측 스위치와 분리.
-  notiMaster: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   // 카테고리 행 — 마스터 라벨(아이콘 22 + gap)에 맞춰 들여써 계층을 드러낸다.
   catRow: { paddingLeft: spacing.md + 22 + spacing.sm, paddingVertical: 12 },
   subDivider: { marginLeft: spacing.md + 22 + spacing.sm },
