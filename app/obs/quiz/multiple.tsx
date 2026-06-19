@@ -3,7 +3,6 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
 import { BottomModal } from '@/components/obs/bottom-modal';
@@ -23,7 +22,6 @@ export default function MultipleChoiceQuizScreen() {
   const step1Result = (params.step1Result === 'correct' || params.step1Result === 'incorrect') ? params.step1Result : null;
 
   const insets = useSafeAreaInsets();
-  const kb = useKeyboardHeight();
   const inputRef = useRef<TextInput>(null);
   const [quiz, setQuiz] = useState<ObsQuiz | null>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(!!contentId);
@@ -90,8 +88,9 @@ export default function MultipleChoiceQuizScreen() {
 
         <OBSHeader />
 
-        {/* 키보드가 올라오면 스크롤+CTA 영역 전체를 키보드 높이만큼 올림 → CTA가 키보드 바로 위에 붙음 */}
-        <View style={[{ flex: 1 }, { marginBottom: kb }]}>
+        {/* 키보드가 올라와도 CTA는 하단에 고정(키보드 위로 따라 올리지 않음). 키보드 위에선 가려져도 무방 —
+            제출은 키보드 '완료'(onSubmitEditing)나 키보드 내린 뒤 CTA로. */}
+        <View style={{ flex: 1 }}>
           <ScrollView
             style={styles.content}
             contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
@@ -190,7 +189,7 @@ export default function MultipleChoiceQuizScreen() {
 
           {/* 하단 CTA — 항상 노출. idle엔 '제출하기'(답 채우면 활성), 오답엔 '정답 보기' + '제출하기'.
               오답 뒤 글자를 고치면 idle로 돌아가도 제출 버튼이 그대로 남아 재제출이 끊기지 않는다(qa-bot#33). */}
-          <View style={[styles.ctaWrapper, { paddingBottom: kb > 0 ? 14 : insets.bottom + 14 }]}>
+          <View style={[styles.ctaWrapper, { paddingBottom: insets.bottom + 14 }]}>
             {quizState === 'incorrect' ? (
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity
