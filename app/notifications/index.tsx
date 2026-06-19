@@ -86,19 +86,19 @@ export default function NotificationsScreen() {
 
   const renderItem = ({ item }: { item: NotificationItem }) => (
     <TouchableOpacity
-      style={[styles.row, !item.isRead && styles.rowUnread]}
+      style={styles.card}
       activeOpacity={0.7}
       onPress={() => handlePress(item)}
     >
-      <View style={[styles.iconCircle, !item.isRead && styles.iconCircleUnread]}>
+      <View style={[styles.iconCircle, item.isRead ? styles.iconCircleRead : styles.iconCircleUnread]}>
         <Ionicons
           name={iconFor(item.type)}
-          size={18}
-          color={!item.isRead ? colors.primary : colors.text.secondary}
+          size={20}
+          color={item.isRead ? colors.text.secondary : colors.primary}
         />
       </View>
       <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+        <Text style={[styles.title, item.isRead && styles.titleRead]} numberOfLines={1}>{item.title}</Text>
         {item.body ? <Text style={styles.message} numberOfLines={2}>{item.body}</Text> : null}
         <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
       </View>
@@ -129,7 +129,14 @@ export default function NotificationsScreen() {
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={<Text style={styles.empty}>알림이 없어요.</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="notifications-off-outline" size={28} color={colors.text.dim} />
+              </View>
+              <Text style={styles.empty}>아직 받은 알림이 없어요.</Text>
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -151,35 +158,47 @@ const styles = StyleSheet.create({
   readAll: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
   readAllDisabled: { color: colors.text.dim },
   loader: { marginTop: spacing.xxl },
-  listContent: { paddingTop: 0, paddingBottom: spacing.sm },
-  row: {
+  listContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  // 모든 알림을 흰 라운드 카드로 — 읽음/안읽음 구분은 배경 줄무늬가 아니라 아이콘색·제목 굵기·점으로.
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.smd,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: colors.background.base,
-  },
-  rowUnread: { backgroundColor: colors.background.elevated },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
     backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconCircleUnread: { backgroundColor: colors.primaryLight },
-  body: { flex: 1, gap: 2 },
-  title: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  message: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text.secondary, lineHeight: 18 },
+  iconCircleRead: { backgroundColor: colors.background.base },
+  body: { flex: 1, gap: 3 },
+  title: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  titleRead: { fontWeight: fontWeight.medium, color: colors.text.secondary },
+  message: { fontSize: fontSize.md, fontWeight: fontWeight.regular, color: colors.text.secondary, lineHeight: 19 },
   time: { fontSize: fontSize.xs, color: colors.text.dim, marginTop: 2 },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: radius.full,
     backgroundColor: colors.primary,
+    marginLeft: spacing.xs,
   },
-  separator: { height: 1, backgroundColor: colors.border, marginLeft: 68 },
-  empty: { textAlign: 'center', marginTop: spacing.xxl, fontSize: fontSize.md, color: colors.text.dim },
+  separator: { height: spacing.smd },
+  emptyWrap: { alignItems: 'center', marginTop: spacing.xxl * 2, gap: spacing.md },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: colors.background.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  empty: { textAlign: 'center', fontSize: fontSize.md, color: colors.text.dim },
 });
