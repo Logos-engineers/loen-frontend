@@ -384,7 +384,8 @@ export default function ObsScreen() {
                   >
                     <View style={[styles.dayCell, isSelected && styles.dayCellSelected]}>
                       <Text style={[
-                        styles.dayText, 
+                        styles.dayText,
+                        index % 7 === 0 && styles.weekDaySunday,
                         !item.isCurrentMonth && { opacity: 0.4 },
                         isSelected && { color: '#FFFFFF' }
                       ]}>
