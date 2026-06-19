@@ -361,9 +361,9 @@ export default function ObsScreen() {
             </View>
 
             <View style={styles.weekDaysRow}>
-              {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
+              {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
                 <View key={day} style={styles.weekDayCell}>
-                  <Text style={styles.weekDayText}>{day}</Text>
+                  <Text style={[styles.weekDayText, idx === 0 && styles.weekDaySunday]}>{day}</Text>
                 </View>
               ))}
             </View>
@@ -384,7 +384,8 @@ export default function ObsScreen() {
                   >
                     <View style={[styles.dayCell, isSelected && styles.dayCellSelected]}>
                       <Text style={[
-                        styles.dayText, 
+                        styles.dayText,
+                        index % 7 === 0 && styles.weekDaySunday,
                         !item.isCurrentMonth && { opacity: 0.4 },
                         isSelected && { color: '#FFFFFF' }
                       ]}>
@@ -563,6 +564,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: 'rgba(13,28,45,0.8)',
     lineHeight: 25.6,
+  },
+  weekDaySunday: {
+    color: '#FF5358', // 주일(일요일) 강조 — 브랜드 red
   },
   daysGrid: {
     width: '100%',

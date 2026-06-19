@@ -64,6 +64,7 @@ type ThanksDetailResponse = {
   writerId: string;
   writerName: string;
   writerNickname: string | null;
+  writerProfileImage?: string | null;
   answers: string[];
   likeCount: number;
   commentCount: number;
@@ -77,6 +78,7 @@ type PrayerDetailResponse = {
   writerId: string;
   writerName: string;
   writerNickname: string | null;
+  writerProfileImage?: string | null;
   prayers: string[];
   commentCount: number;
   isMine: boolean;
@@ -97,6 +99,7 @@ type WordDetailResponse = {
   writerId: string;
   writerName: string;
   writerNickname: string | null;
+  writerProfileImage?: string | null;
   bibleName: string;
   chapter: number;
   phaseStart: number;
@@ -201,8 +204,8 @@ function toThanksNote(detail: ThanksDetailResponse, fallback: FaithNoteItem): Fa
       name: detail.writerName,
       nickname: detail.writerNickname ?? '',
       initial: detail.writerName?.[0] ?? fallback.author.initial,
-      hasAvatar: Boolean(fallback.author.imageUri),
-      imageUri: fallback.author.imageUri,
+      hasAvatar: Boolean(detail.writerProfileImage ?? fallback.author.imageUri),
+      imageUri: detail.writerProfileImage ?? fallback.author.imageUri,
     },
     timeAgo: getTimeAgo(detail.createdAt),
     content: detail.answers,
@@ -223,8 +226,8 @@ function toPrayerNote(detail: PrayerDetailResponse, fallback: FaithNoteItem): Fa
       name: detail.writerName,
       nickname: detail.writerNickname ?? '',
       initial: detail.writerName?.[0] ?? fallback.author.initial,
-      hasAvatar: Boolean(fallback.author.imageUri),
-      imageUri: fallback.author.imageUri,
+      hasAvatar: Boolean(detail.writerProfileImage ?? fallback.author.imageUri),
+      imageUri: detail.writerProfileImage ?? fallback.author.imageUri,
     },
     timeAgo: getTimeAgo(detail.createdAt),
     content: detail.prayers,
@@ -275,8 +278,8 @@ function toWordNote(detail: WordDetailResponse, fallback: FaithNoteItem): FaithN
       name: detail.writerName,
       nickname: detail.writerNickname ?? '',
       initial: detail.writerName?.[0] ?? fallback.author.initial,
-      hasAvatar: Boolean(fallback.author.imageUri),
-      imageUri: fallback.author.imageUri,
+      hasAvatar: Boolean(detail.writerProfileImage ?? fallback.author.imageUri),
+      imageUri: detail.writerProfileImage ?? fallback.author.imageUri,
     },
     timeAgo: getTimeAgo(detail.createdAt),
     content,

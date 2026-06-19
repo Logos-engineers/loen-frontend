@@ -1,13 +1,19 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fontWeight } from '@/constants/tokens';
 import { OBSHeader } from '@/components/obs/obs-header';
 import { QuizProgress } from '@/components/obs/quiz-progress';
 import { completeObsReview, fetchObsQuizzes } from '@/hooks/useObs';
+
+// 정답 가림 오버레이: iOS는 RN filter blur가 무효(no-op)라 정답이 그대로 보였음(qa-bot#32).
+// iOS는 expo-blur BlurView로 실제 블러, Android는 filter blur(RenderEffect)가 정상이라 일반 View 유지.
+const RevealOverlay = (Platform.OS === 'ios' ? BlurView : View) as React.ComponentType<any>;
+const revealOverlayProps = Platform.OS === 'ios' ? { intensity: 40, tint: 'light' as const } : {};
 
 export default function ObsQ3Screen() {
   const insets = useSafeAreaInsets();
@@ -102,16 +108,16 @@ export default function ObsQ3Screen() {
 
               {/* 답변 영역 */}
               <View style={styles.answerArea}>
-                {/* 답변 필드 — 미공개 시 blur filter 적용 */}
-                <View style={[styles.answerField, !revealed && styles.answerFieldBlurred]}>
+                {/* 답변 필드 — 미공개 시 Android는 filter blur 적용(iOS는 무효라 BlurView 오버레이가 가림) */}
+                <View style={[styles.answerField, !revealed && Platform.OS === 'android' && styles.answerFieldBlurred]}>
                   <Text style={styles.answerTextRevealed}>
                     {answer || '정답 데이터가 없습니다'}
                   </Text>
                 </View>
 
-                {/* 정답 보기 오버레이 — 텍스트가 blur된 위에 버튼만 표시 */}
+                {/* 정답 보기 오버레이 — iOS=BlurView(실제 블러)/Android=View, 위에 '정답 보기' 버튼만 노출 */}
                 {!revealed && (
-                  <View style={[StyleSheet.absoluteFillObject, styles.blurOverlay]}>
+                  <RevealOverlay {...revealOverlayProps} style={[StyleSheet.absoluteFillObject, styles.blurOverlay]}>
                     <TouchableOpacity
                       style={styles.revealButton}
                       activeOpacity={0.85}
@@ -119,7 +125,7 @@ export default function ObsQ3Screen() {
                     >
                       <Text style={styles.revealButtonText}>정답 보기</Text>
                     </TouchableOpacity>
-                  </View>
+                  </RevealOverlay>
                 )}
               </View>
             </View>
