@@ -121,6 +121,12 @@ export default function SettingsScreen() {
       await persistNoti({ ...noti, [key]: next }, noti);
     };
 
+  // 세부 설정 펼침/접힘(부드럽게).
+  const toggleNotiExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setNotiExpanded((v) => !v);
+  };
+
   const handleLogout = async () => {
     setLogoutVisible(false);
     try {
@@ -161,25 +167,15 @@ export default function SettingsScreen() {
         {/* 알림 — 마스터 헤더(탭하면 펼침) + 카테고리별 토글 (qa-bot#39) */}
         <View style={styles.group}>
           <View style={styles.row}>
-            {/* 왼쪽 영역 전체가 펼침 버튼. 오른쪽 스위치는 마스터 on/off. */}
+            {/* 왼쪽 영역(벨+라벨)도 펼침 버튼. 가운데 스위치=마스터, 맨 오른쪽 쉐브론=펼침(아래 > 들과 정렬). */}
             <TouchableOpacity
               style={styles.notiMaster}
               activeOpacity={0.7}
               disabled={!noti.pushEnabled}
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setNotiExpanded((v) => !v);
-              }}
+              onPress={toggleNotiExpand}
             >
               <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
               <Text style={styles.rowLabel}>알림</Text>
-              {noti.pushEnabled && (
-                <Ionicons
-                  name={notiExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.text.secondary}
-                />
-              )}
             </TouchableOpacity>
             <Switch
               value={noti.pushEnabled}
@@ -187,6 +183,15 @@ export default function SettingsScreen() {
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={colors.white}
             />
+            {noti.pushEnabled && (
+              <TouchableOpacity onPress={toggleNotiExpand} activeOpacity={0.7} hitSlop={8}>
+                <Ionicons
+                  name={notiExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.text.secondary}
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* 마스터가 켜지고 펼친 상태에서만 카테고리 노출. 평소엔 접혀 메인이 깔끔. */}
