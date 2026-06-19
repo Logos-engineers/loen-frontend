@@ -8,6 +8,13 @@ import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// 제목 앞에 백엔드가 붙인 이모지/기호 제거 — 카드 아이콘 원과 중복되고 톤이 안 맞는다.
+// (Hermes 호환: \p{} 유니코드 속성 대신 첫 한글/영문/숫자 위치부터 잘라낸다)
+function stripLeadingEmoji(title: string): string {
+  const m = title.match(/[0-9A-Za-z가-힣]/);
+  return m && m.index ? title.slice(m.index).trim() : title.trim();
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -98,7 +105,7 @@ export default function NotificationsScreen() {
         />
       </View>
       <View style={styles.body}>
-        <Text style={[styles.title, item.isRead && styles.titleRead]} numberOfLines={1}>{item.title}</Text>
+        <Text style={[styles.title, item.isRead && styles.titleRead]} numberOfLines={1}>{stripLeadingEmoji(item.title)}</Text>
         {item.body ? <Text style={styles.message} numberOfLines={2}>{item.body}</Text> : null}
         <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
       </View>
