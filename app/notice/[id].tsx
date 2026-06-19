@@ -1,5 +1,5 @@
 import { overlay } from '@/components/ui/overlay';
-import { colors, fontSize, fontWeight, spacing } from '@/constants/tokens';
+import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useNoticeDetail } from '@/hooks/useNotice';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
@@ -88,10 +88,18 @@ export default function NoticeDetailScreen() {
         <Text style={styles.errorText}>{error}</Text>
       ) : notice ? (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.date}>{formatDate(notice.createdAt)}</Text>
-          <Text style={styles.title}>{notice.title}</Text>
-          <View style={styles.divider} />
-          <Text style={styles.body}>{notice.description}</Text>
+          <View style={styles.card}>
+            <View style={styles.tagPill}>
+              <Text style={styles.tagText}>공지</Text>
+            </View>
+            <Text style={styles.title}>{notice.title}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="time-outline" size={14} color={colors.text.secondary} />
+              <Text style={styles.date}>{formatDate(notice.createdAt)}</Text>
+            </View>
+            <View style={styles.divider} />
+            <Text style={styles.body}>{notice.description}</Text>
+          </View>
         </ScrollView>
       ) : null}
     </SafeAreaView>
@@ -113,10 +121,26 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   scroll: { flex: 1 },
-  content: { padding: spacing.md, gap: spacing.sm },
+  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  // 알림·공지 목록과 같은 톤: 회색 배경 위 흰 라운드 카드.
+  card: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.smd,
+  },
+  tagPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.sm,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+  },
+  tagText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
+  title: { fontSize: fontSize.title, fontWeight: fontWeight.bold, color: colors.text.primary, lineHeight: 32 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   date: { fontSize: fontSize.sm, color: colors.text.secondary },
-  title: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary, lineHeight: 30 },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
-  body: { fontSize: fontSize.base, color: colors.text.primary, lineHeight: 24 },
+  divider: { height: 1, backgroundColor: colors.border, marginTop: spacing.xs, marginBottom: spacing.xs },
+  body: { fontSize: fontSize.base, color: colors.text.primary, lineHeight: 26 },
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
 });
