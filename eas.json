@@ -7,12 +7,8 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://loen-backend-production.up.railway.app/api/v1",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114111779962-0ven8nlf8cq1k3c60ghrd4ijua5tkbh6.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "114111779962-hcpu1cde4n5c0or7rbkv4tsejdd8sslh.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "114111779962-rb60sph3k2mj4edmn2680m9ebaqttno9.apps.googleusercontent.com"
-      }
+      "channel": "development",
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -22,6 +18,7 @@
         "buildType": "apk"
       },
       "env": {
+        "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://loen-backend-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114111779962-0ven8nlf8cq1k3c60ghrd4ijua5tkbh6.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "114111779962-hcpu1cde4n5c0or7rbkv4tsejdd8sslh.apps.googleusercontent.com",
@@ -33,6 +30,7 @@
       "environment": "production",
       "channel": "production",
       "env": {
+        "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://loen-backend-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114111779962-0ven8nlf8cq1k3c60ghrd4ijua5tkbh6.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "114111779962-hcpu1cde4n5c0or7rbkv4tsejdd8sslh.apps.googleusercontent.com",

@@ -46,8 +46,9 @@ app-example
 # local AI tool configs
 .gemini/
 
-# Firebase
+# Firebase (dev/prod 둘 다 커밋 금지 — EAS GOOGLE_SERVICES_JSON 환경변수/로컬 파일로 주입)
 google-services.json
+google-services.dev.json
 
 # App Store Connect API key (.p8) — 절대 커밋 금지
 /credentials/
@@ -57,3 +58,7 @@ google-services.json
 
 # Logs
 *.log
+
+# 로컬 빌드 산출물 (eas build --local / 다운로드 APK 등)
+*.apk
+*.aab
