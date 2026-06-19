@@ -9,8 +9,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import {
+  LayoutAnimation,
+  Linking,
+  Platform,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Android 구(舊) 아키텍처에서 LayoutAnimation 활성화(신 아키텍처는 기본 지원, 옵셔널 체이닝으로 안전).
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 
 // 개인정보처리방침/이용약관 — 저장소 루트 legal/ 의 정적 HTML(Vercel 호스팅).
 // 소스/재배포 방법은 legal/README.md 참고.
@@ -94,6 +109,9 @@ export default function SettingsScreen() {
       const granted = await requestPermission();
       if (!granted) return; // 권한 거부 시 off 유지
     }
+    // 끌 때 펼쳐진 카테고리가 부드럽게 접히도록.
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!next) setNotiExpanded(false);
     await persistNoti({ ...noti, pushEnabled: next }, noti, next);
   };
 
@@ -140,11 +158,29 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.body}>
-        {/* 알림 — 마스터 + 카테고리별 토글 (qa-bot#39) */}
+        {/* 알림 — 마스터 헤더(탭하면 펼침) + 카테고리별 토글 (qa-bot#39) */}
         <View style={styles.group}>
           <View style={styles.row}>
-            <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
-            <Text style={styles.rowLabel}>알림</Text>
+            {/* 왼쪽 영역 전체가 펼침 버튼. 오른쪽 스위치는 마스터 on/off. */}
+            <TouchableOpacity
+              style={styles.notiMaster}
+              activeOpacity={0.7}
+              disabled={!noti.pushEnabled}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setNotiExpanded((v) => !v);
+              }}
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
+              <Text style={styles.rowLabel}>알림</Text>
+              {noti.pushEnabled && (
+                <Ionicons
+                  name={notiExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.text.secondary}
+                />
+              )}
+            </TouchableOpacity>
             <Switch
               value={noti.pushEnabled}
               onValueChange={handleToggleMaster}
@@ -153,38 +189,23 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* 마스터가 켜졌을 때만 '세부 설정' 펼치기 행 노출. 평소엔 접혀 메인이 깔끔. */}
-          {noti.pushEnabled && (
+          {/* 마스터가 켜지고 펼친 상태에서만 카테고리 노출. 평소엔 접혀 메인이 깔끔. */}
+          {noti.pushEnabled && notiExpanded && (
             <>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={[styles.row, styles.subRow]}
-                activeOpacity={0.7}
-                onPress={() => setNotiExpanded((v) => !v)}
-              >
-                <Text style={styles.subLabel}>세부 설정</Text>
-                <Ionicons
-                  name={notiExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.text.secondary}
-                />
-              </TouchableOpacity>
-
-              {notiExpanded &&
-                NOTI_CATEGORIES.map((c) => (
-                  <View key={c.key}>
-                    <View style={[styles.divider, styles.subDivider]} />
-                    <View style={[styles.row, styles.catRow]}>
-                      <Text style={styles.subLabel}>{c.label}</Text>
-                      <Switch
-                        value={noti[c.key]}
-                        onValueChange={handleToggleCategory(c.key)}
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        thumbColor={colors.white}
-                      />
-                    </View>
+              {NOTI_CATEGORIES.map((c) => (
+                <View key={c.key}>
+                  <View style={[styles.divider, styles.subDivider]} />
+                  <View style={[styles.row, styles.catRow]}>
+                    <Text style={styles.subLabel}>{c.label}</Text>
+                    <Switch
+                      value={noti[c.key]}
+                      onValueChange={handleToggleCategory(c.key)}
+                      trackColor={{ false: colors.border, true: colors.primary }}
+                      thumbColor={colors.white}
+                    />
                   </View>
-                ))}
+                </View>
+              ))}
             </>
           )}
         </View>
@@ -332,11 +353,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary },
-  // '세부 설정' 행 — 마스터 라벨(아이콘 22 + gap)에 맞춰 들여쓰기.
-  subRow: { paddingLeft: spacing.md + 22 + spacing.sm, paddingVertical: 12 },
-  // 카테고리 행 — '세부 설정'보다 한 단계 더 들여써 계층을 드러낸다.
-  catRow: { paddingLeft: spacing.md + 22 + spacing.sm + spacing.md, paddingVertical: 12 },
-  subDivider: { marginLeft: spacing.md + 22 + spacing.sm + spacing.md },
+  // 알림 마스터 헤더 좌측(아이콘+라벨+펼침 화살표) — 탭 영역. 우측 스위치와 분리.
+  notiMaster: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // 카테고리 행 — 마스터 라벨(아이콘 22 + gap)에 맞춰 들여써 계층을 드러낸다.
+  catRow: { paddingLeft: spacing.md + 22 + spacing.sm, paddingVertical: 12 },
+  subDivider: { marginLeft: spacing.md + 22 + spacing.sm },
   subLabel: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.regular, color: colors.text.secondary },
   danger: { color: colors.reaction.red },
   divider: { height: 1, backgroundColor: colors.border, marginLeft: spacing.md },
