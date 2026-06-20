@@ -11,7 +11,8 @@ export function ObsSection() {
   const router = useRouter();
   const { contents, isLoading, error, refetch } = useObsContents();
   useRefetchOnFocus(refetch);
-  const previousObs = contents[1] ?? contents[0];
+  // OBS 모아보기 카드는 가장 최근 발행 교안을 보여준다(목록은 publishedDate 내림차순).
+  const latestObs = contents[0];
 
   return (
     <View>
@@ -33,28 +34,28 @@ export function ObsSection() {
             <Text style={styles.stateText}>OBS를 불러오지 못했습니다</Text>
           </View>
         </View>
-      ) : previousObs ? (
+      ) : latestObs ? (
         <ObsCard
-          item={previousObs}
+          item={latestObs}
           reviewLabel="OBS 복습하기"
           singleLineTitle
           noShadow
           onPressView={() => router.push({
             pathname: '/obs/content/intro',
             params: {
-              contentId: String(previousObs.id),
-              title: previousObs.title,
-              verse: previousObs.biblePassage,
-              weekLabel: formatWeekLabel(previousObs.publishedDate),
+              contentId: String(latestObs.id),
+              title: latestObs.title,
+              verse: latestObs.biblePassage,
+              weekLabel: formatWeekLabel(latestObs.publishedDate),
             },
           })}
           onPressReview={() => router.push({
             pathname: '/obs/quiz/intro',
             params: {
-              contentId: String(previousObs.id),
-              title: previousObs.title,
-              verse: previousObs.biblePassage,
-              date: formatKoreanDate(previousObs.publishedDate),
+              contentId: String(latestObs.id),
+              title: latestObs.title,
+              verse: latestObs.biblePassage,
+              date: formatKoreanDate(latestObs.publishedDate),
             },
           })}
         />
