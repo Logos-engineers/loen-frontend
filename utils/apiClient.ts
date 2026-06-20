@@ -56,7 +56,7 @@ let refreshPromise: Promise<string> | null = null;
  * 이미 갱신이 진행 중이면 그 Promise를 그대로 반환해 /auth/refresh 는 1회만 호출된다.
  * @returns 새 액세스 토큰
  */
-function refreshAccessToken(): Promise<string> {
+export function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = doRefresh().finally(() => {
       refreshPromise = null;
