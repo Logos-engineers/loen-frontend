@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row',
     gap: 4,
-    alignItems: 'flex-start',
+    alignItems: 'flex-start',   // 배지는 텍스트 '첫 줄'에 맞춘다(여러 줄일 때도)
     paddingVertical: spacing.nano,   // 배지 자체 상하 패딩 2 (Figma)
   },
   listNumberBadge: {
@@ -375,7 +375,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.base,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
   },
   listNumber: {
     fontSize: fontSize.sm,
@@ -387,7 +386,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
     color: colors.text.primary,
-    lineHeight: 21,
+    lineHeight: 24,   // 배지 높이(24)와 일치 → 번호와 첫 줄 텍스트의 세로 중심이 맞는다(qa-bot#54)
   },
   footerRow: {
     flexDirection: 'row',
