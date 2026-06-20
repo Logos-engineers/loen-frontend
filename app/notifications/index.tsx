@@ -47,6 +47,8 @@ function iconFor(type: string): keyof typeof Ionicons.glyphMap {
       return 'alarm-outline';
     case 'ATTENDANCE_REMINDER':
       return 'checkmark-done-outline';
+    case 'FEEDBACK_STATUS':
+      return 'chatbox-ellipses-outline';
     default:
       return 'notifications-outline';
   }
@@ -72,6 +74,8 @@ function accentFor(type: string): { fg: string; bg: string } {
       return { fg: '#12B886', bg: 'rgba(18,184,134,0.12)' };      // 통독 리마인더 — 초록
     case 'ATTENDANCE_REMINDER':
       return { fg: '#FF8E28', bg: 'rgba(255,142,40,0.12)' };      // 출석 리마인더 — 주황
+    case 'FEEDBACK_STATUS':
+      return { fg: '#6561FF', bg: 'rgba(101,97,255,0.12)' };      // 피드백 처리 — 브랜드 보라
     default:
       return { fg: '#6561FF', bg: 'rgba(101,97,255,0.12)' };
   }
@@ -103,6 +107,8 @@ function navigateTo(item: NotificationItem) {
     router.push('/plan');
   } else if (item.type === 'ATTENDANCE_REMINDER') {
     router.push('/mypage');
+  } else if (item.type === 'FEEDBACK_STATUS') {
+    router.push('/feedback');   // 내 피드백 내역(처리 상태)
   }
   // OIKOS_INVITE / OIKOS_LEADER: 전용 화면이 아직 없어 읽음 처리만 (오이코스 화면 추가 시 연결)
 }
