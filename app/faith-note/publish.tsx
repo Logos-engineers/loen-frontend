@@ -8,7 +8,7 @@ import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Modal, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +36,20 @@ function getVisibilityEndpoint(noteType: string | undefined, noteId: string) {
   if (noteType === 'PRAYER') return `/notes/prayers/${noteId}/visibility`;
   if (noteType === 'WORD') return `/bible/notes/${noteId}/visibility`;
   return `/notes/thanks/${noteId}/visibility`;
+}
+
+// 수정 진입 시 현재 공개 범위를 프리셀렉트하기 위한 상세 조회 엔드포인트.
+function getDetailEndpoint(noteType: string | undefined, noteId: string) {
+  if (noteType === 'PRAYER') return `/notes/prayers/${noteId}`;
+  if (noteType === 'WORD') return `/bible/notes/${noteId}`;
+  return `/notes/thanks/${noteId}`;
+}
+
+// 서버 노출범위(isHidden/isOpenToOikos) → 화면 옵션.
+function scopeFromVisibility(v: { isHidden?: boolean; isOpenToOikos?: boolean }): PublishOption {
+  if (v.isHidden) return 'LINK';
+  if (v.isOpenToOikos) return 'OIKOS';
+  return 'ALL';
 }
 
 const PUBLISH_OPTIONS: {
@@ -125,12 +139,30 @@ const ms = StyleSheet.create({
 
 export default function PublishScreen() {
   const router = useRouter();
-  const { noteType, noteId } = useLocalSearchParams<{ noteType?: string; noteId?: string }>();
+  const { noteType, noteId, isEdit } = useLocalSearchParams<{ noteType?: string; noteId?: string; isEdit?: string }>();
+  const editing = isEdit === 'true';
   const noteLabel = getNoteLabel(noteType);
 
   const [selected, setSelected] = useState<PublishOption>('ALL');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showQuitModal, setShowQuitModal] = useState(false);
+
+  // 수정 진입: 현재 공개 범위를 불러와 미리 선택(안 하면 '전체 공개'로 떠서 실수로 공개될 위험).
+  useEffect(() => {
+    if (!noteId || !editing) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const detail = await apiClient<{ isHidden?: boolean; isOpenToOikos?: boolean }>(
+          getDetailEndpoint(noteType, noteId),
+        );
+        if (!cancelled) setSelected(scopeFromVisibility(detail));
+      } catch {
+        /* 실패 시 기본값(ALL) 유지 */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [noteId, editing, noteType]);
 
   const handleConfirmComplete = async () => {
     setShowCompleteModal(false);
@@ -162,7 +194,8 @@ export default function PublishScreen() {
         }
       }
     }
-    router.replace(`/faith-note/complete?noteType=${noteType ?? 'THANKS'}`);
+    // 수정은 '작성 완료' 축하 화면 대신 목록으로 복귀(목록은 포커스 시 재조회 → 변경 반영).
+    router.replace(editing ? '/faith-note' : `/faith-note/complete?noteType=${noteType ?? 'THANKS'}`);
   };
 
   return (
@@ -178,7 +211,7 @@ export default function PublishScreen() {
 
       {/* 콘텐츠 */}
       <View style={s.content}>
-        <Text style={s.question}>{noteLabel}를 공개하시겠어요?</Text>
+        <Text style={s.question}>{editing ? `${noteLabel} 공개 범위를 변경할까요?` : `${noteLabel}를 공개하시겠어요?`}</Text>
 
         <View style={s.optionList}>
           {PUBLISH_OPTIONS.map((opt) => {
@@ -212,17 +245,21 @@ export default function PublishScreen() {
           <Text style={[s.footerBtnText, s.footerBtnTextPrev]}>이전으로</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.footerBtn, s.footerBtnComplete]} onPress={() => setShowCompleteModal(true)} activeOpacity={0.8}>
-          <Text style={[s.footerBtnText, s.footerBtnTextComplete]}>완료하기</Text>
+          <Text style={[s.footerBtnText, s.footerBtnTextComplete]}>{editing ? '변경하기' : '완료하기'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* 완료 확인 모달 */}
       <ConfirmModal
         visible={showCompleteModal}
-        title={`${noteLabel} 작성을 완료하시겠어요?`}
-        desc={`작성한 ${noteLabel}는 피드에 게시돼요.\n게시 후에도 수정하거나 삭제할 수 있어요.`}
-        cancelLabel="다시 작성하기"
-        confirmLabel="완료하기"
+        title={editing ? '공개 범위를 변경하시겠어요?' : `${noteLabel} 작성을 완료하시겠어요?`}
+        desc={
+          editing
+            ? '선택한 범위로 공개 설정이 바뀌어요.\n링크 공개를 고르면 공유 링크를 다시 받을 수 있어요.'
+            : `작성한 ${noteLabel}는 피드에 게시돼요.\n게시 후에도 수정하거나 삭제할 수 있어요.`
+        }
+        cancelLabel={editing ? '취소' : '다시 작성하기'}
+        confirmLabel={editing ? '변경하기' : '완료하기'}
         onCancel={() => setShowCompleteModal(false)}
         onConfirm={handleConfirmComplete}
       />
@@ -230,8 +267,8 @@ export default function PublishScreen() {
       {/* 그만두기 모달 */}
       <ConfirmModal
         visible={showQuitModal}
-        title="노트 작성을 그만두시겠어요?"
-        desc="작성 중인 내용은 저장되지 않아요."
+        title={editing ? '공개 범위 변경을 그만둘까요?' : '노트 작성을 그만두시겠어요?'}
+        desc={editing ? '변경한 공개 범위는 저장되지 않아요.' : '작성 중인 내용은 저장되지 않아요.'}
         cancelLabel="계속하기"
         confirmLabel="그만두기"
         onCancel={() => setShowQuitModal(false)}
