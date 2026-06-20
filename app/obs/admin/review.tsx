@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,8 +20,11 @@ import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/token
 import {
   AnalyzeResult,
   ObsAdminQuiz,
+  fetchAdminObsDetail,
   publishObsContent,
+  replaceObsQuizzes,
   saveObsContent,
+  updateObsContent,
 } from '@/hooks/useObsAdmin';
 
 export default function ObsAdminReviewScreen() {
@@ -43,6 +46,10 @@ export default function ObsAdminReviewScreen() {
   const [title, setTitle] = useState(params.title ?? '');
   const [verse, setVerse] = useState(params.verse ?? '');
   const [quizzes, setQuizzes] = useState<ObsAdminQuiz[]>(parsed?.quizzes ?? []);
+  // 본문(sections/summary)은 화면에서 편집 UI는 없지만 PUT 시 그대로 보존하기 위해 상태로 들고 있는다.
+  const [sections, setSections] = useState<Record<string, any>[]>(parsed?.sections ?? []);
+  const [summary, setSummary] = useState<string[]>(parsed?.summary ?? []);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showIosPicker, setShowIosPicker] = useState(false);
@@ -54,6 +61,34 @@ export default function ObsAdminReviewScreen() {
     return isNaN(d.getTime()) ? new Date() : d;
   };
   const [selectedDate, setSelectedDate] = useState<Date>(parseInitialDate(params.publishedDate));
+
+  // 기존 OBS(목록에서 진입): 상세를 불러와 제목/말씀/발행일/퀴즈/본문을 채운다.
+  useEffect(() => {
+    if (!existingId) return;
+    let cancelled = false;
+    setIsLoading(true);
+    fetchAdminObsDetail(existingId)
+      .then((d) => {
+        if (cancelled) return;
+        setTitle(d.title ?? '');
+        setVerse(d.biblePassage ?? '');
+        if (d.publishedDate) setSelectedDate(parseInitialDate(d.publishedDate));
+        setSections(d.sections ?? []);
+        setSummary(d.summary ?? []);
+        setQuizzes(
+          (d.quizzes ?? []).map((q) => ({
+            stepNumber: q.stepNumber,
+            questionType: q.questionType,
+            questionText: q.questionText,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+          })),
+        );
+      })
+      .catch(() => Alert.alert('오류', 'OBS 정보를 불러오지 못했습니다.'))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [existingId]);
 
   const formatDate = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -86,8 +121,8 @@ export default function ObsAdminReviewScreen() {
         title,
         biblePassage: verse,
         publishedDate: formatDate(selectedDate),
-        sections: parsed?.sections ?? [],
-        summary: parsed?.summary ?? [],
+        sections,
+        summary,
         quizzes,
       });
       Alert.alert('저장 완료', '저장되었습니다.', [
@@ -95,6 +130,35 @@ export default function ObsAdminReviewScreen() {
       ]);
     } catch (e: any) {
       Alert.alert('저장 실패', e?.message ?? '다시 시도해주세요.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 기존 OBS 수정 저장: 본문 PUT + 퀴즈 일괄 교체.
+  const handleUpdate = async () => {
+    if (!existingId) return;
+    if (!title.trim() || !verse.trim()) {
+      Alert.alert('입력 오류', '제목과 말씀을 모두 입력해주세요.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateObsContent(existingId, {
+        title,
+        biblePassage: verse,
+        publishedDate: formatDate(selectedDate),
+        sections,
+        summary,
+      });
+      if (quizzes.length > 0) {
+        await replaceObsQuizzes(existingId, quizzes);
+      }
+      Alert.alert('수정 완료', '수정 내용이 저장되었습니다.', [
+        { text: '확인', onPress: () => router.replace('/obs/admin') },
+      ]);
+    } catch (e: any) {
+      Alert.alert('수정 실패', e?.message ?? '다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -146,7 +210,7 @@ export default function ObsAdminReviewScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{isExisting ? 'OBS 상세' : '검수 및 편집'}</Text>
+          <Text style={styles.headerTitle}>{isExisting ? 'OBS 수정' : '검수 및 편집'}</Text>
           <TouchableOpacity style={styles.previewBtn} onPress={handlePreview}>
             <Ionicons name="play-circle-outline" size={26} color={colors.primary} />
           </TouchableOpacity>
@@ -271,20 +335,19 @@ export default function ObsAdminReviewScreen() {
             </TouchableOpacity>
           )}
 
-          {!isExisting && (
-            <TouchableOpacity
-              style={[styles.saveBtn, isSaving && styles.btnDisabled]}
-              activeOpacity={0.85}
-              onPress={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.btnText}>저장</Text>
-              )}
-            </TouchableOpacity>
-          )}
+          {/* 기존 OBS: 수정 저장 / 신규 업로드: 저장 */}
+          <TouchableOpacity
+            style={[styles.saveBtn, (isSaving || isLoading) && styles.btnDisabled]}
+            activeOpacity={0.85}
+            onPress={isExisting ? handleUpdate : handleSave}
+            disabled={isSaving || isLoading}
+          >
+            {isSaving ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.btnText}>{isExisting ? '수정 저장' : '저장'}</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </>
