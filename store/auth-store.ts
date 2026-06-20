@@ -46,13 +46,26 @@ export const useAuthStore = create<AuthState>((set) => ({
     // 2) access 만료(또는 없음)인데 refresh가 있으면 스플래시 동안 '선제 갱신'.
     //    이래야 로그인 화면이 잠깐 떴다 사라지는 깜빡임 없이 바로 홈으로 들어간다.
     //    (refreshAccessToken은 SecureStore의 refresh로 /auth/refresh 호출 후 setTokens까지 수행)
+    //    네트워크가 느리거나 끊겨도 스플래시에 갇히지 않도록 6초 타임아웃을 건다.
     if (refreshToken) {
       try {
-        await refreshAccessToken();
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('refresh-timeout')), 6000),
+        );
+        await Promise.race([refreshAccessToken(), timeout]);
         set({ isInitialized: true });
         return;
-      } catch {
-        // refresh 만료/무효 → 저장소 정리 후 로그아웃 상태로.
+      } catch (e: any) {
+        // 서버가 refresh를 명시적으로 거부(만료/무효)한 경우에만 로그아웃.
+        const authFailed = String(e?.message ?? '').includes('refresh failed');
+        if (!authFailed && accessToken) {
+          // 네트워크 오류/타임아웃 + 토큰은 있음 → 오프라인 사용자 보호: 일단 낙관적 로그인 유지,
+          // 이후 정상 요청 때 reactive 갱신(apiClient 401 처리)에 맡긴다.
+          const role = decodeJwtPayload(accessToken)?.role as UserRole ?? null;
+          set({ accessToken, role, isLoggedIn: true, isInitialized: true });
+          return;
+        }
+        // 인증 실패(또는 폴백 불가) → 저장소 정리.
         await SecureStore.deleteItemAsync(KEYS.ACCESS_TOKEN);
         await SecureStore.deleteItemAsync(KEYS.REFRESH_TOKEN);
       }
