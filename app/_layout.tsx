@@ -83,6 +83,8 @@ export default function RootLayout() {
         router.push('/plan');
       } else if (type === 'ATTENDANCE_REMINDER') {
         router.push('/mypage');
+      } else if (type === 'FEEDBACK_STATUS') {
+        router.push('/feedback');
       } else {
         // OIKOS_INVITE/OIKOS_LEADER 등 전용 화면이 없는 타입 → 알림 센터로
         router.push('/notifications');
