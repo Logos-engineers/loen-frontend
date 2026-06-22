@@ -3,15 +3,15 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// 월~일
+// 일~토 (주일이 한 주의 시작)
 const DAYS: { key: string; label: string }[] = [
+  { key: 'SUN', label: '일' },
   { key: 'MON', label: '월' },
   { key: 'TUE', label: '화' },
   { key: 'WED', label: '수' },
   { key: 'THU', label: '목' },
   { key: 'FRI', label: '금' },
   { key: 'SAT', label: '토' },
-  { key: 'SUN', label: '일' },
 ];
 
 interface FaithNoteWeekSelectorProps {
@@ -44,7 +44,13 @@ export function FaithNoteWeekSelector({
             activeOpacity={0.7}
           >
             <View style={[styles.dayPill, isToday && styles.dayPillActive]}>
-              <Text style={[styles.dayLabel, isToday && styles.dayLabelActive]}>
+              <Text
+                style={[
+                  styles.dayLabel,
+                  day.key === 'SUN' && !isToday && styles.dayLabelSunday,
+                  isToday && styles.dayLabelActive,
+                ]}
+              >
                 {day.label}
               </Text>
               <View
@@ -97,6 +103,9 @@ const styles = StyleSheet.create({
   },
   dayLabelActive: {
     color: colors.white,
+  },
+  dayLabelSunday: {
+    color: colors.reaction.red, // 주일(일요일) 강조 — #59와 동일
   },
   // 선택(클릭)된 날 — pill 바깥 아래 언더바. 미선택 시 투명(높이 유지).
   underbar: {
