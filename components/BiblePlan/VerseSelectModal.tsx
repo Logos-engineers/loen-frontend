@@ -3,8 +3,9 @@
  * ChapterSelectModal과 동일한 가운데 팝업 스타일. 말씀노트 구절 선택용.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  LayoutRectangle,
   Modal,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BibleBook } from '@/constants/BibleMeta';
 import { getBibleBook } from '@/constants/bibleLoader';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
@@ -36,8 +38,15 @@ export default function VerseSelectModal({
 }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
+  // 드래그 멀티선택용 (qa-bot#57 — 장 선택과 동일 UX)
+  const selectedRef = useRef(selected);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+  const cellLayouts = useRef<Map<number, LayoutRectangle>>(new Map());
+  const dragRef = useRef<{ base: Set<number>; start: number; mode: 'add' | 'remove' } | null>(null);
+
   useEffect(() => {
     if (visible) setSelected(new Set(selectedVerses));
+    else cellLayouts.current.clear();
   }, [visible, selectedVerses]);
 
   // 해당 장의 절 개수 (앱 로컬 성경 데이터)
@@ -56,68 +65,116 @@ export default function VerseSelectModal({
     });
   };
 
+  const verseAt = (x: number, y: number): number | null => {
+    for (const [v, r] of cellLayouts.current) {
+      if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height) return v;
+    }
+    return null;
+  };
+
+  const applyRange = (start: number, end: number, base: Set<number>, mode: 'add' | 'remove') => {
+    const lo = Math.min(start, end);
+    const hi = Math.max(start, end);
+    const next = new Set(base);
+    for (let n = lo; n <= hi; n++) {
+      if (mode === 'add') next.add(n);
+      else next.delete(n);
+    }
+    setSelected(next);
+  };
+
+  // 꾹 눌러 드래그하면 범위 선택. 평소 드래그는 스크롤(롱프레스 후 활성).
+  const dragGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activateAfterLongPress(200)
+        .shouldCancelWhenOutside(false)
+        .runOnJS(true)
+        .onStart((e) => {
+          const v = verseAt(e.x, e.y);
+          if (v == null) { dragRef.current = null; return; }
+          const mode: 'add' | 'remove' = selectedRef.current.has(v) ? 'remove' : 'add';
+          dragRef.current = { base: new Set(selectedRef.current), start: v, mode };
+          applyRange(v, v, dragRef.current.base, mode);
+        })
+        .onUpdate((e) => {
+          const d = dragRef.current;
+          if (!d) return;
+          const v = verseAt(e.x, e.y);
+          if (v == null) return;
+          applyRange(d.start, v, d.base, d.mode);
+        })
+        .onFinalize(() => { dragRef.current = null; }),
+    [],
+  );
+
   if (!book) return null;
 
   const verses = Array.from({ length: verseCount }, (_, i) => i + 1);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-        <TouchableWithoutFeedback>
-          <View style={styles.dialog}>
-            {/* 헤더 */}
-            <View style={styles.dialogHeader}>
-              <Text style={styles.bookKorName}>{book.korName} {chapter}장</Text>
-              <Text style={styles.bookEngName}>{book.engName}</Text>
-              <Text style={styles.guideText}>읽은 절을 선택하세요</Text>
-            </View>
+      {/* RN Modal 안에서 제스처가 동작하려면 GestureHandlerRootView 로 감싸야 한다 */}
+      <GestureHandlerRootView style={styles.root}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+          <TouchableWithoutFeedback>
+            <View style={styles.dialog}>
+              {/* 헤더 */}
+              <View style={styles.dialogHeader}>
+                <Text style={styles.bookKorName}>{book.korName} {chapter}장</Text>
+                <Text style={styles.bookEngName}>{book.engName}</Text>
+                <Text style={styles.guideText}>읽은 절을 선택하세요 · 꾹 눌러 드래그하면 여러 절 한 번에</Text>
+              </View>
 
-            {/* 절 번호 그리드 */}
-            <ScrollView
-              style={styles.gridScroll}
-              contentContainerStyle={styles.grid}
-              showsVerticalScrollIndicator={false}
-            >
-              {verses.map((v) => {
-                const isSelected = selected.has(v);
-                return (
-                  <TouchableOpacity
-                    key={v}
-                    style={styles.cellWrap}
-                    activeOpacity={0.7}
-                    onPress={() => toggleVerse(v)}
-                  >
-                    <View style={[styles.verseBox, isSelected && styles.verseBoxSelected]}>
-                      <Text style={[styles.verseText, isSelected && styles.verseTextSelected]}>
-                        {v}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+              {/* 절 번호 그리드 */}
+              <ScrollView style={styles.gridScroll} showsVerticalScrollIndicator={false}>
+                <GestureDetector gesture={dragGesture}>
+                  <View style={styles.grid}>
+                    {verses.map((v) => {
+                      const isSelected = selected.has(v);
+                      return (
+                        <TouchableOpacity
+                          key={v}
+                          style={styles.cellWrap}
+                          activeOpacity={0.7}
+                          onPress={() => toggleVerse(v)}
+                          onLayout={(e) => { cellLayouts.current.set(v, e.nativeEvent.layout); }}
+                        >
+                          <View style={[styles.verseBox, isSelected && styles.verseBoxSelected]}>
+                            <Text style={[styles.verseText, isSelected && styles.verseTextSelected]}>
+                              {v}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </GestureDetector>
+              </ScrollView>
 
-            {/* 하단 버튼 (1:1) */}
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.8} onPress={onClose}>
-                <Text style={styles.cancelBtnText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmBtn}
-                activeOpacity={0.8}
-                onPress={() => onConfirm([...selected].sort((a, b) => a - b))}
-              >
-                <Text style={styles.confirmBtnText}>완료</Text>
-              </TouchableOpacity>
+              {/* 하단 버튼 (1:1) */}
+              <View style={styles.footer}>
+                <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.8} onPress={onClose}>
+                  <Text style={styles.cancelBtnText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmBtn}
+                  activeOpacity={0.8}
+                  onPress={() => onConfirm([...selected].sort((a, b) => a - b))}
+                >
+                  <Text style={styles.confirmBtnText}>완료</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </TouchableOpacity>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   overlay: {
     flex: 1,
     backgroundColor: colors.overlay.default,
