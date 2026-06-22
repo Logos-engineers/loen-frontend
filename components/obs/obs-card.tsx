@@ -1,6 +1,8 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { ObsContent, formatKoreanDate } from '@/hooks/useObs';
-import React from 'react';
+import { scrapObsContent } from '@/hooks/useObsContent';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type ObsCardProps = {
@@ -10,6 +12,10 @@ type ObsCardProps = {
   viewLabel?: string;
   singleLineTitle?: boolean;
   noShadow?: boolean;
+  /** 복습하기 버튼 오른쪽에 스크랩 토글 별을 노출 (qa-bot#34) */
+  enableScrap?: boolean;
+  /** 스크랩 토글 성공 후 호출 — 목록 새로고침으로 필터 동기화 */
+  onScrapChange?: (next: boolean) => void;
   onPressReview: () => void;
   onPressView: () => void;
 };
@@ -21,10 +27,32 @@ export function ObsCard({
   viewLabel = 'OBS 보기',
   singleLineTitle = false,
   noShadow = false,
+  enableScrap = false,
+  onScrapChange,
   onPressReview,
   onPressView,
 }: ObsCardProps) {
   const isDone = item.reviewStatus === 'DONE';
+
+  const [scraped, setScraped] = useState(item.isScraped);
+  const [scrapBusy, setScrapBusy] = useState(false);
+  // 외부(목록 새로고침)에서 스크랩 상태가 바뀌면 동기화
+  useEffect(() => { setScraped(item.isScraped); }, [item.isScraped]);
+  const toggleScrap = async () => {
+    if (scrapBusy) return;
+    setScrapBusy(true);
+    const next = !scraped;
+    setScraped(next); // 낙관적 반영
+    try {
+      const result = await scrapObsContent(item.id);
+      setScraped(result);
+      onScrapChange?.(result);
+    } catch {
+      setScraped(!next); // 실패 시 롤백
+    } finally {
+      setScrapBusy(false);
+    }
+  };
 
   return (
     <View style={styles.cardWrapper}>
@@ -50,6 +78,22 @@ export function ObsCard({
           )}
         </View>
         <View style={styles.buttonContainer}>
+          {enableScrap && (
+            <TouchableOpacity
+              style={styles.scrapButton}
+              activeOpacity={0.7}
+              onPress={toggleScrap}
+              disabled={scrapBusy}
+              accessibilityLabel={scraped ? '스크랩 해제' : '스크랩'}
+            >
+              {/* 미스크랩=프라이머리 라인(외곽선), 스크랩=프라이머리 필. 배경은 primaryLight 유지 */}
+              <Ionicons
+                name={scraped ? 'bookmark' : 'bookmark-outline'}
+                size={22}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.ctaButton, styles.obsViewButton]}
             activeOpacity={0.8}
@@ -156,6 +200,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     color: colors.primary,                   // 연보라 배경 위 가독성
+  },
+  scrapButton: {
+    width: 44,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
   },
   primaryButton: {
     backgroundColor: colors.primary,

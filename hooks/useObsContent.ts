@@ -67,3 +67,9 @@ export async function saveObsApplication(reviewId: number, applicationAnswer: st
     body: JSON.stringify({ applicationAnswer }),
   });
 }
+
+/** 교안 단위 스크랩 토글 (상세 화면). 리뷰 없으면 서버가 생성해 토글. 새 스크랩 상태를 반환. (qa-bot#34) */
+export async function scrapObsContent(obsId: number): Promise<boolean> {
+  const data = await apiClient<{ isScraped?: boolean }>(`/obs/contents/${obsId}/scrap`, { method: 'PATCH' });
+  return data.isScraped ?? false;
+}

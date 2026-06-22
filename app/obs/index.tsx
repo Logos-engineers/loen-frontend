@@ -215,6 +215,8 @@ export default function ObsScreen() {
     <ObsCard
       item={item}
       noShadow
+      enableScrap
+      onScrapChange={refetch}
       onPressView={() => router.push({
         pathname: '/obs/content/intro',
         params: {
@@ -234,7 +236,7 @@ export default function ObsScreen() {
         },
       })}
     />
-  ), [router]);
+  ), [router, refetch]);
 
   return (
     // 최상단부터 시작 — SafeAreaView로 복구하여 상태바(9:41, 배터리) 아래로 내림
