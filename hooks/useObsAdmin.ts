@@ -70,6 +70,48 @@ export async function publishObsContent(id: number): Promise<void> {
   });
 }
 
+// 관리자 OBS 상세(수정 화면 prefill용) — sections/summary/quizzes 포함.
+export type AdminObsDetail = {
+  id: number;
+  title: string;
+  biblePassage: string;
+  publishedDate: string;
+  sections: Record<string, any>[];
+  summary: string[];
+  isPublished: boolean;
+  quizzes: (ObsAdminQuiz & { id?: number })[];
+};
+
+export async function fetchAdminObsDetail(id: number): Promise<AdminObsDetail> {
+  return apiClient<AdminObsDetail>(`/admin/obs/contents/${id}`);
+}
+
+/** 기존 OBS 본문 수정(PUT). 퀴즈는 별도(replaceObsQuizzes)로 교체한다. */
+export async function updateObsContent(
+  id: number,
+  payload: Omit<SaveContentPayload, 'quizzes'>,
+): Promise<void> {
+  await apiClient(`/admin/obs/contents/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** 퀴즈 일괄 교체(POST). 백엔드는 QuizUpsertItem 배열을 그대로 받으며 stepNumber 필수. */
+export async function replaceObsQuizzes(id: number, quizzes: ObsAdminQuiz[]): Promise<void> {
+  const body = quizzes.map((q, i) => ({
+    stepNumber: q.stepNumber ?? i + 1,
+    questionType: q.questionType,
+    questionText: q.questionText,
+    correctAnswer: q.correctAnswer,
+    explanation: q.explanation ?? '',
+  }));
+  await apiClient(`/admin/obs/contents/${id}/quizzes`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 export function useAdminObsContents() {
