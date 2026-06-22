@@ -2,11 +2,11 @@ import { colors, fontSize, fontWeight, radius } from '@/constants/tokens';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-// 월~일 (신앙노트 주간 캘린더와 동일 순서/라벨)
-const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+// 요일 라벨은 각 날짜의 getDay()로 도출한다(주 시작 요일이 바뀌어도 라벨↔날짜 정합 유지). index=getDay(): 일=0
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
 
 interface AttendanceWeekProps {
-  /** 월요일(weekStart) YYYY-MM-DD */
+  /** 일요일(weekStart, 주 시작) YYYY-MM-DD */
   weekStart?: string;
   /** 오늘 YYYY-MM-DD */
   today?: string;
@@ -26,11 +26,10 @@ function toYmd(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** 이번 주 월요일 (로컬 기준 폴백) */
-function thisMonday(): Date {
+/** 이번 주 일요일(주 시작) — 로컬 기준 폴백 */
+function thisSunday(): Date {
   const now = new Date();
-  const diffToMon = (now.getDay() + 6) % 7; // 일=0 → 6, 월=1 → 0 ...
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMon);
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
 }
 
 /**
@@ -40,21 +39,22 @@ function thisMonday(): Date {
  * 오늘(미출석) = 보라 테두리. 서버 데이터가 없을 때도 이번 주 날짜를 로컬 기준으로 표시한다.
  */
 export function AttendanceWeek({ weekStart, today, attendedDates = [] }: AttendanceWeekProps) {
-  const base = weekStart ? parseYmd(weekStart) : thisMonday();
+  const base = weekStart ? parseYmd(weekStart) : thisSunday();
   const todayYmd = today ?? toYmd(new Date());
   const attended = new Set(attendedDates);
 
   return (
     <View style={styles.container}>
-      {DAYS.map((label, i) => {
+      {Array.from({ length: 7 }, (_, i) => {
         const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
         const ymd = toYmd(date);
         const isAttended = attended.has(ymd);
         const isToday = ymd === todayYmd;
+        const isSunday = date.getDay() === 0;
 
         return (
-          <View key={label} style={styles.dayWrapper}>
-            <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{label}</Text>
+          <View key={ymd} style={styles.dayWrapper}>
+            <Text style={[styles.dayLabel, isSunday && styles.dayLabelSunday, isToday && styles.dayLabelToday]}>{WEEKDAY[date.getDay()]}</Text>
             <View
               style={[
                 styles.circle,
@@ -97,6 +97,9 @@ const styles = StyleSheet.create({
   dayLabelToday: {
     color: colors.text.primary,
     fontWeight: fontWeight.semibold,
+  },
+  dayLabelSunday: {
+    color: colors.reaction.red, // 주일(일요일) 강조 — 브랜드 red
   },
   circle: {
     width: 36,
