@@ -1,4 +1,6 @@
 import { startObsReview } from '@/hooks/useObs';
+import { scrapObsContent } from '@/hooks/useObsContent';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -18,12 +20,31 @@ export default function ObsIntroScreen() {
     weekLabel?: string;
     preview?: string;
     origin?: string;
+    isScraped?: string;
   }>();
   const [isStarting, setIsStarting] = useState(false);
   const isPreview = params.preview === 'true';
   const titleText = params.title || 'OBS 제목 데이터가 없습니다';
   const verseText = params.verse || '성경 범위 데이터가 없습니다';
   const contentId = params.contentId ? Number(params.contentId) : null;
+
+  // 스크랩 토글 — 상세 화면 우상단 별. 초기 상태는 목록에서 넘겨받음. (qa-bot#34)
+  const [scraped, setScraped] = useState(params.isScraped === 'true');
+  const [scrapBusy, setScrapBusy] = useState(false);
+  const handleToggleScrap = async () => {
+    if (!contentId || scrapBusy) return;
+    setScrapBusy(true);
+    const next = !scraped;
+    setScraped(next); // 낙관적 반영
+    try {
+      const result = await scrapObsContent(contentId);
+      setScraped(result);
+    } catch {
+      setScraped(!next); // 실패 시 롤백
+    } finally {
+      setScrapBusy(false);
+    }
+  };
 
   const handleStart = async () => {
     const contentId = Number(params.contentId);
@@ -68,7 +89,25 @@ export default function ObsIntroScreen() {
       </View>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
-        <OBSHeader />
+        <OBSHeader
+          right={
+            !isPreview && contentId ? (
+              <TouchableOpacity
+                onPress={handleToggleScrap}
+                disabled={scrapBusy}
+                hitSlop={8}
+                activeOpacity={0.7}
+                accessibilityLabel={scraped ? '스크랩 해제' : '스크랩'}
+              >
+                <Ionicons
+                  name={scraped ? 'bookmark' : 'bookmark-outline'}
+                  size={24}
+                  color={scraped ? colors.primary : 'rgba(13,28,45,0.4)'}
+                />
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
 
         {/* Content Area */}
         <View style={styles.content}>

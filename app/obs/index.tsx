@@ -222,6 +222,7 @@ export default function ObsScreen() {
           title: item.title,
           verse: item.biblePassage,
           weekLabel: formatWeekLabel(item.publishedDate),
+          isScraped: String(item.isScraped),
         },
       })}
       onPressReview={() => router.push({
