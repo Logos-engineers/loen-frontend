@@ -41,6 +41,7 @@ export type ObsContentDetail = {
   isPublished?: boolean;
   reviewId: number | null;
   reviewStatus: ReviewStatus | null;
+  isScraped?: boolean;
   summaryAnswers?: Record<string, string> | null;
   emotions?: string[] | null;
   applicationAnswer?: string | null;

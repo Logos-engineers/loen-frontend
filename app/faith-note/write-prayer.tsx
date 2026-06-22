@@ -216,7 +216,8 @@ export default function WritePrayerScreen() {
           method: 'PUT',
           body: JSON.stringify({ prayers }),
         });
-        router.back();
+        // 수정도 공개 범위 단계를 거치게 한다(현재 범위 프리셀렉트). qa-bot#53
+        router.replace(`/faith-note/publish?noteType=PRAYER&noteId=${noteId}&isEdit=true`);
         return;
       }
       const note = await apiClient<CreatedPrayerNote>('/notes/prayers', {

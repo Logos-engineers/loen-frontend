@@ -35,7 +35,8 @@ function formatDate(d: Date): string {
 const BIRTHDAY_MIN = new Date(1940, 0, 1);
 const BIRTHDAY_DEFAULT = new Date(2000, 0, 1);
 
-// 단계: 0 닉네임 → 1 본명 → 2 생일 → 3 오이코스 → 4 한줄소개(선택)
+// 단계: 0 닉네임 → 1 본명(선택) → 2 생일(선택) → 3 오이코스(선택) → 4 한줄소개(선택)
+// 닉네임만 필수. 본명·생일은 App Store 심사(Guideline 4 / 5.1.1) 대응으로 건너뛰기 허용.
 export default function ProfileSetupScreen() {
   const { completeProfileSetup } = useAuthStore();
   const scrollRef = useRef<ScrollView>(null);
@@ -76,7 +77,7 @@ export default function ProfileSetupScreen() {
     advanceTo(1);
   };
   const handleNameNext = () => {
-    if (!name.trim()) return;
+    // 본명은 선택 — 비워도 다음 단계로 진행
     advanceTo(2);
   };
   const handlePickDate = (date: Date) => {
@@ -98,16 +99,16 @@ export default function ProfileSetupScreen() {
   };
 
   const handleComplete = async () => {
-    // 오이코스는 선택 — 미선택이어도 가입 완료 가능 (나중에 리더/관리자가 배정)
-    if (!nickname.trim() || !name.trim() || !birthday) return;
+    // 닉네임만 필수. 본명·생일·오이코스는 선택 — 미입력이어도 가입 완료 가능.
+    if (!nickname.trim()) return;
     setLoading(true);
     try {
       await apiClient('/users/me/onboarding', {
         method: 'POST',
         body: JSON.stringify({
-          name: name.trim(),
+          name: name.trim() || undefined,
           nickname: nickname.trim(),
-          birthday: formatDate(birthday),
+          birthday: birthday ? formatDate(birthday) : undefined,
           oikosId: selectedOikos?.id || undefined,
           bio: bio.trim() || undefined,
         }),
@@ -185,8 +186,8 @@ export default function ProfileSetupScreen() {
             {/* 2. 본명 */}
             {step >= 1 && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
-                <Text style={styles.label}>이름</Text>
-                <Text style={styles.helper}>실제 이름이에요. (오이코스 식별용)</Text>
+                <Text style={styles.label}>이름 <Text style={styles.optional}>(선택)</Text></Text>
+                <Text style={styles.helper}>실제 이름이에요. (오이코스 식별용 · 나중에 입력 가능)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="실명을 입력해주세요"
@@ -203,7 +204,7 @@ export default function ProfileSetupScreen() {
             {/* 3. 생일 */}
             {step >= 2 && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.field}>
-                <Text style={styles.label}>생일</Text>
+                <Text style={styles.label}>생일 <Text style={styles.optional}>(선택)</Text></Text>
                 <Pressable style={styles.selectBox} onPress={openDatePicker}>
                   <Text style={[styles.selectText, !birthday && styles.placeholder]}>
                     {birthday ? formatDate(birthday) : '생일을 선택하세요'}
@@ -278,15 +279,21 @@ export default function ProfileSetupScreen() {
               <Text style={styles.buttonText}>다음</Text>
             </Pressable>
           ) : step === 1 ? (
+            // 본명은 선택 — 비웠으면 '건너뛰기', 입력했으면 '다음'
             <Pressable
-              style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }, !name.trim() && styles.buttonDisabled]}
+              style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}
               onPress={handleNameNext}
-              disabled={!name.trim()}
             >
-              <Text style={styles.buttonText}>다음</Text>
+              <Text style={styles.buttonText}>{name.trim() ? '다음' : '건너뛰기'}</Text>
             </Pressable>
           ) : step === 2 ? (
-            <Text style={styles.hint}>생일을 선택해 주세요</Text>
+            // 생일은 선택 — 안 골랐으면 '건너뛰기', 골랐으면 '다음'
+            <Pressable
+              style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}
+              onPress={() => advanceTo(3)}
+            >
+              <Text style={styles.buttonText}>{birthday ? '다음' : '건너뛰기'}</Text>
+            </Pressable>
           ) : (
             // step 3: 오이코스는 선택 — 골랐으면 '다음', 안 골랐으면 '건너뛰기'
             <Pressable

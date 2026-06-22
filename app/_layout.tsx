@@ -83,6 +83,8 @@ export default function RootLayout() {
         router.push('/plan');
       } else if (type === 'ATTENDANCE_REMINDER') {
         router.push('/mypage');
+      } else if (type === 'FEEDBACK_STATUS') {
+        router.push('/feedback');
       } else {
         // OIKOS_INVITE/OIKOS_LEADER 등 전용 화면이 없는 타입 → 알림 센터로
         router.push('/notifications');
@@ -91,8 +93,10 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  // 폰트 로딩 완료까지 렌더 보류 (로컬 에셋이라 거의 즉시). 미스타일 텍스트 깜빡임 방지.
-  if (!fontsLoaded) return null;
+  // 폰트 로딩 + 인증 상태 확정(선제 갱신 포함)까지 렌더 보류.
+  // isInitialized 전에는 스플래시(빈 화면)를 유지해야, 토큰 갱신 중 로그인 화면이
+  // 잠깐 떴다 사라지는 깜빡임을 막는다.
+  if (!fontsLoaded || !isInitialized) return null;
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -135,6 +139,7 @@ export default function RootLayout() {
           <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
+          <Stack.Screen name="mypage/notification-setting" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/bug-report" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/blocked-users" options={{ headerShown: false }} />
           <Stack.Screen name="admin/reports" options={{ headerShown: false }} />

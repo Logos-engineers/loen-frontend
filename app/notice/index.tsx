@@ -24,14 +24,12 @@ function formatDate(dateStr: string): string {
 function NoticeRow({ item }: { item: Notice }) {
   return (
     <TouchableOpacity
-      style={styles.row}
+      style={styles.card}
       activeOpacity={0.7}
       onPress={() => router.push({ pathname: '/notice/[id]', params: { id: item.id } })}
     >
-      <View style={styles.rowContent}>
-        <Text style={styles.rowTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.rowDate}>{formatDate(item.createdAt)}</Text>
-      </View>
+      <Text style={styles.rowTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={styles.rowDate}>{formatDate(item.createdAt)}</Text>
     </TouchableOpacity>
   );
 }
@@ -87,16 +85,18 @@ const styles = StyleSheet.create({
   },
   backText: { fontSize: fontSize.xl, color: colors.text.primary, fontWeight: fontWeight.bold },
   headerTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  listContent: { paddingBottom: 32 },
-  row: {
+  listContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl },
+  // 알림 화면과 동일한 톤: 회색 배경 위 흰 라운드 카드 + 카드 간 간격(아이콘 없음).
+  card: {
     backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+    gap: 4,
   },
-  rowContent: { gap: 4 },
-  rowTitle: { fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.text.primary, lineHeight: 22 },
+  rowTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.text.primary, lineHeight: 22 },
   rowDate: { fontSize: fontSize.sm, color: colors.text.secondary },
-  separator: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.md },
+  separator: { height: spacing.smd },
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
   emptyText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
 });

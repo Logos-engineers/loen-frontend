@@ -1,15 +1,13 @@
 import { Popup } from '@/components/ui/overlay';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
-import { useAlarms } from '@/hooks/useAlarms';
-import { registerPushToken } from '@/hooks/usePushToken';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
 import { googleSignOut } from '@/utils/googleAuth';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { Linking, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 개인정보처리방침/이용약관 — 저장소 루트 legal/ 의 정적 HTML(Vercel 호스팅).
@@ -19,50 +17,9 @@ const TERMS_URL = 'https://legal-eight-eta.vercel.app/terms.html';
 
 export default function SettingsScreen() {
   const clearTokens = useAuthStore((s) => s.clearTokens);
-  const { requestPermission } = useAlarms();
 
-  const [notifyEnabled, setNotifyEnabled] = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [withdrawVisible, setWithdrawVisible] = useState(false);
-
-  // 서버가 푸시 수신 동의(pushEnabled)의 단일 출처. 마운트 시 현재 값을 불러온다.
-  useEffect(() => {
-    let active = true;
-    apiClient<{ pushEnabled: boolean }>('/users/me/notification-setting')
-      .then((data) => {
-        if (active) setNotifyEnabled(!!data?.pushEnabled);
-      })
-      .catch(() => {
-        // 조회 실패 시 토글은 기본 off로 두되, 변경 시 서버에 다시 시도.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const handleToggleNotify = async (next: boolean) => {
-    const prev = notifyEnabled;
-    // 켤 때는 OS 권한이 먼저 있어야 실제 푸시가 도달한다.
-    if (next) {
-      const granted = await requestPermission();
-      if (!granted) {
-        setNotifyEnabled(false);
-        return;
-      }
-    }
-    setNotifyEnabled(next); // 낙관적 업데이트
-    try {
-      await apiClient('/users/me/notification-setting', {
-        method: 'PATCH',
-        body: JSON.stringify({ pushEnabled: next }),
-      });
-      // 켤 때는 이 기기의 푸시 토큰이 서버에 등록돼 있도록 보장한다.
-      if (next) await registerPushToken();
-    } catch (e) {
-      setNotifyEnabled(prev); // 실패 시 롤백
-      console.warn('[settings] 알림 설정 변경 실패', e);
-    }
-  };
 
   const handleLogout = async () => {
     setLogoutVisible(false);
@@ -101,41 +58,15 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.body}>
-        {/* 알림 */}
+        {/* 알림 — 전용 화면으로 진입(마스터+카테고리는 그 안에서). qa-bot#39 */}
         <View style={styles.group}>
-          <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/mypage/notification-setting')}
+          >
             <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
             <Text style={styles.rowLabel}>알림</Text>
-            <Switch
-              value={notifyEnabled}
-              onValueChange={handleToggleNotify}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.white}
-            />
-          </View>
-        </View>
-
-        {/* 계정 */}
-        <View style={styles.group}>
-          <TouchableOpacity
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => setLogoutVisible(true)}
-          >
-            <Ionicons name="log-out-outline" size={22} color={colors.text.primary} />
-            <Text style={styles.rowLabel}>로그아웃</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => setWithdrawVisible(true)}
-          >
-            <Ionicons name="trash-outline" size={22} color={colors.reaction.red} />
-            <Text style={[styles.rowLabel, styles.danger]}>회원탈퇴</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
           </TouchableOpacity>
         </View>
@@ -202,6 +133,31 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* 계정 — 가장 하단 */}
+        <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => setLogoutVisible(true)}
+          >
+            <Ionicons name="log-out-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>로그아웃</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => setWithdrawVisible(true)}
+          >
+            <Ionicons name="trash-outline" size={22} color={colors.reaction.red} />
+            <Text style={[styles.rowLabel, styles.danger]}>회원탈퇴</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 로그아웃 확인 */}
