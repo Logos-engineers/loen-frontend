@@ -62,6 +62,17 @@ export default function OikosManagementScreen() {
   const [newGroupName, setNewGroupName] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // 상단 그룹 탭 선택 인덱스
+  const [selectedGroupIdx, setSelectedGroupIdx] = useState(0);
+  // 펼쳐진 오이코스 id 집합 (아코디언)
+  const [expandedOikosIds, setExpandedOikosIds] = useState<Set<string>>(new Set());
+  const toggleOikos = (id: string) =>
+    setExpandedOikosIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   const canManageGroup = view?.canManageGroup ?? false;
   const canManageMembers = view?.canManageMembers ?? false;
   const canManageGroups = view?.canManageGroups ?? false;
@@ -129,6 +140,7 @@ export default function OikosManagementScreen() {
           setBusy(true);
           try {
             await deleteGroup(groupId);
+            setSelectedGroupIdx(0);
           } catch (e: any) {
             // 오이코스가 남아있으면 백엔드가 막음
             Alert.alert('삭제할 수 없어요', e?.message ?? '그룹을 삭제하지 못했습니다.');
@@ -180,6 +192,11 @@ export default function OikosManagementScreen() {
     ]);
   };
 
+  const groups = view?.groups ?? [];
+  const hasTabs = groups.length > 1; // 그룹이 여러 개(주로 관리자)면 상단 탭으로 분리
+  const safeIdx = Math.min(selectedGroupIdx, Math.max(0, groups.length - 1));
+  const selectedGroup: GroupNode | undefined = groups[safeIdx];
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar style="dark" />
@@ -196,7 +213,7 @@ export default function OikosManagementScreen() {
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : !view ? null : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <>
           <View style={styles.topRow}>
             <View style={styles.roleBadge}>
               <Ionicons name="ribbon-outline" size={16} color={colors.primary} />
@@ -210,28 +227,62 @@ export default function OikosManagementScreen() {
             ) : null}
           </View>
 
-          {view.groups.length === 0 ? (
+          {/* 그룹 탭 — 그룹이 여러 개일 때만 */}
+          {hasTabs ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabsRow}
+              style={styles.tabsScroll}
+            >
+              {groups.map((g, i) => {
+                const active = i === safeIdx;
+                return (
+                  <TouchableOpacity
+                    key={g.id}
+                    style={[styles.tab, active && styles.tabActive]}
+                    onPress={() => setSelectedGroupIdx(i)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>
+                      {g.name}
+                    </Text>
+                    <View style={[styles.tabCount, active && styles.tabCountActive]}>
+                      <Text style={[styles.tabCountText, active && styles.tabCountTextActive]}>
+                        {g.oikosList.length}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          {groups.length === 0 ? (
             <Text style={styles.emptyText}>
               {canManageGroups ? '아직 그룹이 없어요. ‘+ 그룹’으로 만들어보세요.' : '표시할 오이코스가 없어요.'}
             </Text>
-          ) : (
-            view.groups.map((group) => (
+          ) : selectedGroup ? (
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
               <GroupSection
-                key={group.id}
-                group={group}
+                key={selectedGroup.id}
+                group={selectedGroup}
+                showGroupName={!hasTabs}
+                expandedOikosIds={expandedOikosIds}
+                onToggleOikos={toggleOikos}
                 canManageGroup={canManageGroup}
                 canManageMembers={canManageMembers}
                 canManageGroups={canManageGroups}
-                onAddOikos={() => setCreateGroupId(group.id)}
+                onAddOikos={() => setCreateGroupId(selectedGroup.id)}
                 onAssign={(oikosId, role) => setSearchTarget({ kind: 'oikos', oikosId, role })}
                 onAssignGroupLeader={(groupId) => setSearchTarget({ kind: 'groupLeader', groupId })}
                 onRemoveMember={confirmRemoveMember}
                 onDeleteOikos={confirmDeleteOikos}
                 onDeleteGroup={confirmDeleteGroup}
               />
-            ))
-          )}
-        </ScrollView>
+            </ScrollView>
+          ) : null}
+        </>
       )}
 
       {/* 사용자 검색 (그룹장/리더/S리더/부원 지정) */}
@@ -326,6 +377,9 @@ export default function OikosManagementScreen() {
 // ── 그룹 섹션 ──────────────────────────────────────────────────────────
 function GroupSection({
   group,
+  showGroupName,
+  expandedOikosIds,
+  onToggleOikos,
   canManageGroup,
   canManageMembers,
   canManageGroups,
@@ -337,6 +391,9 @@ function GroupSection({
   onDeleteGroup,
 }: {
   group: GroupNode;
+  showGroupName: boolean;
+  expandedOikosIds: Set<string>;
+  onToggleOikos: (id: string) => void;
   canManageGroup: boolean;
   canManageMembers: boolean;
   canManageGroups: boolean;
@@ -347,15 +404,16 @@ function GroupSection({
   onDeleteOikos: (oikosId: string, name: string) => void;
   onDeleteGroup: (groupId: string, name: string) => void;
 }) {
+  // 오이코스가 하나면(리더 뷰 등) 접지 않고 항상 펼쳐 본인 오이코스 정보만 바로 보이게.
+  const single = group.oikosList.length === 1;
+
   return (
     <View style={styles.groupSection}>
       <View style={styles.groupHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.groupName}>{group.name}</Text>
+          {showGroupName ? <Text style={styles.groupName}>{group.name}</Text> : null}
           <View style={styles.groupLeaderRow}>
-            <Text style={styles.groupLeader}>
-              그룹장 · {group.groupLeaderName ?? '미지정'}
-            </Text>
+            <Text style={styles.groupLeader}>그룹장 · {group.groupLeaderName ?? '미지정'}</Text>
             {canManageGroups ? (
               <TouchableOpacity
                 style={styles.groupLeaderBtn}
@@ -389,9 +447,12 @@ function GroupSection({
         <Text style={styles.noOikos}>아직 오이코스가 없어요.</Text>
       ) : (
         group.oikosList.map((oikos) => (
-          <OikosCard
+          <OikosAccordion
             key={oikos.id}
             oikos={oikos}
+            expanded={single || expandedOikosIds.has(oikos.id)}
+            collapsible={!single}
+            onToggle={() => onToggleOikos(oikos.id)}
             canManageGroup={canManageGroup}
             canManageMembers={canManageMembers}
             onAssign={onAssign}
@@ -404,9 +465,12 @@ function GroupSection({
   );
 }
 
-// ── 오이코스 카드 ──────────────────────────────────────────────────────
-function OikosCard({
+// ── 오이코스 아코디언 카드 ──────────────────────────────────────────────
+function OikosAccordion({
   oikos,
+  expanded,
+  collapsible,
+  onToggle,
   canManageGroup,
   canManageMembers,
   onAssign,
@@ -414,6 +478,9 @@ function OikosCard({
   onDeleteOikos,
 }: {
   oikos: OikosNode;
+  expanded: boolean;
+  collapsible: boolean;
+  onToggle: () => void;
   canManageGroup: boolean;
   canManageMembers: boolean;
   onAssign: (oikosId: string, role: 'leader' | 'sleader') => void;
@@ -422,64 +489,95 @@ function OikosCard({
 }) {
   return (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.oikosName}>{oikos.name}</Text>
-        {canManageGroup ? (
-          <TouchableOpacity onPress={() => onDeleteOikos(oikos.id, oikos.name)} hitSlop={8}>
-            <Ionicons name="trash-outline" size={18} color={colors.text.dim} />
-          </TouchableOpacity>
+      {/* 헤더 — 탭하면 펼침/접힘. 요약(리더·부원수) 노출 */}
+      <TouchableOpacity
+        style={styles.cardHeader}
+        onPress={collapsible ? onToggle : undefined}
+        activeOpacity={collapsible ? 0.7 : 1}
+        disabled={!collapsible}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.oikosName}>{oikos.name}</Text>
+          {!expanded ? (
+            <Text style={styles.oikosSummary}>
+              리더 {oikos.leaderName ?? '미지정'} · 부원 {oikos.members.length}명
+            </Text>
+          ) : null}
+        </View>
+        {collapsible ? (
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.text.dim}
+          />
         ) : null}
-      </View>
+      </TouchableOpacity>
 
-      {/* 리더 */}
-      <LeaderRow
-        label="리더"
-        name={oikos.leaderName}
-        editable={canManageGroup}
-        onPress={() => onAssign(oikos.id, 'leader')}
-      />
-      {/* S리더 */}
-      <LeaderRow
-        label="S리더"
-        name={oikos.sleaderName}
-        editable={canManageGroup}
-        onPress={() => onAssign(oikos.id, 'sleader')}
-      />
+      {expanded ? (
+        <>
+          {/* 리더 */}
+          <LeaderRow
+            label="리더"
+            name={oikos.leaderName}
+            editable={canManageGroup}
+            onPress={() => onAssign(oikos.id, 'leader')}
+          />
+          {/* S리더 */}
+          <LeaderRow
+            label="S리더"
+            name={oikos.sleaderName}
+            editable={canManageGroup}
+            onPress={() => onAssign(oikos.id, 'sleader')}
+          />
 
-      <View style={styles.cardDivider} />
+          <View style={styles.cardDivider} />
 
-      {/* 부원 */}
-      <View style={styles.membersHeader}>
-        <Text style={styles.membersTitle}>부원 {oikos.members.length}명</Text>
-        {canManageMembers ? (
-          <TouchableOpacity
-            style={styles.addMemberBtn}
-            onPress={() => onAssign(oikos.id, 'member' as 'leader')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="person-add-outline" size={14} color={colors.primary} />
-            <Text style={styles.addMemberText}>추가</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {oikos.members.length === 0 ? (
-        <Text style={styles.noMembers}>부원이 없어요.</Text>
-      ) : (
-        oikos.members.map((m) => (
-          <View key={m.uid} style={styles.memberRow}>
-            <View style={styles.memberAvatar}>
-              <Ionicons name="person" size={14} color={colors.text.secondary} />
-            </View>
-            <Text style={styles.memberName}>{m.name}</Text>
+          {/* 부원 */}
+          <View style={styles.membersHeader}>
+            <Text style={styles.membersTitle}>부원 {oikos.members.length}명</Text>
             {canManageMembers ? (
-              <TouchableOpacity onPress={() => onRemoveMember(oikos.id, m)} hitSlop={8}>
-                <Ionicons name="close-circle" size={20} color={colors.text.dim} />
+              <TouchableOpacity
+                style={styles.addMemberBtn}
+                onPress={() => onAssign(oikos.id, 'member' as 'leader')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-add-outline" size={14} color={colors.primary} />
+                <Text style={styles.addMemberText}>추가</Text>
               </TouchableOpacity>
             ) : null}
           </View>
-        ))
-      )}
+
+          {oikos.members.length === 0 ? (
+            <Text style={styles.noMembers}>부원이 없어요.</Text>
+          ) : (
+            oikos.members.map((m) => (
+              <View key={m.uid} style={styles.memberRow}>
+                <View style={styles.memberAvatar}>
+                  <Ionicons name="person" size={14} color={colors.text.secondary} />
+                </View>
+                <Text style={styles.memberName}>{m.name}</Text>
+                {canManageMembers ? (
+                  <TouchableOpacity onPress={() => onRemoveMember(oikos.id, m)} hitSlop={8}>
+                    <Ionicons name="close-circle" size={20} color={colors.text.dim} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ))
+          )}
+
+          {/* 오이코스 삭제 — 펼친 상태 하단 */}
+          {canManageGroup ? (
+            <TouchableOpacity
+              style={styles.deleteOikosBtn}
+              onPress={() => onDeleteOikos(oikos.id, oikos.name)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={14} color={colors.text.dim} />
+              <Text style={styles.deleteOikosText}>오이코스 삭제</Text>
+            </TouchableOpacity>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -524,7 +622,13 @@ const styles = StyleSheet.create({
   errorText: { textAlign: 'center', color: colors.text.secondary, padding: spacing.xl },
   emptyText: { textAlign: 'center', color: colors.text.dim, marginTop: spacing.xxl },
 
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,6 +651,36 @@ const styles = StyleSheet.create({
   },
   addGroupText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#fff' },
   deleteGroupBtn: { paddingHorizontal: 4, paddingVertical: 4, marginLeft: spacing.xs },
+
+  // 그룹 탭
+  tabsScroll: { flexGrow: 0, marginTop: spacing.sm },
+  tabsRow: { paddingHorizontal: spacing.md, gap: spacing.sm },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.background.elevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.secondary, maxWidth: 120 },
+  tabTextActive: { color: '#fff' },
+  tabCount: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: radius.full,
+    backgroundColor: colors.background.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  tabCountText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.text.secondary },
+  tabCountTextActive: { color: '#fff' },
 
   groupSection: { gap: spacing.sm },
   groupHeader: { flexDirection: 'row', alignItems: 'center' },
@@ -581,6 +715,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   oikosName: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text.primary },
+  oikosSummary: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: 2 },
   cardDivider: { height: 1, backgroundColor: colors.border, marginVertical: 2 },
 
   leaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -610,6 +745,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   memberName: { flex: 1, fontSize: fontSize.base, color: colors.text.primary },
+
+  deleteOikosBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.background.base,
+  },
+  deleteOikosText: { fontSize: fontSize.sm, color: colors.text.dim },
 
   dialogBackdrop: {
     flex: 1,
