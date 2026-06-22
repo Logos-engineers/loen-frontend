@@ -144,6 +144,7 @@ export default function RootLayout() {
           <Stack.Screen name="mypage/blocked-users" options={{ headerShown: false }} />
           <Stack.Screen name="admin/reports" options={{ headerShown: false }} />
           <Stack.Screen name="admin/feedback" options={{ headerShown: false }} />
+          <Stack.Screen name="admin/push-broadcast" options={{ headerShown: false }} />
           <Stack.Screen name="feedback/index" options={{ headerShown: false }} />
           <Stack.Screen name="feedback/write" options={{ headerShown: false }} />
           <Stack.Screen name="faith-note/index" options={{ headerShown: false }} />
