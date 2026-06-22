@@ -86,10 +86,11 @@ export function ObsCard({
               disabled={scrapBusy}
               accessibilityLabel={scraped ? '스크랩 해제' : '스크랩'}
             >
+              {/* 미스크랩=프라이머리 라인(외곽선), 스크랩=프라이머리 필. 배경은 primaryLight 유지 */}
               <Ionicons
                 name={scraped ? 'bookmark' : 'bookmark-outline'}
                 size={22}
-                color={scraped ? colors.primary : 'rgba(13,28,45,0.35)'}
+                color={colors.primary}
               />
             </TouchableOpacity>
           )}
