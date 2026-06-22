@@ -78,20 +78,6 @@ export function ObsCard({
           )}
         </View>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.ctaButton, styles.obsViewButton]}
-            activeOpacity={0.8}
-            onPress={onPressView}
-          >
-            <Text style={styles.obsViewButtonText}>{viewLabel}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ctaButton, styles.primaryButton]}
-            activeOpacity={0.8}
-            onPress={onPressReview}
-          >
-            <Text style={styles.primaryButtonText}>{reviewLabel}</Text>
-          </TouchableOpacity>
           {enableScrap && (
             <TouchableOpacity
               style={styles.scrapButton}
@@ -107,6 +93,20 @@ export function ObsCard({
               />
             </TouchableOpacity>
           )}
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.obsViewButton]}
+            activeOpacity={0.8}
+            onPress={onPressView}
+          >
+            <Text style={styles.obsViewButtonText}>{viewLabel}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.primaryButton]}
+            activeOpacity={0.8}
+            onPress={onPressReview}
+          >
+            <Text style={styles.primaryButtonText}>{reviewLabel}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
