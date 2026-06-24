@@ -1,50 +1,95 @@
-# Welcome to your Expo app 👋
+<div align="center">
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+# Loen — Mobile App
 
-## Get started
+**신앙·성경 읽기 앱의 React Native 클라이언트**
+말씀 묵상 · OBS 복습 · 성경 읽기 · 신앙노트 · 챌린지
 
-1. Install dependencies
+![React Native](https://img.shields.io/badge/React_Native-0.81-61DAFB?logo=react&logoColor=white)
+![Expo](https://img.shields.io/badge/Expo-54-000020?logo=expo&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![Expo Router](https://img.shields.io/badge/Expo_Router-file_based-000020?logo=expo&logoColor=white)
 
-   ```bash
-   npm install
-   ```
+📱 App Store(TestFlight) · Google Play 비공개 테스트 베타 운영 중
 
-2. Start the app
+</div>
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 개요
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Loen 모바일 앱은 [Loen 백엔드](https://github.com/Logos-engineers/loen-backend)와 통신하는
+**현재 유일한 출시 대상 클라이언트**입니다. Expo Router 기반 파일 라우팅과 TypeScript로 작성했고,
+EAS Build로 빌드, EAS Update(OTA)로 무중단 배포합니다.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+> 전체 시스템 구조는 조직 프로필 → **[Logos Engineers](https://github.com/Logos-engineers)** 참고
 
-## Get a fresh project
+## 스크린샷
 
-When you're ready, run:
+<!-- TODO: store-assets/ 의 실제 앱 스크린샷 3~4장 추가 (홈 · OBS 복습 · 성경 읽기 · 신앙노트) -->
+> 스크린샷 추가 예정 — 홈 / OBS 복습 / 성경 읽기 / 신앙노트
 
-```bash
-npm run reset-project
+## 주요 기능
+
+| 영역 | 설명 |
+|------|------|
+| **홈** | 오늘의 말씀·성경 읽기 진행·신앙 활동 요약 |
+| **OBS 복습** | 주일 말씀(PDF)에서 AI가 생성한 퀴즈로 복습 플로우 |
+| **성경 읽기** | 읽기 목표 설정·진행률 추적 |
+| **신앙노트** | 감사·기도·말씀·염려 저널링 (작성·댓글·신고/차단) |
+| **챌린지** | 신앙/성경 챌린지 + 인증 |
+| **오이코스** | 소그룹(가정) 커뮤니티 |
+| **인증** | Google 소셜 로그인 + 이메일 회원가입 (JWT) |
+
+## 기술 스택 & 설계
+
+- **React Native 0.81 · Expo ~54 · TypeScript** — Expo Router 파일 기반 라우팅
+- **EAS Build / Update** — JS 변경은 OTA로 즉시 반영, 네이티브 변경만 새 빌드
+- **dev / prod 환경 분리** — `APP_ENV` 스위치로 `com.loen.app.dev` 별도 앱이 공존,
+  OAuth 클라이언트·API URL·구글 설정이 환경별로 자동 분기
+- **데이터 훅 패턴** — 도메인별 커스텀 훅으로 API 연동, 목록/홈 화면은 `useRefetchOnFocus`로
+  포커스 시 갱신
+- **백엔드 중계** — AI 서비스를 직접 호출하지 않고 백엔드를 통해서만 접근
+
+## 프로젝트 구조
+
+```
+app/
+  (tabs)/        # 하단 탭 네비게이션 (홈 · 교회 · 탐색 · 더보기)
+  obs/           # 주일 말씀 복습 라우트
+components/
+  ui/            # 재사용 프리미티브 (card, button, section-header …)
+  home/          # 홈 화면 섹션 컴포넌트
+  shared/        # 화면 간 공유 컴포넌트
+constants/
+  theme.ts       # 색상 · 타이포그래피
+  tokens.ts      # 디자인 토큰
+hooks/           # 커스텀 React 훅 (데이터 연동 등)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+경로 별칭 `@/*` 는 프로젝트 루트를 가리킵니다 (`tsconfig.json`).
 
-## Learn more
+## 로컬 실행
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npx expo start      # QR 스캔 (Expo Go)
+# 또는
+npm run ios
+npm run android
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+환경 변수는 `.env` (공통) / `.env.local` (로컬 오버라이드)로 관리합니다.
+`EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_GOOGLE_*` 등이 필요합니다.
 
-## Join the community
+## 관련 저장소
 
-Join our community of developers creating universal apps.
+- [loen-backend](https://github.com/Logos-engineers/loen-backend) — 메인 API 서버 (Spring Boot)
+- [ai-server-loen](https://github.com/Logos-engineers/ai-server-loen) — PDF 분석·퀴즈 생성 (FastAPI · Gemini)
+- [loen-qa-bot](https://github.com/Logos-engineers/loen-qa-bot) — QA 제보 자동 분류 봇
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+
+<div align="center">
+<sub>← 전체 구조: <a href="https://github.com/Logos-engineers">Logos Engineers</a></sub>
+</div>
