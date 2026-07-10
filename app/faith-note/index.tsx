@@ -128,9 +128,17 @@ export default function FaithNoteListScreen() {
     }
   }, [pendingDelete, deleteNote]);
 
+  // 요일 필터 — 이번 주(일요일 시작) 해당 요일 노트만 노출
   const filteredNotes = useMemo(() => {
     if (selectedDates.length === 0) return notes;
-    return notes.filter((n) => !n.dayKey || selectedDates.includes(n.dayKey));
+    const weekStart = getWeekStart();
+    return notes.filter(
+      (n) =>
+        n.dayKey &&
+        selectedDates.includes(n.dayKey) &&
+        n.createdAt &&
+        new Date(n.createdAt) >= weekStart,
+    );
   }, [notes, selectedDates]);
 
   // 이번 주에 '내가' 작성한 요일 집합 → 주간 뷰 체크 표시
