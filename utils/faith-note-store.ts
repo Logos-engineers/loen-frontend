@@ -4,12 +4,11 @@ export function getTodayKey(): string {
   return keys[new Date().getDay()] ?? 'MON';
 }
 
-/** 이번 주 시작(월요일 00:00) 시각 반환 — 주간 뷰 '이번 주 작성' 판별용 */
+/** 이번 주 시작(일요일 00:00) 시각 반환 — 주간 셀렉터(일~토)와 정합 */
 export function getWeekStart(now: Date = new Date()): Date {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
-  const offset = (d.getDay() + 6) % 7; // 월=0, 화=1 … 일=6
-  d.setDate(d.getDate() - offset);
+  d.setDate(d.getDate() - d.getDay()); // 일=0 … 토=6 → 일요일이 주 시작
   return d;
 }
 
