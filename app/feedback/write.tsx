@@ -15,6 +15,7 @@ import {
   type FeedbackCategory,
 } from '@/utils/feedback';
 import { launchImageLibrarySafe } from '@/utils/imagePicker';
+import { resizeForUpload } from '@/utils/resizeImage';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
@@ -109,10 +110,10 @@ export default function FeedbackWriteScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       selectionLimit: MAX_FEEDBACK_IMAGES - imageUris.length,
-      quality: 0.7,
+      quality: 1,
     });
     if (result.canceled) return;
-    const picked = result.assets.map((a) => a.uri);
+    const picked = await Promise.all(result.assets.map((a) => resizeForUpload(a.uri, a.width)));
     setImageUris((prev) => [...prev, ...picked].slice(0, MAX_FEEDBACK_IMAGES));
   };
 

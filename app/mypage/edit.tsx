@@ -1,6 +1,7 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { uploadProfileImage, useProfile } from '@/hooks/useProfile';
 import { launchImageLibrarySafe } from '@/utils/imagePicker';
+import { resizeForUpload } from '@/utils/resizeImage';
 import { overlay } from '@/components/ui/overlay';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -56,13 +57,15 @@ export default function ProfileEditScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 1,
     });
     if (result.canceled || !result.assets[0]) return;
 
     setUploading(true);
     try {
-      const url = await uploadProfileImage(result.assets[0].uri);
+      const asset = result.assets[0];
+      const resizedUri = await resizeForUpload(asset.uri, asset.width);
+      const url = await uploadProfileImage(resizedUri);
       setImageUri(url);
     } catch (e: any) {
       Alert.alert('오류', e?.message ?? '이미지 업로드에 실패했습니다.');
