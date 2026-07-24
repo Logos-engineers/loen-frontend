@@ -13,6 +13,7 @@ import React, { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// 마이페이지 — 하단 탭 루트(뒤로가기 없음). 헤더 우측 ⚙️로 설정 진입.
 export default function MyPageScreen() {
   const { profile, refetch: refetchProfile } = useProfile();
   const { oikos, refetch: refetchOikos } = useOikos();
@@ -32,9 +33,6 @@ export default function MyPageScreen() {
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>마이페이지</Text>
         <TouchableOpacity onPress={() => router.push('/mypage/settings')} hitSlop={8}>
           <Ionicons name="settings-outline" size={22} color={colors.text.primary} />
