@@ -1,5 +1,7 @@
 import { Popup } from '@/components/ui/overlay';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
+import { OIKOS_MANAGE_POSITIONS } from '@/hooks/useOikosManagement';
+import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/store/auth-store';
 import { apiClient } from '@/utils/apiClient';
 import { googleSignOut } from '@/utils/googleAuth';
@@ -17,6 +19,12 @@ const TERMS_URL = 'https://legal-eight-eta.vercel.app/terms.html';
 
 export default function SettingsScreen() {
   const clearTokens = useAuthStore((s) => s.clearTokens);
+  const role = useAuthStore((s) => s.role);
+  const { profile } = useProfile();
+
+  // 오이코스 관리 접근 가능 직책 또는 ADMIN → '관리' 그룹 노출 (more.tsx와 동일 규칙)
+  const canManageOikos =
+    role === 'ADMIN' || (!!profile?.position && OIKOS_MANAGE_POSITIONS.includes(profile.position));
 
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [withdrawVisible, setWithdrawVisible] = useState(false);
@@ -71,8 +79,20 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 약관 및 정책 */}
+        {/* 정보 — 시스템 공지·약관·정책 */}
         <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/notice')}
+          >
+            <Ionicons name="megaphone-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>공지사항</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
           <TouchableOpacity
             style={styles.row}
             activeOpacity={0.7}
@@ -96,8 +116,20 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 지원 */}
+        {/* 의견 · 지원 */}
         <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/feedback')}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>피드백 보내기</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
           <TouchableOpacity
             style={styles.row}
             activeOpacity={0.7}
@@ -107,6 +139,8 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>버그 신고</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
           </TouchableOpacity>
+
+          <View style={styles.divider} />
 
           <TouchableOpacity
             style={styles.row}
@@ -118,6 +152,36 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
           </TouchableOpacity>
         </View>
+
+        {/* 관리 — 매니저/관리자 조건부 */}
+        {canManageOikos && (
+          <View style={styles.group}>
+            <TouchableOpacity
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push('/oikos/management')}
+            >
+              <Ionicons name="people-outline" size={22} color={colors.text.primary} />
+              <Text style={styles.rowLabel}>오이코스 관리</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
+
+            {role === 'ADMIN' && (
+              <>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.row}
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/admin' as never)}
+                >
+                  <Ionicons name="shield-outline" size={22} color={colors.text.primary} />
+                  <Text style={styles.rowLabel}>관리자 메뉴</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
 
         {/* 개발 전용 — 온보딩 화면 미리보기 (프로덕션 빌드에선 숨김) */}
         {__DEV__ && (
