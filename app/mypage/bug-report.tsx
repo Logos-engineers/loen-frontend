@@ -43,7 +43,7 @@ export default function BugReportScreen() {
     setSending(true);
 
     const body = `${desc}\n\n\n──────────\n${deviceMeta}`;
-    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[로엔] 버그 신고')}&body=${encodeURIComponent(body)}`;
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[onu] 버그 신고')}&body=${encodeURIComponent(body)}`;
 
     try {
       const ok = await Linking.canOpenURL(url);
