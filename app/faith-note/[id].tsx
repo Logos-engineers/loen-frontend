@@ -25,7 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 type NoteDetailParams = {
@@ -350,6 +350,7 @@ function CommentRow({ item, onMenuPress }: { item: CommentItem; onMenuPress?: (i
 
 export default function FaithNoteDetailScreen() {
   const kb = useKeyboardHeight();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<NoteDetailParams>();
   const fallback = useMemo(() => buildFallbackNote(toStringValue(params.id)), [params.id]);
   const noteId = toStringValue(params.id) ?? fallback.id;
@@ -690,7 +691,9 @@ export default function FaithNoteDetailScreen() {
           </View>
         ) : null}
 
-        <View style={styles.inputBar}>
+        {/* edge-to-edge(Android)에서 하단 시스템 바가 입력바를 가리지 않게, 키보드 내렸을 때만 하단 inset 추가.
+            키보드 올라오면 marginBottom:kb 가 이미 올려주므로 이중 여백 방지로 0. (qa-bot#61) */}
+        <View style={[styles.inputBar, { paddingBottom: spacing.md + (kb > 0 ? 0 : insets.bottom) }]}>
           <TextInput
             ref={inputRef}
             style={styles.input}
@@ -930,7 +933,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingLeft: spacing.md,
     paddingRight: spacing.md,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.md,
+    // paddingBottom 은 렌더에서 동적으로(spacing.md + 하단 safe-area inset) 적용 — qa-bot#61
     backgroundColor: colors.white,
   },
   input: {
