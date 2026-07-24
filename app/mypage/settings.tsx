@@ -79,42 +79,35 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 정보 — 시스템 공지·약관·정책 */}
-        <View style={styles.group}>
-          <TouchableOpacity
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => router.push('/notice')}
-          >
-            <Ionicons name="megaphone-outline" size={22} color={colors.text.primary} />
-            <Text style={styles.rowLabel}>공지사항</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-          </TouchableOpacity>
+        {/* 관리 — 매니저/관리자 조건부 */}
+        {canManageOikos && (
+          <View style={styles.group}>
+            <TouchableOpacity
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push('/oikos/management')}
+            >
+              <Ionicons name="people-outline" size={22} color={colors.text.primary} />
+              <Text style={styles.rowLabel}>오이코스 관리</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
 
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
-          >
-            <Ionicons name="shield-checkmark-outline" size={22} color={colors.text.primary} />
-            <Text style={styles.rowLabel}>개인정보처리방침</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => Linking.openURL(TERMS_URL)}
-          >
-            <Ionicons name="document-text-outline" size={22} color={colors.text.primary} />
-            <Text style={styles.rowLabel}>이용약관</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-          </TouchableOpacity>
-        </View>
+            {role === 'ADMIN' && (
+              <>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.row}
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/admin' as never)}
+                >
+                  <Ionicons name="shield-outline" size={22} color={colors.text.primary} />
+                  <Text style={styles.rowLabel}>관리자 메뉴</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
 
         {/* 의견 · 지원 */}
         <View style={styles.group}>
@@ -153,35 +146,42 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 관리 — 매니저/관리자 조건부 */}
-        {canManageOikos && (
-          <View style={styles.group}>
-            <TouchableOpacity
-              style={styles.row}
-              activeOpacity={0.7}
-              onPress={() => router.push('/oikos/management')}
-            >
-              <Ionicons name="people-outline" size={22} color={colors.text.primary} />
-              <Text style={styles.rowLabel}>오이코스 관리</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-            </TouchableOpacity>
+        {/* 정보 — 시스템 공지·약관·정책 */}
+        <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/notice')}
+          >
+            <Ionicons name="megaphone-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>공지사항</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
 
-            {role === 'ADMIN' && (
-              <>
-                <View style={styles.divider} />
-                <TouchableOpacity
-                  style={styles.row}
-                  activeOpacity={0.7}
-                  onPress={() => router.push('/admin' as never)}
-                >
-                  <Ionicons name="shield-outline" size={22} color={colors.text.primary} />
-                  <Text style={styles.rowLabel}>관리자 메뉴</Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          >
+            <Ionicons name="shield-checkmark-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>개인정보처리방침</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL(TERMS_URL)}
+          >
+            <Ionicons name="document-text-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>이용약관</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
 
         {/* 개발 전용 — 온보딩 화면 미리보기 (프로덕션 빌드에선 숨김) */}
         {__DEV__ && (
