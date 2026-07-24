@@ -136,7 +136,6 @@ export default function RootLayout() {
           <Stack.Screen name="banner/admin" options={{ headerShown: false }} />
           <Stack.Screen name="banner/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="notice" options={{ headerShown: false }} />
-          <Stack.Screen name="mypage/index" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/notification-setting" options={{ headerShown: false }} />
