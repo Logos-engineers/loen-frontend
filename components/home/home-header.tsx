@@ -45,8 +45,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   logo: {
-    width: 63,
-    height: 20,
+    width: 32,
+    height: 10,
   },
   badge: {
     position: 'absolute',
