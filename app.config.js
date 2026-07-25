@@ -24,7 +24,7 @@ module.exports = ({ config }) => {
   const iosScheme = googleIosUrlScheme();
   return {
     ...config,
-    name: IS_DEV ? 'onu (Dev)' : 'onu',
+    name: IS_DEV ? 'on.u (Dev)' : 'on.u',
     // 딥링크 scheme 도 분리 — 같은 폰에서 dev/prod 가 서로의 링크를 가로채지 않게.
     scheme: IS_DEV ? 'loenprojectdev' : config.scheme,
     ios: {
