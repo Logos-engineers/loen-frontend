@@ -170,7 +170,7 @@ export default function LoginScreen() {
               style={styles.logo}
               contentFit="contain"
             />
-            <Text style={styles.appName}>Loen</Text>
+            <Text style={styles.appName}>onu</Text>
             <Text style={styles.tagline}>말씀과 함께하는 신앙 여정</Text>
           </View>
 

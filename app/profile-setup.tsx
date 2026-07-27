@@ -134,7 +134,7 @@ export default function ProfileSetupScreen() {
           <Text style={styles.welcomeEmoji}>🎉</Text>
           <Text style={styles.welcomeTitle}>환영합니다, {nickname.trim()}님!</Text>
           <Text style={styles.welcomeSub}>
-            가입이 완료되었어요.{'\n'}이제 Loen과 함께 신앙의 걸음을 시작해요.
+            가입이 완료되었어요.{'\n'}이제 onu와 함께 신앙의 걸음을 시작해요.
           </Text>
         </Animated.View>
         <View style={[styles.footer, styles.sidePad]}>

@@ -188,7 +188,7 @@ export default function PublishScreen() {
           const url = Linking.createURL(`/faith-note/${noteId}`, {
             queryParams: { tab: noteType ?? 'THANKS' },
           });
-          await Share.share({ message: `로엔에서 공유한 노트를 확인해보세요\n${url}` });
+          await Share.share({ message: `onu에서 공유한 노트를 확인해보세요\n${url}` });
         } catch {
           /* 공유 취소/실패는 무시 */
         }
