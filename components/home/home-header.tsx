@@ -1,6 +1,7 @@
-import { BELL_SVG, LOGO_SVG } from '@/constants/icons';
+import { BELL_SVG } from '@/constants/icons';
 import { colors } from '@/constants/tokens';
 import { useUnreadCount } from '@/hooks/useNotifications';
+import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -18,8 +19,8 @@ export function HomeHeader() {
 
   return (
     <View style={styles.container}>
-      {/* 로고 — 42×25px, fill rgba(13,28,45,0.16) */}
-      <SvgXml xml={LOGO_SVG} width={42} height={25} />
+      {/* onu 워드마크 로고 (928×294 비율, 연회색) */}
+      <Image source={require('@/assets/images/home-logo.png')} style={styles.logo} contentFit="contain" />
 
       {/* 벨 아이콘 → 알림 센터, 안 읽은 알림 있으면 빨간 점 */}
       <TouchableOpacity
@@ -42,6 +43,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+  },
+  logo: {
+    width: 35,
+    height: 11,
   },
   badge: {
     position: 'absolute',

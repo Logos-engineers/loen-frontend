@@ -191,6 +191,7 @@ export function useFaithNotes(activeTab: FaithNoteTab, scope: FaithNoteScope = '
   const [isLoading, setIsLoading] = useState(true);       // 초기/refetch 로딩
   const [isLoadingMore, setIsLoadingMore] = useState(false); // 추가 페이지 로딩
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);              // 더 불러올 페이지 존재 여부(과거 열람용)
 
   const pageRef = useRef(0);
   const loadedCountRef = useRef(0);
@@ -224,6 +225,7 @@ export function useFaithNotes(activeTab: FaithNoteTab, scope: FaithNoteScope = '
       pageRef.current = pageNum;
       loadedCountRef.current = append ? loadedCountRef.current + mapped.length : mapped.length;
       hasMoreRef.current = loadedCountRef.current < total && mapped.length > 0;
+      setHasMore(hasMoreRef.current);
       setNotes((cur) => (append ? [...cur, ...mapped] : mapped));
     } catch (e: any) {
       if (!append) setError(e?.message ?? '불러오기 실패');
@@ -240,6 +242,7 @@ export function useFaithNotes(activeTab: FaithNoteTab, scope: FaithNoteScope = '
     pageRef.current = 0;
     loadedCountRef.current = 0;
     hasMoreRef.current = true;
+    setHasMore(true);
     load(activeTab, 0, false);
   }, [activeTab, scope, load]);
 
@@ -309,8 +312,9 @@ export function useFaithNotes(activeTab: FaithNoteTab, scope: FaithNoteScope = '
     pageRef.current = 0;
     loadedCountRef.current = 0;
     hasMoreRef.current = true;
+    setHasMore(true);
     load(activeTab, 0, false);
   }, [activeTab, scope, load]);
 
-  return { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch };
+  return { notes, isLoading, isLoadingMore, hasMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch };
 }
