@@ -1,3 +1,4 @@
+import { TermsAgreementCheckbox } from '@/components/auth/terms-agreement';
 import { TextField } from '@/components/ui/text-field';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { signupEmail } from '@/utils/authApi';
@@ -14,9 +15,14 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
+    if (!agreed) {
+      Alert.alert('알림', '이용약관 및 개인정보처리방침에 동의해주세요.');
+      return;
+    }
     if (!EMAIL_RE.test(email)) {
       Alert.alert('알림', '올바른 이메일을 입력해주세요.');
       return;
@@ -91,10 +97,16 @@ export default function SignupScreen() {
           placeholder="비밀번호 다시 입력"
         />
 
+        <TermsAgreementCheckbox checked={agreed} onToggle={() => setAgreed((v) => !v)} />
+
         <Pressable
-          style={({ pressed }) => [styles.button, (pressed || loading) && styles.pressed]}
+          style={({ pressed }) => [
+            styles.button,
+            !agreed && styles.buttonDisabled,
+            (pressed || loading) && styles.pressed,
+          ]}
           onPress={handleSignup}
-          disabled={loading}
+          disabled={loading || !agreed}
         >
           {loading
             ? <ActivityIndicator color={colors.white} size="small" />
@@ -130,6 +142,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     marginTop: spacing.sm,
   },
+  buttonDisabled: { opacity: 0.4 },
   buttonText: { color: colors.white, fontSize: fontSize.base, fontWeight: fontWeight.semibold },
   link: { color: colors.text.secondary, fontSize: fontSize.sm, textAlign: 'center', marginTop: spacing.sm },
   pressed: { opacity: 0.75 },
