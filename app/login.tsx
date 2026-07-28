@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TermsNotice } from '@/components/auth/terms-agreement';
 import { TextField } from '@/components/ui/text-field';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useAuthStore } from '@/store/auth-store';
@@ -241,6 +242,8 @@ export default function LoginScreen() {
                 <Text style={styles.devButtonText}>[DEV] 개발 토큰으로 로그인</Text>
               </Pressable>
             )}
+
+            <TermsNotice />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
