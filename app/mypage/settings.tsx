@@ -1,4 +1,5 @@
 import { Popup } from '@/components/ui/overlay';
+import { PRIVACY_POLICY_URL, TERMS_URL } from '@/constants/legal';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { OIKOS_MANAGE_POSITIONS } from '@/hooks/useOikosManagement';
 import { useProfile } from '@/hooks/useProfile';
@@ -11,11 +12,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// 개인정보처리방침/이용약관 — 저장소 루트 legal/ 의 정적 HTML(Vercel 호스팅).
-// 소스/재배포 방법은 legal/README.md 참고.
-const PRIVACY_POLICY_URL = 'https://legal-eight-eta.vercel.app/privacy.html';
-const TERMS_URL = 'https://legal-eight-eta.vercel.app/terms.html';
 
 export default function SettingsScreen() {
   const clearTokens = useAuthStore((s) => s.clearTokens);
