@@ -382,6 +382,18 @@ export default function FaithNoteDetailScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // 댓글 ⋯ 메뉴 / 삭제 확인 / 수정 대상
   const [menuComment, setMenuComment] = useState<CommentItem | null>(null);
+  // 댓글 메뉴(BottomSheet)를 닫은 뒤 실행할 동작. 확인/신고 등 다른 Modal은 시트가 완전히
+  // 닫힌 뒤 열어야 iOS/iPad에서 화면이 멈추지 않는다.
+  const pendingCommentActionRef = useRef<(() => void) | null>(null);
+  const closeCommentMenuThen = (action: () => void) => {
+    pendingCommentActionRef.current = action;
+    setMenuComment(null);
+  };
+  const runPendingCommentAction = () => {
+    const action = pendingCommentActionRef.current;
+    pendingCommentActionRef.current = null;
+    action?.();
+  };
   const [pendingDeleteComment, setPendingDeleteComment] = useState<CommentItem | null>(null);
   const [editingComment, setEditingComment] = useState<CommentItem | null>(null);
   // 신고 대상 댓글 / 내가 차단한 사용자 (차단 사용자의 댓글은 클라이언트에서 숨김)
@@ -728,7 +740,12 @@ export default function FaithNoteDetailScreen() {
       />
 
       {/* ── 댓글 ⋯ 메뉴 — 본인: 수정/삭제, 타인: 신고/차단 ── */}
-      <BottomSheet visible={!!menuComment} onClose={() => setMenuComment(null)} disableContentPadding>
+      <BottomSheet
+        visible={!!menuComment}
+        onClose={() => setMenuComment(null)}
+        onClosed={runPendingCommentAction}
+        disableContentPadding
+      >
         {menuComment?.isMine ? (
           <>
             <TouchableOpacity
@@ -736,8 +753,7 @@ export default function FaithNoteDetailScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 const target = menuComment;
-                setMenuComment(null);
-                if (target) handleEditComment(target);
+                closeCommentMenuThen(() => target && handleEditComment(target));
               }}
             >
               <Text style={styles.menuText}>수정하기</Text>
@@ -747,8 +763,7 @@ export default function FaithNoteDetailScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 const target = menuComment;
-                setMenuComment(null);
-                setPendingDeleteComment(target);
+                closeCommentMenuThen(() => setPendingDeleteComment(target));
               }}
             >
               <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
@@ -761,8 +776,7 @@ export default function FaithNoteDetailScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 const target = menuComment;
-                setMenuComment(null);
-                setReportComment(target);
+                closeCommentMenuThen(() => setReportComment(target));
               }}
             >
               <Text style={[styles.menuText, styles.menuTextDanger]}>신고하기</Text>
@@ -772,8 +786,7 @@ export default function FaithNoteDetailScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 const target = menuComment;
-                setMenuComment(null);
-                if (target) handleBlockComment(target);
+                closeCommentMenuThen(() => target && handleBlockComment(target));
               }}
             >
               <Text style={[styles.menuText, styles.menuTextDanger]}>사용자 차단</Text>

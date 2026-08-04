@@ -2,7 +2,7 @@ import BottomSheet from '@/components/ui/overlay/BottomSheet';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FaithNoteTab } from './faith-note-tab-bar';
 
@@ -74,6 +74,18 @@ export function FaithNoteCard({
 }: FaithNoteCardProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  // 메뉴(BottomSheet)를 닫은 뒤 실행할 동작. 확인 Popup 등 다른 Modal은 시트가 완전히 닫힌 뒤
+  // 열어야 iOS/iPad에서 화면이 멈추지 않는다.
+  const pendingActionRef = useRef<(() => void) | null>(null);
+  const closeMenuThen = (action: () => void) => {
+    pendingActionRef.current = action;
+    setMenuOpen(false);
+  };
+  const runPendingAction = () => {
+    const action = pendingActionRef.current;
+    pendingActionRef.current = null;
+    action?.();
+  };
   // 내 노트: 수정/삭제, 남의 노트: 신고/차단 — 콜백이 있을 때만 ⋯ 노출
   const showMenu = item.isMine
     ? (!!onEdit || !!onDelete)
@@ -217,26 +229,25 @@ export function FaithNoteCard({
       </View>
 
       {/* ⋯ 메뉴 — 내 노트: 수정/삭제, 남의 노트: 신고/차단 */}
-      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} disableContentPadding>
+      <BottomSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onClosed={runPendingAction}
+        disableContentPadding
+      >
         {item.isMine ? (
           <>
             <TouchableOpacity
               style={styles.menuRow}
               activeOpacity={0.7}
-              onPress={() => {
-                setMenuOpen(false);
-                onEdit?.(item);
-              }}
+              onPress={() => closeMenuThen(() => onEdit?.(item))}
             >
               <Text style={styles.menuText}>수정하기</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuRow}
               activeOpacity={0.7}
-              onPress={() => {
-                setMenuOpen(false);
-                onDelete?.(item);
-              }}
+              onPress={() => closeMenuThen(() => onDelete?.(item))}
             >
               <Text style={[styles.menuText, styles.menuTextDanger]}>삭제하기</Text>
             </TouchableOpacity>
@@ -246,20 +257,14 @@ export function FaithNoteCard({
             <TouchableOpacity
               style={styles.menuRow}
               activeOpacity={0.7}
-              onPress={() => {
-                setMenuOpen(false);
-                onReport?.(item);
-              }}
+              onPress={() => closeMenuThen(() => onReport?.(item))}
             >
               <Text style={[styles.menuText, styles.menuTextDanger]}>신고하기</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuRow}
               activeOpacity={0.7}
-              onPress={() => {
-                setMenuOpen(false);
-                onBlock?.(item);
-              }}
+              onPress={() => closeMenuThen(() => onBlock?.(item))}
             >
               <Text style={[styles.menuText, styles.menuTextDanger]}>사용자 차단</Text>
             </TouchableOpacity>
