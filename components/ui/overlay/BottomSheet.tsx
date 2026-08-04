@@ -24,6 +24,12 @@ type Props = {
   dismissOnBackdrop?: boolean;
   /** children 좌우 기본 패딩 제거 (자체 패딩을 갖는 콘텐츠용) */
   disableContentPadding?: boolean;
+  /**
+   * 닫힘 애니메이션이 끝나 Modal이 완전히 사라진 뒤 호출된다.
+   * 시트를 닫자마자 다른 Modal(Popup/Alert)을 열면 iOS/iPad에서 화면이 멈추므로,
+   * 후속 Modal은 여기서 열어 두 Modal이 겹치지 않게 한다.
+   */
+  onClosed?: () => void;
 };
 
 export default function BottomSheet({
@@ -35,6 +41,7 @@ export default function BottomSheet({
   footer,
   dismissOnBackdrop = true,
   disableContentPadding = false,
+  onClosed,
 }: Props) {
   const insets = useSafeAreaInsets();
   const [renderVisible, setRenderVisible] = useState(visible);
@@ -42,6 +49,9 @@ export default function BottomSheet({
   const sheetTranslateY = useRef(new Animated.Value(40)).current;
   const closingRef = useRef(false);
   const openedRef = useRef(false);
+  // 닫힘 콜백은 항상 최신 참조를 쓰도록 ref에 보관(effect deps에 넣어 애니를 재트리거하지 않기 위함).
+  const onClosedRef = useRef(onClosed);
+  onClosedRef.current = onClosed;
 
   useEffect(() => {
     if (visible) {
@@ -88,7 +98,10 @@ export default function BottomSheet({
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]).start(() => setRenderVisible(false));
+      ]).start(() => {
+        setRenderVisible(false);
+        onClosedRef.current?.();
+      });
     }
   }, [backdropOpacity, renderVisible, sheetTranslateY, visible]);
 
@@ -113,6 +126,7 @@ export default function BottomSheet({
       setRenderVisible(false);
       closingRef.current = false;
       onClose();
+      onClosedRef.current?.();
     });
   };
 
