@@ -22,6 +22,7 @@ import {
   ObsAdminQuiz,
   fetchAdminObsDetail,
   publishObsContent,
+  regenerateObsQuiz,
   replaceObsQuizzes,
   saveObsContent,
   updateObsContent,
@@ -53,6 +54,9 @@ export default function ObsAdminReviewScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showIosPicker, setShowIosPicker] = useState(false);
+  // 문제별 재생성: 카드별 지침 입력값 + 현재 재생성 중인 카드 index
+  const [regenInstructions, setRegenInstructions] = useState<Record<number, string>>({});
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
 
   const parseInitialDate = (s?: string): Date => {
     if (!s) return new Date();
@@ -108,6 +112,46 @@ export default function ObsAdminReviewScreen() {
 
   const updateQuiz = (index: number, field: keyof ObsAdminQuiz, value: string) => {
     setQuizzes((prev) => prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)));
+  };
+
+  // 이 문제만 다시 생성 — 유형은 고정, 관리자 지침·중복회피를 함께 보내고 결과를 카드에 교체(저장은 별도).
+  const handleRegenerate = async (index: number) => {
+    if (sections.length === 0) {
+      Alert.alert('안내', '본문 데이터가 없어 재생성할 수 없습니다. 저장 후 다시 시도해주세요.');
+      return;
+    }
+    const target = quizzes[index];
+    setRegeneratingIndex(index);
+    try {
+      const others = quizzes
+        .filter((_, i) => i !== index)
+        .map((q) => q.questionText)
+        .filter((t) => !!t);
+      const fresh = await regenerateObsQuiz({
+        sections,
+        stepNumber: target.stepNumber,
+        currentQuestion: target.questionText || undefined,
+        instruction: regenInstructions[index]?.trim() || undefined,
+        otherQuestions: others,
+      });
+      // 유형/스텝은 유지, 문제·정답·해설만 교체
+      setQuizzes((prev) =>
+        prev.map((q, i) =>
+          i === index
+            ? {
+                ...q,
+                questionText: fresh.questionText,
+                correctAnswer: fresh.correctAnswer,
+                explanation: fresh.explanation ?? q.explanation,
+              }
+            : q,
+        ),
+      );
+    } catch (e: any) {
+      Alert.alert('재생성 실패', e?.message ?? '다시 시도해주세요.');
+    } finally {
+      setRegeneratingIndex(null);
+    }
   };
 
   const handleSave = async () => {
@@ -313,6 +357,33 @@ export default function ObsAdminReviewScreen() {
                       />
                     </>
                   )}
+
+                  {/* 이 문제만 다시 생성 (유형 고정 · 지침 선택) */}
+                  <View style={styles.regenRow}>
+                    <TextInput
+                      style={styles.regenInstr}
+                      value={regenInstructions[index] ?? ''}
+                      onChangeText={(v) => setRegenInstructions((prev) => ({ ...prev, [index]: v }))}
+                      placeholder="재생성 지침 (선택) · 예: 더 쉽게"
+                      placeholderTextColor={colors.text.secondary}
+                      editable={regeneratingIndex !== index}
+                    />
+                    <TouchableOpacity
+                      style={[styles.regenBtn, regeneratingIndex === index && styles.regenBtnBusy]}
+                      onPress={() => handleRegenerate(index)}
+                      disabled={regeneratingIndex !== null}
+                      activeOpacity={0.85}
+                    >
+                      {regeneratingIndex === index ? (
+                        <ActivityIndicator size="small" color={colors.white} />
+                      ) : (
+                        <>
+                          <Ionicons name="refresh" size={15} color={colors.white} />
+                          <Text style={styles.regenBtnText}>재생성</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -423,6 +494,38 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quizType: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary, marginBottom: 4 },
+  regenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  regenInstr: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: fontSize.sm,
+    color: colors.text.primary,
+  },
+  regenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingHorizontal: 14,
+    minWidth: 92,
+    height: 38,
+  },
+  regenBtnBusy: { backgroundColor: colors.text.secondary },
+  regenBtnText: { color: colors.white, fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   bottom: {
     padding: spacing.md,
     paddingBottom: spacing.lg,
