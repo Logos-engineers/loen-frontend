@@ -56,6 +56,22 @@ export async function analyzeObs(r2Key: string): Promise<AnalyzeResult> {
   });
 }
 
+export type RegenerateQuizPayload = {
+  sections: Record<string, any>[];
+  stepNumber: number;
+  currentQuestion?: string;
+  instruction?: string;
+  otherQuestions?: string[];
+};
+
+/** 검수 화면에서 문제 1개만 다시 생성. sections를 함께 보내 저장 여부와 무관하게 동작. */
+export async function regenerateObsQuiz(payload: RegenerateQuizPayload): Promise<ObsAdminQuiz> {
+  return apiClient<ObsAdminQuiz>('/admin/obs/quizzes/regenerate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function saveObsContent(payload: SaveContentPayload): Promise<AdminObsContent> {
   return apiClient<AdminObsContent>('/admin/obs/contents', {
     method: 'POST',
