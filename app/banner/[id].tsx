@@ -1,10 +1,12 @@
+import { isEventWebLink } from '@/constants/event';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { useBanner } from '@/hooks/useBanners';
+import { apiClient } from '@/utils/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -19,6 +21,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function BannerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { banner, isLoading, error } = useBanner(id ?? '');
+
+  // 배너 링크 열기. 천국의 계단 이벤트 웹이면 1회용 티켓을 발급해 `?ticket=`으로 실어 보내
+  // 앱 로그인 세션을 웹으로 심리스 인계한다. 그 외 링크는 그대로 연다.
+  const openLink = useCallback(async (url: string) => {
+    if (isEventWebLink(url)) {
+      try {
+        const { ticket } = await apiClient<{ ticket: string; expiresInSeconds: number }>(
+          '/event/ticket',
+          { method: 'POST' },
+        );
+        const sep = url.includes('?') ? '&' : '?';
+        await Linking.openURL(`${url}${sep}ticket=${encodeURIComponent(ticket)}`);
+        return;
+      } catch (e) {
+        // 티켓 발급 실패(비로그인·네트워크 등) → 이벤트 페이지는 그래도 열어준다(웹이 안내 화면 처리).
+        console.warn('[event] 티켓 발급 실패, 파라미터 없이 오픈:', e);
+      }
+    }
+    await Linking.openURL(url);
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -70,7 +92,7 @@ export default function BannerDetailScreen() {
             <TouchableOpacity
               style={styles.linkBtn}
               activeOpacity={0.85}
-              onPress={() => banner.linkUrl && Linking.openURL(banner.linkUrl)}
+              onPress={() => banner.linkUrl && openLink(banner.linkUrl)}
             >
               <Text style={styles.linkBtnText}>자세히 보기</Text>
               <Ionicons name="arrow-forward" size={18} color={colors.white} />
