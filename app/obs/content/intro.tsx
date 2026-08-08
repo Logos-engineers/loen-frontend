@@ -1,7 +1,6 @@
-import { startObsReview } from '@/hooks/useObs';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
@@ -19,13 +18,13 @@ export default function ObsIntroScreen() {
     preview?: string;
     origin?: string;
   }>();
-  const [isStarting, setIsStarting] = useState(false);
   const isPreview = params.preview === 'true';
   const titleText = params.title || 'OBS 제목 데이터가 없습니다';
   const verseText = params.verse || '성경 범위 데이터가 없습니다';
-  const contentId = params.contentId ? Number(params.contentId) : null;
 
-  const handleStart = async () => {
+  // OBS 보기는 읽기 전용 — 복습 기록(리뷰)을 만들지 않는다.
+  // 복습(진행중/완료)은 '복습하기'(퀴즈) 플로우에서만 시작한다.
+  const handleStart = () => {
     const contentId = Number(params.contentId);
     const nextParams = {
       contentId: String(contentId || 0),
@@ -34,22 +33,7 @@ export default function ObsIntroScreen() {
       ...(isPreview ? { preview: 'true' } : {}),
       ...(params.origin ? { origin: params.origin } : {}),
     };
-
-    if (isPreview) {
-      router.push({ pathname: '/obs/content/scripture', params: nextParams });
-      return;
-    }
-
-    if (!contentId) return;
-    setIsStarting(true);
-    try {
-      const reviewId = await startObsReview(contentId);
-      router.push({ pathname: '/obs/content/scripture', params: { ...nextParams, reviewId: String(reviewId) } });
-    } catch {
-      router.push({ pathname: '/obs/content/scripture', params: nextParams });
-    } finally {
-      setIsStarting(false);
-    }
+    router.push({ pathname: '/obs/content/scripture', params: nextParams });
   };
 
   return (
@@ -98,10 +82,9 @@ export default function ObsIntroScreen() {
           <TouchableOpacity
             style={styles.ctaButton}
             activeOpacity={0.8}
-            disabled={isStarting}
             onPress={handleStart}
           >
-            {isStarting ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaButtonText}>OBS 시작하기</Text>}
+            <Text style={styles.ctaButtonText}>OBS 시작하기</Text>
           </TouchableOpacity>
         </View>
 
