@@ -7,22 +7,20 @@ import Svg, { Defs, RadialGradient, Rect, Stop, SvgXml } from 'react-native-svg'
 
 // tokens
 import { colors, fontWeight } from '@/constants/tokens';
+import { formatWeekLabel } from '@/utils/date';
 
 import BigbookIcon from '@/assets/icons/Bigbook.svg';
 
 // Back Icon 
 const ARROW_BACK_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9393 3.93934C12.5251 3.35355 13.4746 3.35355 14.0604 3.93934C14.6462 4.52513 14.6462 5.47465 14.0604 6.06043L8.12098 11.9999L14.0604 17.9393C14.6462 18.5251 14.6462 19.4746 14.0604 20.0604C13.4746 20.6462 12.5251 20.6462 11.9393 20.0604L4.93934 13.0604C4.35355 12.4746 4.35355 11.5251 4.93934 10.9393L11.9393 3.93934Z" fill="#0D1C2D" fill-opacity="0.16"/></svg>`;
 
+// "YYYY년 M월 D일" 형태의 표시용 날짜를 받아 공용 주차 계산(formatWeekLabel)에 위임.
 function getWeekOfMonth(dateString?: string) {
   if (!dateString) return '';
   const match = dateString.match(/(\d+)년\s+(\d+)월\s+(\d+)일/);
   if (!match) return dateString;
-  const year = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-  const day = parseInt(match[3], 10);
-  const firstDay = new Date(year, month - 1, 1).getDay();
-  const week = Math.ceil((day + firstDay) / 7);
-  return `${month}월 ${week}째주`;
+  const [, y, mo, d] = match;
+  return formatWeekLabel(`${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`);
 }
 
 export default function ReviewIntroScreen() {
