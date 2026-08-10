@@ -1,5 +1,6 @@
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/tokens';
 import { uploadProfileImage, useProfile } from '@/hooks/useProfile';
+import { useOikos } from '@/hooks/useOikos';
 import { launchImageLibrarySafe } from '@/utils/imagePicker';
 import { resizeForUpload } from '@/utils/resizeImage';
 import { overlay } from '@/components/ui/overlay';
@@ -29,6 +30,8 @@ const NICKNAME_MAX = 10;
 
 export default function ProfileEditScreen() {
   const { profile, isLoading, updateProfile } = useProfile();
+  // 오이코스는 프로필 수정 폼(이름/닉네임/소개)과 저장 경로가 달라(전용 가입/변경 API) 별 화면으로 이동시킨다.
+  const { oikos } = useOikos();
 
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
@@ -190,6 +193,17 @@ export default function ProfileEditScreen() {
                 multiline
               />
             </View>
+
+            {/* 오이코스 — 전용 화면으로 이동(가입/변경). 저장 버튼과 무관하게 즉시 반영됨 */}
+            <View style={styles.field}>
+              <Text style={styles.label}>오이코스</Text>
+              <Pressable style={styles.selectRow} onPress={() => router.push('/mypage/oikos-change')}>
+                <Text style={[styles.selectText, !oikos && styles.selectPlaceholder]}>
+                  {oikos ? oikos.name : '오이코스 선택하기'}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+              </Pressable>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -255,4 +269,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   inputMultiline: { minHeight: 80, textAlignVertical: 'top' },
+  selectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  selectText: { fontSize: fontSize.base, color: colors.text.primary },
+  selectPlaceholder: { color: colors.text.dim },
 });
