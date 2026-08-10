@@ -1,11 +1,13 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 
 import { colors, fontWeight } from '@/constants/tokens';
+import { fetchObsContent } from '@/hooks/useObs';
+import { formatWeekLabel } from '@/utils/date';
 
 // 완료 이모지 등장 인터랙션 — 작게 시작해 살짝 오버슈트 후 안착(팝업 + 바운스)
 const POP_IN = {
@@ -21,8 +23,21 @@ const POP_IN = {
 
 export default function ObsCompleteScreen() {
   const { width, height } = useWindowDimensions();
-  const params = useLocalSearchParams<{ origin?: string }>();
+  const params = useLocalSearchParams<{ origin?: string; contentId?: string }>();
   const isFromHome = params.origin === 'home';
+
+  // 완료한 교안의 발행일로 "N월 M째주" 라벨을 계산(하드코딩 아님). contentId만 넘어오면
+  // 콘텐츠를 조회해 publishedDate → formatWeekLabel(달력식). 실패/누락 시 라벨 없이 표시.
+  const [weekLabel, setWeekLabel] = useState('');
+  useEffect(() => {
+    const id = params.contentId ? Number(params.contentId) : null;
+    if (!id) return;
+    let alive = true;
+    fetchObsContent(id)
+      .then((data) => { if (alive) setWeekLabel(formatWeekLabel(data.publishedDate)); })
+      .catch(() => { /* 라벨은 부가정보 — 실패해도 완료 화면은 그대로 노출 */ });
+    return () => { alive = false; };
+  }, [params.contentId]);
 
   // 완료 화면을 1.5초간 보여준 뒤 자동 이동 (별도 CTA 없음)
   //
@@ -71,7 +86,7 @@ export default function ObsCompleteScreen() {
 
           {/* 타이틀 영역 */}
           <View style={styles.titleSection}>
-            <Text style={styles.subtitle}>10월 3째주</Text>
+            <Text style={styles.subtitle}>{weekLabel || ' '}</Text>
             <Text style={styles.title}>OBS 완료</Text>
           </View>
 

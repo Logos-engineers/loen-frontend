@@ -71,9 +71,15 @@ export default function ObsFinishScreen() {
 
   useEffect(() => {
     if (!isViewFlow) {
-      router.replace('/obs/content/complete');
+      router.replace({
+        pathname: '/obs/content/complete',
+        params: {
+          ...(contentId ? { contentId: String(contentId) } : {}),
+          ...(isFromHome ? { origin: 'home' } : {}),
+        },
+      });
     }
-  }, [isViewFlow]);
+  }, [isViewFlow, contentId, isFromHome]);
 
   useEffect(() => {
     if (!contentId) return;
@@ -274,7 +280,10 @@ export default function ObsFinishScreen() {
                     } else {
                       router.replace({
                         pathname: '/obs/content/complete',
-                        params: isFromHome ? { origin: 'home' } : {},
+                        params: {
+                          ...(contentId ? { contentId: String(contentId) } : {}),
+                          ...(isFromHome ? { origin: 'home' } : {}),
+                        },
                       });
                     }
                   }}

@@ -54,7 +54,15 @@ export default function ObsQ3Screen() {
     if (!isPreview && reviewId > 0) {
       try { await completeObsReview(reviewId); } catch { console.warn('[Essay] completeObsReview 실패'); }
     }
-    router.replace(isPreview ? '/obs/admin' : '/obs/content/complete');
+    if (isPreview) {
+      router.replace('/obs/admin');
+    } else {
+      // 완료 화면 주차 라벨 계산용으로 contentId 전달
+      router.replace({
+        pathname: '/obs/content/complete',
+        params: contentId ? { contentId: String(contentId) } : {},
+      });
+    }
   };
 
   return (
