@@ -75,6 +75,19 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* 오이코스 — 누구나 가입/변경 가능 */}
+        <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => router.push('/mypage/oikos-change')}
+          >
+            <Ionicons name="home-outline" size={22} color={colors.text.primary} />
+            <Text style={styles.rowLabel}>오이코스 변경</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+
         {/* 관리 — 매니저/관리자 조건부 */}
         {canManageOikos && (
           <View style={styles.group}>

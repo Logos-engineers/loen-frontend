@@ -138,6 +138,7 @@ export default function RootLayout() {
           <Stack.Screen name="notice" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/edit" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/settings" options={{ headerShown: false }} />
+          <Stack.Screen name="mypage/oikos-change" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/notification-setting" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/bug-report" options={{ headerShown: false }} />
           <Stack.Screen name="mypage/blocked-users" options={{ headerShown: false }} />

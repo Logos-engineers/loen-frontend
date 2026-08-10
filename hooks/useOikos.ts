@@ -17,6 +17,24 @@ export type Oikos = {
   members: OikosMember[];
 };
 
+export type SelectableOikos = {
+  id: string;
+  name: string;
+  leaderName: string | null;
+  groupId: string | null;
+  groupName: string | null;
+};
+
+/** 가입/변경 시 고를 수 있는 전체 오이코스 목록 (온보딩과 동일 소스 /oikos/list). */
+export async function fetchSelectableOikos(): Promise<SelectableOikos[]> {
+  return apiClient<SelectableOikos[]>('/oikos/list');
+}
+
+/** 오이코스 가입/변경 — 미소속이면 가입, 이미 소속이면 변경(덮어쓰기). 변경된 오이코스 상세 반환. */
+export async function joinOikos(oikosId: string): Promise<Oikos> {
+  return apiClient<Oikos>(`/oikos/${oikosId}/join`, { method: 'POST' });
+}
+
 export function useOikos() {
   const [oikos, setOikos] = useState<Oikos | null>(null);
   const [isLoading, setIsLoading] = useState(true);
