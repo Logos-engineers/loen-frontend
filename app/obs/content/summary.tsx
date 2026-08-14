@@ -23,7 +23,7 @@ import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { OBSHeader } from '@/components/obs/obs-header';
 import { getBibleBook } from '@/constants/bibleLoader';
 import { colors, fontWeight } from '@/constants/tokens';
-import { fetchObsContent, saveObsSummaryAnswers, startObsReview } from '@/hooks/useObs';
+import { fetchObsContent } from '@/hooks/useObs';
 import type { ObsTreeNode } from '@/utils/obs-normalize';
 
 const KOR_TO_CODE: Record<string, string> = {
@@ -345,13 +345,11 @@ export default function ObsSummaryScreen() {
   const contentId = params.contentId ? Number(params.contentId) : null;
   // 좌상단 쉐브론: OBS 보기 플로우 전체를 빠져나감 (단계 뒤로는 하단 '이전으로'가 담당)
   const exitFlow = () => router.dismissTo(isPreview ? '/obs/admin' : '/obs');
-  const initialReviewId = params.reviewId ? Number(params.reviewId) : null;
   const [introText, setIntroText] = useState('');
   const [questionCards, setQuestionCards] = useState<QuestionCardData[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [reviewId, setReviewId] = useState<number | null>(initialReviewId && initialReviewId > 0 ? initialReviewId : null);
   const [isLoading, setIsLoading] = useState(!!contentId);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [biblePopup, setBiblePopup] = useState<BiblePopup>(null);
   // 바텀시트: 백드롭은 페이드, 시트는 슬라이드 업으로 분리 애니메이션.
@@ -402,7 +400,6 @@ export default function ObsSummaryScreen() {
     fetchObsContent(contentId)
       .then((data) => {
         if (!active) return;
-        if (data.reviewId) setReviewId(data.reviewId);
         if (data.summaryAnswers) {
           const restored: Record<number, string> = {};
           Object.entries(data.summaryAnswers).forEach(([key, value]) => {
@@ -456,34 +453,13 @@ export default function ObsSummaryScreen() {
     openBibleSheet(getVersesForRef(ref));
   };
 
-  const handleNext = async () => {
-    const nonEmpty = Object.fromEntries(
-      Object.entries(answers).filter(([, value]) => value.trim().length > 0),
-    );
-
-    if (contentId && Object.keys(nonEmpty).length > 0) {
-      setIsSaving(true);
-      try {
-        let currentReviewId = reviewId;
-        if (!currentReviewId) {
-          currentReviewId = await startObsReview(contentId);
-          setReviewId(currentReviewId);
-        }
-        if (currentReviewId) {
-          await saveObsSummaryAnswers(currentReviewId, nonEmpty);
-        }
-      } catch {
-        // 저장 실패가 OBS 진행 자체를 막지 않도록 다음 화면으로 이동한다.
-      } finally {
-        setIsSaving(false);
-      }
-    }
-
+  // OBS 보기는 읽기 전용 — 말씀정리 답을 리뷰에 저장하지 않고(복습 기록 안 만듦),
+  // reviewId도 넘기지 않아 다음(finish)에서 완료 처리되지 않게 한다. 복습은 '복습하기'(퀴즈)에서만.
+  const handleNext = () => {
     router.push({
       pathname: '/obs/content/finish',
       params: {
         contentId: contentId ? String(contentId) : undefined,
-        reviewId: reviewId ? String(reviewId) : undefined,
         title: params.title,
         verse: params.verse,
         flow: 'view',
