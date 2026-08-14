@@ -16,10 +16,11 @@ import { useFaithNotes } from '@/hooks/useFaithNotes';
 import { useWrittenDays } from '@/hooks/useWrittenDays';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Pressable,
   StyleSheet,
@@ -49,9 +50,6 @@ const DROPDOWN_OPTIONS: DropdownOption[] = [
   { tab: 'WORD', label: '말씀노트', Icon: WordNoteIcon },
 ];
 
-// ─── 오늘 요일 ──────────────────────────────────────────────────────────────────
-const TODAY_KEY = getTodayKey();
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function FaithNoteListScreen() {
@@ -61,7 +59,8 @@ export default function FaithNoteListScreen() {
   const [selectedTab, setSelectedTab] = useState<FaithNoteTab>('THANKS');
   const [showDropdown, setShowDropdown] = useState(false);
   // 주간 스트립·요일 필터 기준 = 이번 주 시작(일요일). 주차 네비게이션은 없음(피드는 전체 최신순).
-  const [weekStart] = useState<Date>(() => getWeekStart());
+  const [weekStart, setWeekStart] = useState<Date>(() => getWeekStart());
+  const [todayKey, setTodayKey] = useState<string>(() => getTodayKey());
 
   const { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
   // 주간 스트립 체크 — 서버 집계(피드 로드량과 무관하게 정확). 탭별 요일 집합을 한 번에 받아 맵에서 참조.
@@ -70,7 +69,29 @@ export default function FaithNoteListScreen() {
   const [reportTarget, setReportTarget] = useState<FaithNoteItem | null>(null);
   const { confirm, info, node: popupNode } = usePopup();
 
-  useFocusEffect(useCallback(() => { refetch(); refetchWrittenDays(); }, [refetch, refetchWrittenDays]));
+  // 자정/주 경계를 넘겨 다시 볼 때 '오늘'·'이번 주'를 최신화. 실제로 바뀐 경우에만 setState
+  // (weekStart는 filteredNotes useMemo 의존값이라 매번 새 Date로 바꾸면 불필요한 재계산 발생).
+  const syncDate = useCallback(() => {
+    const t = getTodayKey();
+    const w = getWeekStart();
+    setTodayKey((prev) => (prev === t ? prev : t));
+    setWeekStart((prev) => (prev.getTime() === w.getTime() ? prev : w));
+  }, []);
+
+  // ① 화면 포커스 — 피드·주간현황 갱신 + 날짜 동기화
+  useFocusEffect(useCallback(() => {
+    refetch();
+    refetchWrittenDays();
+    syncDate();
+  }, [refetch, refetchWrittenDays, syncDate]));
+
+  // ② 앱 포그라운드 복귀 — 이 화면을 띄워둔 채 백그라운드→재실행(밤샘)한 경우 focus가 안 뛰므로 별도 처리
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') { syncDate(); refetchWrittenDays(); }
+    });
+    return () => sub.remove();
+  }, [syncDate, refetchWrittenDays]);
 
   // ⋯ → 신고 (남의 노트)
   const handleReport = useCallback(async (reason: string) => {
@@ -168,7 +189,7 @@ export default function FaithNoteListScreen() {
       <FaithNoteWeekSelector
         selectedDates={selectedDates}
         writtenDays={writtenDays}
-        todayKey={TODAY_KEY}
+        todayKey={todayKey}
         onToggleDate={handleToggleDate}
       />
 
