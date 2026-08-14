@@ -8,17 +8,19 @@ import { FaithNoteHeader } from '@/components/faith-note/faith-note-header';
 import { FaithNoteTab, FaithNoteTabBar } from '@/components/faith-note/faith-note-tab-bar';
 import { FaithNoteWeekSelector } from '@/components/faith-note/faith-note-week-selector';
 import { colors, fontSize, fontWeight, radius, shadow, spacing } from '@/constants/tokens';
-import { addWeeks, getTodayKey, getWeekEnd, getWeekStart, isCurrentWeek } from '@/utils/faith-note-store';
+import { getTodayKey, getWeekEnd, getWeekStart } from '@/utils/faith-note-store';
 import { blockUser, reportContent } from '@/utils/moderation';
 import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
 import { usePopup } from '@/components/shared/usePopup';
 import { useFaithNotes } from '@/hooks/useFaithNotes';
+import { useWrittenDays } from '@/hooks/useWrittenDays';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Pressable,
   StyleSheet,
@@ -48,9 +50,6 @@ const DROPDOWN_OPTIONS: DropdownOption[] = [
   { tab: 'WORD', label: '말씀노트', Icon: WordNoteIcon },
 ];
 
-// ─── 오늘 요일 ──────────────────────────────────────────────────────────────────
-const TODAY_KEY = getTodayKey();
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function FaithNoteListScreen() {
@@ -59,15 +58,40 @@ export default function FaithNoteListScreen() {
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [selectedTab, setSelectedTab] = useState<FaithNoteTab>('THANKS');
   const [showDropdown, setShowDropdown] = useState(false);
-  // 보고 있는 주의 시작(일요일 00:00). 기본=이번 주. 화살표로 과거 주 열람.
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => getWeekStart());
+  // 주간 스트립·요일 필터 기준 = 이번 주 시작(일요일). 주차 네비게이션은 없음(피드는 전체 최신순).
+  const [weekStart, setWeekStart] = useState<Date>(() => getWeekStart());
+  const [todayKey, setTodayKey] = useState<string>(() => getTodayKey());
 
-  const { notes, isLoading, isLoadingMore, hasMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
+  const { notes, isLoading, isLoadingMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
+  // 주간 스트립 체크 — 서버 집계(피드 로드량과 무관하게 정확). 탭별 요일 집합을 한 번에 받아 맵에서 참조.
+  const { writtenDaysMap, refetchWrittenDays } = useWrittenDays();
   const [pendingDelete, setPendingDelete] = useState<FaithNoteItem | null>(null);
   const [reportTarget, setReportTarget] = useState<FaithNoteItem | null>(null);
   const { confirm, info, node: popupNode } = usePopup();
 
-  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+  // 자정/주 경계를 넘겨 다시 볼 때 '오늘'·'이번 주'를 최신화. 실제로 바뀐 경우에만 setState
+  // (weekStart는 filteredNotes useMemo 의존값이라 매번 새 Date로 바꾸면 불필요한 재계산 발생).
+  const syncDate = useCallback(() => {
+    const t = getTodayKey();
+    const w = getWeekStart();
+    setTodayKey((prev) => (prev === t ? prev : t));
+    setWeekStart((prev) => (prev.getTime() === w.getTime() ? prev : w));
+  }, []);
+
+  // ① 화면 포커스 — 피드·주간현황 갱신 + 날짜 동기화
+  useFocusEffect(useCallback(() => {
+    refetch();
+    refetchWrittenDays();
+    syncDate();
+  }, [refetch, refetchWrittenDays, syncDate]));
+
+  // ② 앱 포그라운드 복귀 — 이 화면을 띄워둔 채 백그라운드→재실행(밤샘)한 경우 focus가 안 뛰므로 별도 처리
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') { syncDate(); refetchWrittenDays(); }
+    });
+    return () => sub.remove();
+  }, [syncDate, refetchWrittenDays]);
 
   // ⋯ → 신고 (남의 노트)
   const handleReport = useCallback(async (reason: string) => {
@@ -125,63 +149,26 @@ export default function FaithNoteListScreen() {
     if (!target) return;
     try {
       await deleteNote(target.id, target.tab);
-    } catch (e) {
+      // 그날의 마지막 노트를 지웠을 수 있으니 주간 체크도 갱신
+      refetchWrittenDays();
+    } catch {
       Alert.alert('오류', '삭제에 실패했습니다.');
     }
-  }, [pendingDelete, deleteNote]);
+  }, [pendingDelete, deleteNote, refetchWrittenDays]);
 
-  const viewingCurrentWeek = isCurrentWeek(selectedWeekStart);
-
-  // 주 이동 — 다음은 이번 주가 상한(미래 차단)
-  const goPrevWeek = useCallback(() => {
-    setSelectedWeekStart((w) => addWeeks(w, -1));
-  }, []);
-  const goNextWeek = useCallback(() => {
-    setSelectedWeekStart((w) => (isCurrentWeek(w) ? w : addWeeks(w, 1)));
-  }, []);
-
-  // 요일 필터 — 항상 보고 있는 주 범위로 스코프. 요일 미선택이면 그 주 7일 전체.
+  // 피드 = 전체 노트 최신순(요일 미선택). 요일 선택 시 그 요일(이번 주)만 필터.
   const filteredNotes = useMemo(() => {
-    const weekStart = selectedWeekStart;
+    if (selectedDates.length === 0) return notes;
     const weekEnd = getWeekEnd(weekStart);
     return notes.filter((n) => {
-      if (!n.createdAt) return false;
+      if (!n.dayKey || !selectedDates.includes(n.dayKey) || !n.createdAt) return false;
       const t = new Date(n.createdAt);
-      if (t < weekStart || t > weekEnd) return false;
-      if (selectedDates.length === 0) return true; // 그 주 전체
-      return !!n.dayKey && selectedDates.includes(n.dayKey);
+      return t >= weekStart && t <= weekEnd; // 이번 주의 그 요일
     });
-  }, [notes, selectedDates, selectedWeekStart]);
+  }, [notes, selectedDates, weekStart]);
 
-  // 보고 있는 주에 '내가' 작성한 요일 집합 → 주간 뷰 체크 표시
-  const writtenDays = useMemo(() => {
-    const weekStart = selectedWeekStart;
-    const weekEnd = getWeekEnd(weekStart);
-    return notes
-      .filter((n) => {
-        if (!n.isMine || !n.dayKey || !n.createdAt) return false;
-        const t = new Date(n.createdAt);
-        return t >= weekStart && t <= weekEnd;
-      })
-      .map((n) => n.dayKey as string);
-  }, [notes, selectedWeekStart]);
-
-  // 과거 주 열람 시 — 그 주 시작 이전 노트가 로드될 때까지 자동으로 다음 페이지를 채운다.
-  // (백엔드 날짜 범위 API가 없어 최신순 페이지네이션으로만 과거를 확보) hasMore=false면 멈춤.
-  useEffect(() => {
-    if (viewingCurrentWeek || isLoading || isLoadingMore || !hasMore) return;
-    const oldest = notes.length > 0 ? notes[notes.length - 1].createdAt : null;
-    if (!oldest || new Date(oldest) >= selectedWeekStart) {
-      loadMore();
-    }
-  }, [viewingCurrentWeek, selectedWeekStart, notes, hasMore, isLoading, isLoadingMore, loadMore]);
-
-  // 과거 주를 아직 다 못 불러온 상태(빈 화면 대신 로딩 표시용)
-  const oldestCreatedAt = notes.length > 0 ? notes[notes.length - 1].createdAt : undefined;
-  const coveringPastWeek =
-    !viewingCurrentWeek &&
-    (isLoadingMore ||
-      (hasMore && (!oldestCreatedAt || new Date(oldestCreatedAt) >= selectedWeekStart)));
+  // 이번 주에 '내가' 작성한 요일 집합 → 주간 스트립 체크 (서버 집계, 현재 탭 기준)
+  const writtenDays = writtenDaysMap[selectedTab];
 
   // ── 드롭다운 옵션 선택
   const handleDropdownSelect = (tab: FaithNoteTab) => {
@@ -198,16 +185,12 @@ export default function FaithNoteListScreen() {
       {/* 헤더 — 우측 "노트 작성하기" 클릭 → 드롭다운 토글 */}
       <FaithNoteHeader onWritePress={() => setShowDropdown((v) => !v)} />
 
-      {/* 주간 요일 선택기 */}
+      {/* 주간 요일 선택기 (이번 주 고정) */}
       <FaithNoteWeekSelector
         selectedDates={selectedDates}
         writtenDays={writtenDays}
-        todayKey={viewingCurrentWeek ? TODAY_KEY : ''}
+        todayKey={todayKey}
         onToggleDate={handleToggleDate}
-        weekStart={selectedWeekStart}
-        isCurrentWeek={viewingCurrentWeek}
-        onPrevWeek={goPrevWeek}
-        onNextWeek={goNextWeek}
       />
 
       {/* 탭 바 */}
@@ -245,13 +228,7 @@ export default function FaithNoteListScreen() {
               <ActivityIndicator color={colors.primary} style={styles.listFooter} />
             ) : null
           }
-          ListEmptyComponent={
-            coveringPastWeek ? (
-              <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.xl }} />
-            ) : (
-              <FaithNoteEmpty tabLabel={TAB_LABELS[selectedTab]} />
-            )
-          }
+          ListEmptyComponent={<FaithNoteEmpty tabLabel={TAB_LABELS[selectedTab]} />}
         />
       )}
 
