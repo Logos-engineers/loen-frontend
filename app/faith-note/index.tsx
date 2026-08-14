@@ -13,6 +13,7 @@ import { blockUser, reportContent } from '@/utils/moderation';
 import { ReportReasonSheet } from '@/components/shared/ReportReasonSheet';
 import { usePopup } from '@/components/shared/usePopup';
 import { useFaithNotes } from '@/hooks/useFaithNotes';
+import { useWrittenDays } from '@/hooks/useWrittenDays';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -63,11 +64,13 @@ export default function FaithNoteListScreen() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => getWeekStart());
 
   const { notes, isLoading, isLoadingMore, hasMore, error, loadMore, toggleLike, toggleReaction, deleteNote, refetch } = useFaithNotes(selectedTab);
+  // 주간 스트립 체크 — 서버 집계(피드 로드량과 무관하게 정확). 탭별 요일 집합을 한 번에 받아 맵에서 참조.
+  const { writtenDaysMap, refetchWrittenDays } = useWrittenDays(selectedWeekStart);
   const [pendingDelete, setPendingDelete] = useState<FaithNoteItem | null>(null);
   const [reportTarget, setReportTarget] = useState<FaithNoteItem | null>(null);
   const { confirm, info, node: popupNode } = usePopup();
 
-  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+  useFocusEffect(useCallback(() => { refetch(); refetchWrittenDays(); }, [refetch, refetchWrittenDays]));
 
   // ⋯ → 신고 (남의 노트)
   const handleReport = useCallback(async (reason: string) => {
@@ -125,10 +128,12 @@ export default function FaithNoteListScreen() {
     if (!target) return;
     try {
       await deleteNote(target.id, target.tab);
-    } catch (e) {
+      // 그날의 마지막 노트를 지웠을 수 있으니 주간 체크도 갱신
+      refetchWrittenDays();
+    } catch {
       Alert.alert('오류', '삭제에 실패했습니다.');
     }
-  }, [pendingDelete, deleteNote]);
+  }, [pendingDelete, deleteNote, refetchWrittenDays]);
 
   const viewingCurrentWeek = isCurrentWeek(selectedWeekStart);
 
@@ -153,18 +158,8 @@ export default function FaithNoteListScreen() {
     });
   }, [notes, selectedDates, selectedWeekStart]);
 
-  // 보고 있는 주에 '내가' 작성한 요일 집합 → 주간 뷰 체크 표시
-  const writtenDays = useMemo(() => {
-    const weekStart = selectedWeekStart;
-    const weekEnd = getWeekEnd(weekStart);
-    return notes
-      .filter((n) => {
-        if (!n.isMine || !n.dayKey || !n.createdAt) return false;
-        const t = new Date(n.createdAt);
-        return t >= weekStart && t <= weekEnd;
-      })
-      .map((n) => n.dayKey as string);
-  }, [notes, selectedWeekStart]);
+  // 보고 있는 주에 '내가' 작성한 요일 집합 → 주간 뷰 체크 표시 (서버 집계, 현재 탭 기준)
+  const writtenDays = writtenDaysMap[selectedTab];
 
   // 과거 주 열람 시 — 그 주 시작 이전 노트가 로드될 때까지 자동으로 다음 페이지를 채운다.
   // (백엔드 날짜 범위 API가 없어 최신순 페이지네이션으로만 과거를 확보) hasMore=false면 멈춤.
