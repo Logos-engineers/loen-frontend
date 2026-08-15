@@ -8,7 +8,7 @@ const KEYS = {
   REFRESH_TOKEN: 'loen_refresh_token',
 } as const;
 
-export type UserRole = 'USER' | 'ADMIN';
+export type UserRole = 'USER' | 'ADMIN' | 'OBS_ADMIN';
 
 interface AuthState {
   accessToken: string | null;
