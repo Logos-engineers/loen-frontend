@@ -18,9 +18,11 @@ export default function SettingsScreen() {
   const role = useAuthStore((s) => s.role);
   const { profile } = useProfile();
 
-  // 오이코스 관리 접근 가능 직책 또는 ADMIN → '관리' 그룹 노출 (more.tsx와 동일 규칙)
+  // 오이코스 관리 접근 가능 직책 또는 ADMIN → '오이코스 관리' 노출 (more.tsx와 동일 규칙)
   const canManageOikos =
     role === 'ADMIN' || (!!profile?.position && OIKOS_MANAGE_POSITIONS.includes(profile.position));
+  // ADMIN 또는 OBS_ADMIN → '관리자 메뉴' 진입 노출
+  const canOpenAdmin = role === 'ADMIN' || role === 'OBS_ADMIN';
 
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [withdrawVisible, setWithdrawVisible] = useState(false);
@@ -76,21 +78,23 @@ export default function SettingsScreen() {
         </View>
 
         {/* 관리 — 매니저/관리자 조건부 */}
-        {canManageOikos && (
+        {(canManageOikos || canOpenAdmin) && (
           <View style={styles.group}>
-            <TouchableOpacity
-              style={styles.row}
-              activeOpacity={0.7}
-              onPress={() => router.push('/oikos/management')}
-            >
-              <Ionicons name="people-outline" size={22} color={colors.text.primary} />
-              <Text style={styles.rowLabel}>오이코스 관리</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-            </TouchableOpacity>
+            {canManageOikos && (
+              <TouchableOpacity
+                style={styles.row}
+                activeOpacity={0.7}
+                onPress={() => router.push('/oikos/management')}
+              >
+                <Ionicons name="people-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.rowLabel}>오이코스 관리</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+              </TouchableOpacity>
+            )}
 
-            {role === 'ADMIN' && (
+            {canOpenAdmin && (
               <>
-                <View style={styles.divider} />
+                {canManageOikos && <View style={styles.divider} />}
                 <TouchableOpacity
                   style={styles.row}
                   activeOpacity={0.7}
