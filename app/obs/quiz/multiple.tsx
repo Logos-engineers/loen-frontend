@@ -14,6 +14,12 @@ import HumanOMarkIcon from '@/assets/icons/humanOmark.svg';
 // 정답 비교용 정규화: 앞뒤 공백 제거 + 연속 공백을 하나로. ('하나님의  선물' 같은 띄어쓰기 차이 허용)
 const normalize = (s: string) => s.trim().replace(/\s+/g, ' ');
 
+// 조합 중인 한글 낱자(자모: ㆍ, ㅡ, ㅅ 등)는 '완성 글자'로 세지 않는다.
+// 천지인은 모음을 아래아(ㆍ) 등 여러 낱자로 조합하는데, 그 중간 버퍼가 정답 글자수를
+// 순간적으로 초과한다. 낱자를 길이에서 빼고 세야 조합이 막히지 않고 음절이 완성된다.
+const isPendingJamo = (c: string) => /[ᄀ-ᇿ㄰-㆏]/.test(c);
+const committedLen = (s: string) => [...s].filter((c) => !isPendingJamo(c)).length;
+
 export default function MultipleChoiceQuizScreen() {
   const params = useLocalSearchParams<{ contentId?: string; reviewId?: string; preview?: string; step1Result?: string }>();
   const contentId = params.contentId ? Number(params.contentId) : null;
@@ -162,7 +168,9 @@ export default function MultipleChoiceQuizScreen() {
                   ref={inputRef}
                   value={inputText}
                   onChangeText={(text) => {
-                    if (!CORRECT_ANSWER.length || text.length <= CORRECT_ANSWER.length) {
+                    // 길이 제한은 '완성 글자수'로만 판단. 조합 중 낱자(천지인 아래아 등)는 세지 않아
+                    // 음절 조합이 중간에 막히지 않게 하되, 완성 글자가 정답 길이를 넘으면(진짜 초과) 거부.
+                    if (!CORRECT_ANSWER.length || committedLen(text) <= CORRECT_ANSWER.length) {
                       handleInputChange(text);
                     }
                   }}
