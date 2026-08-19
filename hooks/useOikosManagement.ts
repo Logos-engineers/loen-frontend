@@ -37,13 +37,14 @@ export type ManagementView = {
 export type UserSearchItem = {
   uid: string;
   name: string;
+  nickname: string | null;
   profileImage: string | null;
   position: string | null;
 };
 
-/** 이름으로 사용자 검색 (리더/S리더/부원 지정용). */
-export async function searchUsers(name: string): Promise<UserSearchItem[]> {
-  const q = name.trim();
+/** 이름 또는 별명으로 사용자 검색 (리더/S리더/부원 지정용). */
+export async function searchUsers(keyword: string): Promise<UserSearchItem[]> {
+  const q = keyword.trim();
   if (!q) return [];
   return apiClient<UserSearchItem[]>(`/users/search?name=${encodeURIComponent(q)}`);
 }

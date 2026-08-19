@@ -21,7 +21,15 @@ type Props = {
   onSelect: (user: UserSearchItem) => void;
 };
 
-/** 이름으로 사용자를 검색해 한 명 선택하는 모달. 리더/S리더/부원 지정에 공통 사용. */
+// 표시 이름 = "이름(별명)". 둘 중 하나만 있으면 있는 것만, 둘 다 없으면 대체 문구.
+function displayName(u: UserSearchItem): string {
+  const name = u.name?.trim();
+  const nick = u.nickname?.trim();
+  if (name && nick) return `${name}(${nick})`;
+  return name || nick || '이름 없음';
+}
+
+/** 이름 또는 별명으로 사용자를 검색해 한 명 선택하는 모달. 리더/S리더/부원 지정에 공통 사용. */
 export function UserSearchModal({ visible, title, onClose, onSelect }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserSearchItem[]>([]);
@@ -77,7 +85,7 @@ export function UserSearchModal({ visible, title, onClose, onSelect }: Props) {
           <Ionicons name="search" size={18} color={colors.text.secondary} />
           <TextInput
             style={styles.input}
-            placeholder="이름으로 검색"
+            placeholder="이름 또는 별명으로 검색"
             placeholderTextColor={colors.text.dim}
             value={query}
             onChangeText={setQuery}
@@ -109,7 +117,7 @@ export function UserSearchModal({ visible, title, onClose, onSelect }: Props) {
                 <View style={styles.avatar}>
                   <Ionicons name="person" size={18} color={colors.text.secondary} />
                 </View>
-                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.name}>{displayName(item)}</Text>
                 <Text style={styles.position}>{positionLabel(item.position)}</Text>
               </TouchableOpacity>
             )}
@@ -117,7 +125,7 @@ export function UserSearchModal({ visible, title, onClose, onSelect }: Props) {
               query.trim().length > 0 ? (
                 <Text style={styles.empty}>검색 결과가 없어요.</Text>
               ) : (
-                <Text style={styles.empty}>이름을 입력해 검색하세요.</Text>
+                <Text style={styles.empty}>이름 또는 별명을 입력해 검색하세요.</Text>
               )
             }
           />
